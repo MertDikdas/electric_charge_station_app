@@ -42,7 +42,7 @@ class Station(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     company = Column(String, nullable=False)
-    location = Column(String, nullable=False)
+    location = Column(String, nullable=False, index=True)
     address = Column(String, nullable=False)
     status = Column(String, nullable=False, default="AVAILABLE")
 
@@ -93,5 +93,23 @@ class Reservation(Base):
     user = relationship("User", back_populates="reservations")
     vehicle = relationship("Vehicle", back_populates="reservations")
     charger = relationship("Charger", back_populates="reservations")
+    charging_session = relationship("ChargingSession", back_populates="reservation", uselist=False)
 
+class ChargingSession(Base):
+    __tablename__ = "charging_sessions"
 
+    reservation_id = Column(Integer, ForeignKey("reservations.id"), primary_key=True, index=True, nullable=False)
+    consuming_power = Column(Float, nullable=False, default=0.0)
+    cost = Column(Float, nullable=False, default=0.0)
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=True)
+    status = Column(String, nullable=False, default="PENDING")
+
+    __table_args__ = (
+        CheckConstraint("status IN ('STARTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'FAILED', 'INTERRUPTED', 'PENDING')", name="check_charging_session_status"),
+        CheckConstraint("end_time IS NULL OR end_time > start_time", name="check_charging_session_time_valid"),
+        CheckConstraint("consuming_power >= 0", name="check_charging_session_consuming_power_non_negative"),
+        CheckConstraint("cost >= 0", name="check_charging_session_cost_non_negative"),
+    )
+
+    reservation = relationship("Reservation", back_populates="charging_session")
