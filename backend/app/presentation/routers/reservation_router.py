@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.reservation_service import ReservationService
 from app.core.dependencies import get_reservation_service
-from app.domain.models.reservation import ReservationCreate, Reservation
+from app.schemas.reservation import ReservationCreate, Reservation
 
 router = APIRouter()
 
