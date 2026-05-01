@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.charger_service import ChargerService
 from app.core.dependencies import get_charger_service
-from app.domain.models.charger import ChargerCreate, Charger
+from app.schemas.charger import ChargerCreate, Charger
 
 router = APIRouter()
 
