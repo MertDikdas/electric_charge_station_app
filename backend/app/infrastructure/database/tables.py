@@ -73,3 +73,25 @@ class Charger(Base):
     station = relationship("Station", back_populates="chargers")
     reservations = relationship("Reservation", back_populates="charger")
 
+class Reservation(Base):
+    __tablename__ = "reservations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), index=True, nullable=False)
+    charger_id = Column(Integer, ForeignKey("chargers.id"), index=True, nullable=False)
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=False)
+    date = Column(Date, nullable=False)
+    status = Column(String, nullable=False, default="PENDING")
+
+    __table_args__ = (
+        CheckConstraint("status IN ('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED','EXPIRED', 'NO_SHOW')", name="check_reservation_status"),
+        CheckConstraint("end_time > start_time", name="check_reservation_time_valid"),
+        )
+
+    user = relationship("User", back_populates="reservations")
+    vehicle = relationship("Vehicle", back_populates="reservations")
+    charger = relationship("Charger", back_populates="reservations")
+
+
