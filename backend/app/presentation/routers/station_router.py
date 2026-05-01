@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.station_service import StationService
 from app.core.dependencies import get_station_service
-from app.domain.models.station import StationCreate, Station
+from app.schemas.station import StationCreate, Station
 
 router = APIRouter()
 
