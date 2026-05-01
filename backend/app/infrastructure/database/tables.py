@@ -37,3 +37,18 @@ class Vehicle(Base):
     reservations = relationship("Reservation", back_populates="vehicle")
     user = relationship("User", back_populates="vehicles")
 
+class Station(Base):
+    __tablename__ = "stations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company = Column(String, nullable=False)
+    location = Column(String, nullable=False)
+    address = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="AVAILABLE")
+
+
+    __table_args__ = (
+        CheckConstraint("status IN ('AVAILABLE', 'OCCUPIED', 'OUT_OF_SERVICE', 'MAINTENANCE', 'CLOSED')", name="check_station_status"),
+    )
+    chargers = relationship("Charger", back_populates="station")
+
