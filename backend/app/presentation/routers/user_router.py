@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.user_service import UserService
 from app.core.dependencies import get_user_service
-from app.domain.models.user import UserCreate, User
+from app.schemas.user import UserCreate, User
 
 router = APIRouter()
 
