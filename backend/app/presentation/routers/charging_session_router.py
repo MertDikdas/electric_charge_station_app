@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.application.services.charger_session_service import ChargingSessionService
 from app.core.dependencies import get_charging_session_service
-from app.domain.models.charging_session import ChargingSessionCreate, ChargingSession
+from app.schemas.charging_session import ChargingSessionCreate, ChargingSession
 
 router = APIRouter()
 
