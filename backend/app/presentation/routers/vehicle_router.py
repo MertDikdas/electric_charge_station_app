@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.vehicle_service import VehicleService
 from app.core.dependencies import get_vehicle_service
-from app.domain.models.vehicle import VehicleCreate, Vehicle
+from app.schemas.vehicle import VehicleCreate, Vehicle
 
 router = APIRouter()
 
