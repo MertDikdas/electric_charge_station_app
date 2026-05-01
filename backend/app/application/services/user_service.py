@@ -1,4 +1,4 @@
-from app.models.user import UserCreate, User
+from app.domain.models.user import UserCreate, User
 from app.core.uow import AbstractUnitOfWork
 from typing import List, Optional
 

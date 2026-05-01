@@ -1,4 +1,4 @@
-from app.models.charger import ChargerCreate, Charger
+from app.domain.models.charger import ChargerCreate, Charger
 from app.core.uow import AbstractUnitOfWork
 from typing import List, Optional
 

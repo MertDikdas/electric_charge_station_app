@@ -1,22 +1,24 @@
-from app.models.user import UserCreate, User
-from app.core.uow import AbstractUnitOfWork
 from typing import List, Optional
 
-class UserService:
+from app.core.uow import AbstractUnitOfWork
+from app.domain.models.vehicle import VehicleCreate, Vehicle
+
+
+class VehicleService:
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
 
-    def create_user(self, user_in: UserCreate) -> User:
+    def create_vehicle(self, vehicle_in: VehicleCreate) -> Vehicle:
         with self.uow:
-            new_user = User(**user_in.model_dump(), id=0)
-            self.uow.users.add(new_user)
+            new_vehicle = Vehicle(**vehicle_in.model_dump(), id=0)
+            self.uow.vehicles.add(new_vehicle)
             self.uow.commit()
-            return new_user
+            return new_vehicle
 
-    def get_all_users(self) -> List[User]:
+    def get_all_vehicles(self) -> List[Vehicle]:
         with self.uow:
-            return self.uow.users.list()
+            return self.uow.vehicles.list()
 
-    def get_user(self, user_id: int) -> Optional[User]:
+    def get_vehicle(self, vehicle_id: int) -> Optional[Vehicle]:
         with self.uow:
-            return self.uow.users.get(user_id)
+            return self.uow.vehicles.get(vehicle_id)

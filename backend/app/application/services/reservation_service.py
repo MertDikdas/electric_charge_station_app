@@ -1,4 +1,4 @@
-from app.models.reservation import ReservationCreate, Reservation
+from app.domain.models.reservation import ReservationCreate, Reservation
 from app.core.uow import AbstractUnitOfWork
 from typing import List, Optional
 

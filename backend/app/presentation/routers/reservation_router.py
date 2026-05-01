@@ -1,28 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
 from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.application.services.reservation_service import ReservationService
+from app.core.dependencies import get_reservation_service
 from app.domain.models.reservation import ReservationCreate, Reservation
-from app.core.uow import AbstractUnitOfWork
-from app.core.dependencies import get_uow
 
 router = APIRouter()
 
+
 @router.post("/", response_model=Reservation, status_code=201)
-def create_reservation(reservation: ReservationCreate, uow: AbstractUnitOfWork = Depends(get_uow)):
-    with uow:
-        new_reservation = Reservation(**reservation.model_dump(), id=0)
-        uow.reservations.add(new_reservation)
-        uow.commit()
-        return new_reservation
+def create_reservation(
+    reservation: ReservationCreate,
+    service: ReservationService = Depends(get_reservation_service),
+):
+    return service.create_reservation(reservation)
+
 
 @router.get("/", response_model=List[Reservation])
-def get_reservations(uow: AbstractUnitOfWork = Depends(get_uow)):
-    with uow:
-        return uow.reservations.list()
+def get_reservations(service: ReservationService = Depends(get_reservation_service)):
+    return service.get_all_reservations()
+
 
 @router.get("/{reservation_id}", response_model=Reservation)
-def get_reservation(reservation_id: int, uow: AbstractUnitOfWork = Depends(get_uow)):
-    with uow:
-        reservation = uow.reservations.get(reservation_id)
-        if not reservation:
-            raise HTTPException(status_code=404, detail="Reservation not found")
-        return reservation
+def get_reservation(
+    reservation_id: int,
+    service: ReservationService = Depends(get_reservation_service),
+):
+    reservation = service.get_reservation(reservation_id)
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    return reservation

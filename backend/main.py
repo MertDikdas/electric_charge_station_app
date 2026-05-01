@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers.vehicle_router import router as vehicle_router
-from app.routers.station_router import router as station_router
-from app.routers.reservation_router import router as reservation_router
-from app.routers.charging_session_router import router as charging_session_router
-from app.routers.user_router import router as user_router
-from app.routers.charger_router import router as charger_router
+from app.presentation.routers.vehicle_router import router as vehicle_router
+from app.presentation.routers.station_router import router as station_router
+from app.presentation.routers.reservation_router import router as reservation_router
+from app.presentation.routers.charging_session_router import router as charging_session_router
+from app.presentation.routers.user_router import router as user_router
+from app.presentation.routers.charger_router import router as charger_router
 
 app = FastAPI(
     title="EV Charging Station Network API",

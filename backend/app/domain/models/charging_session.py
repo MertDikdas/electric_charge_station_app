@@ -13,4 +13,4 @@ class ChargingSessionCreate(BaseModel):
 class ChargingSession(ChargingSessionCreate):
     # Diagram uses double line which means Weak Entity, 
     # it depends on Reservation. We use reservation_id as the relation.
-    pass
+    id: int

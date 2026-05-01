@@ -1,4 +1,4 @@
-from app.models.station import StationCreate, Station
+from app.domain.models.station import StationCreate, Station
 from app.core.uow import AbstractUnitOfWork
 from typing import List, Optional
 
