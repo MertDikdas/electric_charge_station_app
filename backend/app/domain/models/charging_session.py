@@ -1,16 +1,18 @@
-from pydantic import BaseModel
 from datetime import time
+from dataclasses import dataclass
 from typing import Optional
 
-class ChargingSessionCreate(BaseModel):
+from app.domain.models.base import BaseEntity
+
+
+@dataclass
+class ChargingSessionEntity(BaseEntity):
     reservation_id: int
     start_time: time
     end_time: Optional[time] = None
     consuming_power: float = 0.0
     cost: float = 0.0
-    status: str = "active"
+    status: str = "PENDING"
 
-class ChargingSession(ChargingSessionCreate):
-    # Diagram uses double line which means Weak Entity, 
-    # it depends on Reservation. We use reservation_id as the relation.
-    id: int
+
+ChargingSession = ChargingSessionEntity

@@ -1,13 +1,29 @@
 from abc import ABC, abstractmethod
-from app.core.repository import InMemoryRepository
+
+from sqlalchemy.orm import Session
+
+from app.infrastructure.repositories import (
+    AbstractChargerRepository,
+    AbstractChargingSessionRepository,
+    AbstractReservationRepository,
+    AbstractStationRepository,
+    AbstractUserRepository,
+    AbstractVehicleRepository,
+    SqlAlchemyChargerRepository,
+    SqlAlchemyChargingSessionRepository,
+    SqlAlchemyReservationRepository,
+    SqlAlchemyStationRepository,
+    SqlAlchemyUserRepository,
+    SqlAlchemyVehicleRepository,
+)
 
 class AbstractUnitOfWork(ABC):
-    users: InMemoryRepository
-    vehicles: InMemoryRepository
-    stations: InMemoryRepository
-    chargers: InMemoryRepository
-    reservations: InMemoryRepository
-    charging_sessions: InMemoryRepository
+    users: AbstractUserRepository
+    vehicles: AbstractVehicleRepository
+    stations: AbstractStationRepository
+    chargers: AbstractChargerRepository
+    reservations: AbstractReservationRepository
+    charging_sessions: AbstractChargingSessionRepository
 
     def __enter__(self):
         return self
@@ -26,20 +42,19 @@ class AbstractUnitOfWork(ABC):
     def rollback(self):
         raise NotImplementedError
 
-# Veritabanı (SQLAlchemy) hazır olana kadar çalışacak geçici UoW
-class InMemoryUnitOfWork(AbstractUnitOfWork):
-    def __init__(self):
-        # Gerçek veritabanı geldiğinde buraları SqlAlchemyRepository ile değiştireceksiniz.
-        self.users = InMemoryRepository()
-        self.vehicles = InMemoryRepository()
-        self.stations = InMemoryRepository()
-        self.chargers = InMemoryRepository()
-        self.reservations = InMemoryRepository()
-        self.charging_sessions = InMemoryRepository()
+
+class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
+    def __init__(self, session: Session):
+        self.session = session
+        self.users = SqlAlchemyUserRepository(session)
+        self.vehicles = SqlAlchemyVehicleRepository(session)
+        self.stations = SqlAlchemyStationRepository(session)
+        self.chargers = SqlAlchemyChargerRepository(session)
+        self.reservations = SqlAlchemyReservationRepository(session)
+        self.charging_sessions = SqlAlchemyChargingSessionRepository(session)
 
     def commit(self):
-        # InMemory olduğu için commit işlemine gerek yok
-        pass
+        self.session.commit()
 
     def rollback(self):
-        pass
+        self.session.rollback()

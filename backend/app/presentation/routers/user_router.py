@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.user_service import UserService
 from app.core.dependencies import get_user_service
+from app.domain.models.user import UserEntity
 from app.schemas.user import UserCreate, User
 
 router = APIRouter()
@@ -14,7 +15,8 @@ def create_user(
     user: UserCreate,
     service: UserService = Depends(get_user_service),
 ):
-    return service.create_user(user)
+    user_entity = UserEntity(**user.model_dump())
+    return service.create_user(user_entity)
 
 
 @router.get("/", response_model=List[User])

@@ -1,0 +1,49 @@
+from typing import List
+
+from app.domain.models.vehicle import VehicleEntity
+from app.infrastructure.database.tables import Vehicle as VehicleModel
+from app.infrastructure.repositories.abstract.vehicle_repository import (
+    AbstractVehicleRepository,
+)
+from app.infrastructure.repositories.sqlalchemy.base import SqlAlchemyRepository
+
+
+class SqlAlchemyVehicleRepository(
+    SqlAlchemyRepository[VehicleEntity, VehicleModel],
+    AbstractVehicleRepository,
+):
+    model = VehicleModel
+
+    def to_model(self, entity: VehicleEntity) -> VehicleModel:
+        return VehicleModel(
+            id=entity.id,
+            user_id=entity.user_id,
+            model=entity.model,
+            plate=entity.plate,
+            max_charging_power=entity.max_charging_power,
+            battery_capacity=entity.battery_capacity,
+            connector_type=entity.connector_type,
+            current_type=entity.current_type,
+            is_active=entity.is_active,
+        )
+
+    def to_entity(self, model: VehicleModel) -> VehicleEntity:
+        return VehicleEntity(
+            id=model.id,
+            user_id=model.user_id,
+            model=model.model,
+            plate=model.plate,
+            max_charging_power=model.max_charging_power,
+            battery_capacity=model.battery_capacity,
+            connector_type=model.connector_type,
+            current_type=model.current_type,
+            is_active=model.is_active,
+        )
+
+    def list_by_user(self, user_id: int) -> List[VehicleEntity]:
+        models = (
+            self.session.query(VehicleModel)
+            .filter(VehicleModel.user_id == user_id)
+            .all()
+        )
+        return [self.to_entity(model) for model in models]

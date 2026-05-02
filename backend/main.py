@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.infrastructure.database.database import Base, engine
+from app.infrastructure.database import tables
 
 from app.infrastructure.database.database import Base, engine
 from app.infrastructure.database import tables

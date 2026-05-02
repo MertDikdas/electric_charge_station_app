@@ -1,18 +1,17 @@
-from app.domain.models.charging_session import ChargingSessionCreate, ChargingSession
 from app.core.uow import AbstractUnitOfWork
+from app.domain.models.charging_session import ChargingSessionEntity
 from typing import List
 
 class ChargingSessionService:
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
 
-    def create_session(self, session_in: ChargingSessionCreate) -> ChargingSession:
+    def create_session(self, session: ChargingSessionEntity) -> ChargingSessionEntity:
         with self.uow:
-            new_session = ChargingSession(**session_in.model_dump(), id=0)
-            self.uow.charging_sessions.add(new_session)
+            new_session = self.uow.charging_sessions.add(session)
             self.uow.commit()
             return new_session
 
-    def get_all_sessions(self) -> List[ChargingSession]:
+    def get_all_sessions(self) -> List[ChargingSessionEntity]:
         with self.uow:
             return self.uow.charging_sessions.list()

@@ -1,10 +1,15 @@
-from pydantic import BaseModel, Field
+from dataclasses import dataclass
 
-class UserCreate(BaseModel):
+from app.domain.models.base import BaseEntity
+
+
+@dataclass
+class UserEntity(BaseEntity):
     name: str
     surname: str
     mail: str
     balance: float = 0.0
+    password_hash: str = ""
 
-class User(UserCreate):
-    id: int
+
+User = UserEntity

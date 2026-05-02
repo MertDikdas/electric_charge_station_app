@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.reservation_service import ReservationService
 from app.core.dependencies import get_reservation_service
+from app.domain.models.reservation import ReservationEntity
 from app.schemas.reservation import ReservationCreate, Reservation
 
 router = APIRouter()
@@ -14,7 +15,8 @@ def create_reservation(
     reservation: ReservationCreate,
     service: ReservationService = Depends(get_reservation_service),
 ):
-    return service.create_reservation(reservation)
+    reservation_entity = ReservationEntity(**reservation.model_dump())
+    return service.create_reservation(reservation_entity)
 
 
 @router.get("/", response_model=List[Reservation])

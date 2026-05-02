@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.vehicle_service import VehicleService
 from app.core.dependencies import get_vehicle_service
+from app.domain.models.vehicle import VehicleEntity
 from app.schemas.vehicle import VehicleCreate, Vehicle
 
 router = APIRouter()
@@ -14,7 +15,8 @@ def create_vehicle(
     vehicle: VehicleCreate,
     service: VehicleService = Depends(get_vehicle_service),
 ):
-    return service.create_vehicle(vehicle)
+    vehicle_entity = VehicleEntity(**vehicle.model_dump())
+    return service.create_vehicle(vehicle_entity)
 
 
 @router.get("/", response_model=List[Vehicle])

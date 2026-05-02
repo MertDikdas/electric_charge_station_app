@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.application.services.charger_session_service import ChargingSessionService
 from app.core.dependencies import get_charging_session_service
+from app.domain.models.charging_session import ChargingSessionEntity
 from app.schemas.charging_session import ChargingSessionCreate, ChargingSession
 
 router = APIRouter()
@@ -14,7 +15,8 @@ def create_session(
     session: ChargingSessionCreate,
     service: ChargingSessionService = Depends(get_charging_session_service),
 ):
-    return service.create_session(session)
+    session_entity = ChargingSessionEntity(**session.model_dump())
+    return service.create_session(session_entity)
 
 
 @router.get("/", response_model=List[ChargingSession])

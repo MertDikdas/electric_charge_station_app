@@ -1,14 +1,18 @@
-from pydantic import BaseModel
 from datetime import date, time
+from dataclasses import dataclass
 
-class ReservationCreate(BaseModel):
+from app.domain.models.base import BaseEntity
+
+
+@dataclass
+class ReservationEntity(BaseEntity):
     user_id: int
     vehicle_id: int
     charger_id: int
     date: date
     start_time: time
     end_time: time
-    status: str = "active"
+    status: str = "PENDING"
 
-class Reservation(ReservationCreate):
-    id: int
+
+Reservation = ReservationEntity

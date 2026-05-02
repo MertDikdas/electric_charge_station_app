@@ -1,6 +1,10 @@
-from pydantic import BaseModel, Field
+from dataclasses import dataclass
 
-class VehicleCreate(BaseModel):
+from app.domain.models.base import BaseEntity
+
+
+@dataclass
+class VehicleEntity(BaseEntity):
     user_id: int
     model: str
     plate: str
@@ -8,6 +12,7 @@ class VehicleCreate(BaseModel):
     battery_capacity: float
     connector_type: str
     current_type: str
+    is_active: bool = True
 
-class Vehicle(VehicleCreate):
-    id: int
+
+Vehicle = VehicleEntity

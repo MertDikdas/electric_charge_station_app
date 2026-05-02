@@ -1,0 +1,34 @@
+from app.domain.models.charging_session import ChargingSessionEntity
+from app.infrastructure.database.tables import ChargingSession as ChargingSessionModel
+from app.infrastructure.repositories.abstract.charging_session_repository import (
+    AbstractChargingSessionRepository,
+)
+from app.infrastructure.repositories.sqlalchemy.base import SqlAlchemyRepository
+
+
+class SqlAlchemyChargingSessionRepository(
+    SqlAlchemyRepository[ChargingSessionEntity, ChargingSessionModel],
+    AbstractChargingSessionRepository,
+):
+    model = ChargingSessionModel
+
+    def to_model(self, entity: ChargingSessionEntity) -> ChargingSessionModel:
+        return ChargingSessionModel(
+            reservation_id=entity.reservation_id,
+            start_time=entity.start_time,
+            end_time=entity.end_time,
+            consuming_power=entity.consuming_power,
+            cost=entity.cost,
+            status=entity.status.upper(),
+        )
+
+    def to_entity(self, model: ChargingSessionModel) -> ChargingSessionEntity:
+        return ChargingSessionEntity(
+            id=model.reservation_id,
+            reservation_id=model.reservation_id,
+            start_time=model.start_time,
+            end_time=model.end_time,
+            consuming_power=model.consuming_power,
+            cost=model.cost,
+            status=model.status,
+        )
