@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.station_service import StationService
 from app.core.dependencies import get_station_service
+from app.domain.models.station import StationEntity
 from app.schemas.station import StationCreate, Station
 
 router = APIRouter()
@@ -14,7 +15,8 @@ def create_station(
     station: StationCreate,
     service: StationService = Depends(get_station_service),
 ):
-    return service.create_station(station)
+    station_entity = StationEntity(**station.model_dump())
+    return service.create_station(station_entity)
 
 
 @router.get("/", response_model=List[Station])

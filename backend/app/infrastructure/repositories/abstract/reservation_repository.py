@@ -2,13 +2,13 @@ from abc import abstractmethod
 from datetime import date
 from typing import List
 
-from app.infrastructure.database.tables import Reservation
+from app.domain.models.reservation import ReservationEntity
 from app.infrastructure.repositories.abstract.base import AbstractRepository
 
 
-class AbstractReservationRepository(AbstractRepository[Reservation]):
+class AbstractReservationRepository(AbstractRepository[ReservationEntity]):
     @abstractmethod
-    def list_by_user(self, user_id: int) -> List[Reservation]:
+    def list_by_user(self, user_id: int) -> List[ReservationEntity]:
         raise NotImplementedError
 
     @abstractmethod
@@ -16,5 +16,5 @@ class AbstractReservationRepository(AbstractRepository[Reservation]):
         self,
         charger_id: int,
         reservation_date: date,
-    ) -> List[Reservation]:
+    ) -> List[ReservationEntity]:
         raise NotImplementedError
