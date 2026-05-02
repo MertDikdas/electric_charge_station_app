@@ -7,5 +7,5 @@ from app.infrastructure.repositories.abstract.base import AbstractRepository
 
 class AbstractVehicleRepository(AbstractRepository[VehicleEntity]):
     @abstractmethod
-    def list_by_user(self, user_id: int) -> List[VehicleEntity]:
+    def list_by_user_id(self, user_id: int) -> List[VehicleEntity]:
         raise NotImplementedError

@@ -40,7 +40,7 @@ class SqlAlchemyVehicleRepository(
             is_active=model.is_active,
         )
 
-    def list_by_user(self, user_id: int) -> List[VehicleEntity]:
+    def list_by_user_id(self, user_id: int) -> List[VehicleEntity]:
         models = (
             self.session.query(VehicleModel)
             .filter(VehicleModel.user_id == user_id)

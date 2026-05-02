@@ -19,3 +19,10 @@ class UserService:
     def get_user(self, user_id: int) -> Optional[UserEntity]:
         with self.uow:
             return self.uow.users.get(user_id)
+
+    def get_user_vehicles(self, user_id: int) -> List:
+        with self.uow:
+            user = self.uow.users.get(user_id)
+            if not user:
+                return []
+            return self.uow.vehicles.list_by_user_id(user_id)
