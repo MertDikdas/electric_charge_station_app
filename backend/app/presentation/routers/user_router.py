@@ -7,6 +7,7 @@ from app.core.dependencies import get_user_service
 from app.domain.models.user import UserEntity
 from app.schemas.user import UserCreate, User
 from app.schemas.vehicle import Vehicle
+from app.schemas.reservation import Reservation
 
 router = APIRouter()
 
@@ -50,3 +51,14 @@ def get_user_vehicles(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return service.get_user_vehicles(user_id)
+
+
+@router.get("/{user_id}/reservations", response_model=List[Reservation])
+def get_user_reservations(
+    user_id: int,
+    service: UserService = Depends(get_user_service),
+):
+    user = service.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return service.get_user_reservations(user_id)

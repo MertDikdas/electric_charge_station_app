@@ -9,19 +9,19 @@ POST /auth/login
 
 USERS
 
-POST /users
+POST /users +
     Creates a new user.
     This endpoint may be used by the system or admin panel. For public registration, /auth/register should be preferred.
 
-GET /users
+GET /users +
     Gets all users.
     This endpoint should be restricted to administrators.
 
-GET /users/{user_id}
+GET /users/{user_id} +
     Gets a specific user by id.
     This endpoint should be restricted to administrators or authorized support staff.
 
-PUT /users/{user_id}
+PUT /users/{user_id} 
     Updates a specific user's information.
     Only the user themselves or an administrator should be allowed to update this information.
 

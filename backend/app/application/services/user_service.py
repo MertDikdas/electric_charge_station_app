@@ -26,3 +26,10 @@ class UserService:
             if not user:
                 return []
             return self.uow.vehicles.list_by_user_id(user_id)
+        
+    def get_user_reservations(self, user_id: int) -> List:
+        with self.uow:
+            user = self.uow.users.get(user_id)
+            if not user:
+                return []
+            return self.uow.reservations.list_by_user_id(user_id)
