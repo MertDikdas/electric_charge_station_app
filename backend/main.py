@@ -13,6 +13,10 @@ from app.presentation.routers.charging_session_router import router as charging_
 from app.presentation.routers.user_router import router as user_router
 from app.presentation.routers.charger_router import router as charger_router
 
+from app.infrastructure.database.seed_data import seed_data
+
+#seed_data()
+
 app = FastAPI(
     title="EV Charging Station Network API",
     description="Backend API for EV charging station management system",
