@@ -33,3 +33,17 @@ class UserService:
             if not user:
                 return []
             return self.uow.reservations.list_by_user_id(user_id)
+
+    def get_user_charging_sessions(self, user_id: int) -> List:
+        with self.uow:
+            user = self.uow.users.get(user_id)
+            if not user:
+                return []
+            return self.uow.charging_sessions.list_by_user_id(user_id)
+        
+    def delete_user(self, user_id: int) -> None:
+        with self.uow:
+            user = self.uow.users.get(user_id)
+            if user:
+                self.uow.users.delete(user_id)
+                self.uow.commit()

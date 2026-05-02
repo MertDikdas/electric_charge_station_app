@@ -32,3 +32,9 @@ class SqlAlchemyChargingSessionRepository(
             cost=model.cost,
             status=model.status,
         )
+
+    def list_by_user_id(self, user_id: int) -> list[ChargingSessionEntity]:
+        query = self.session.query(self.model).join(self.model.reservation).filter(
+            self.model.reservation.has(user_id=user_id)
+        )
+        return [self.to_entity(model) for model in query.all()]
