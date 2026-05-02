@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.infrastructure.database.database import Base, engine
+from app.infrastructure.database import tables
 
 from app.presentation.routers.vehicle_router import router as vehicle_router
 from app.presentation.routers.station_router import router as station_router
@@ -13,6 +15,8 @@ app = FastAPI(
     description="Backend API for EV charging station management system",
     version="1.0.0"
 )
+
+Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,

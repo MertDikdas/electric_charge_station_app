@@ -1,28 +1,48 @@
+from abc import abstractmethod
 from typing import Generic, List, Optional, Type, TypeVar
 
 from sqlalchemy.orm import Session
 
 from app.infrastructure.repositories.abstract.base import AbstractRepository
 
-T = TypeVar("T")
+EntityT = TypeVar("EntityT")
+ModelT = TypeVar("ModelT")
 
 
-class SqlAlchemyRepository(AbstractRepository[T], Generic[T]):
-    model: Type[T]
+class SqlAlchemyRepository(AbstractRepository[EntityT], Generic[EntityT, ModelT]):
+    model: Type[ModelT]
 
     def __init__(self, session: Session):
         self.session = session
 
-    def add(self, entity: T) -> T:
-        self.session.add(entity)
+    @abstractmethod
+    def to_model(self, entity: EntityT) -> ModelT:
+        raise NotImplementedError
+
+    @abstractmethod
+    def to_entity(self, model: ModelT) -> EntityT:
+        raise NotImplementedError
+
+    def add(self, entity: EntityT) -> EntityT:
+        model = self.to_model(entity)
+        self.session.add(model)
         self.session.flush()
-        return entity
+        return self.to_entity(model)
 
-    def get(self, id: int) -> Optional[T]:
-        return self.session.get(self.model, id)
+    def get(self, id: int) -> Optional[EntityT]:
+        model = self.session.get(self.model, id)
+        if model is None:
+            return None
+        return self.to_entity(model)
 
-    def list(self) -> List[T]:
-        return self.session.query(self.model).all()
+    def list(self) -> List[EntityT]:
+        return [self.to_entity(model) for model in self.session.query(self.model).all()]
 
-    def delete(self, entity: T) -> None:
-        self.session.delete(entity)
+    def delete(self, entity: EntityT) -> None:
+        entity_id = getattr(entity, "id", None)
+        if entity_id is None:
+            return
+
+        model = self.session.get(self.model, entity_id)
+        if model is not None:
+            self.session.delete(model)

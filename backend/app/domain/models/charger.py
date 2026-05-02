@@ -1,10 +1,16 @@
-from pydantic import BaseModel, Field
+from dataclasses import dataclass
 
-class ChargerCreate(BaseModel):
+from app.domain.models.base import BaseEntity
+
+
+@dataclass
+class ChargerEntity(BaseEntity):
     station_id: int
     connector_type: str
     current_type: str
-    status: str = "available"
+    max_power: float = 1.0
+    price_per_kwh: float = 0.0
+    status: str = "AVAILABLE"
 
-class Charger(ChargerCreate):
-    id: int
+
+Charger = ChargerEntity

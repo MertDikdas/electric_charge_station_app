@@ -1,9 +1,14 @@
-from pydantic import BaseModel, Field
+from dataclasses import dataclass
 
-class StationCreate(BaseModel):
+from app.domain.models.base import BaseEntity
+
+
+@dataclass
+class StationEntity(BaseEntity):
     address: str
     company: str
     location: str
+    status: str = "AVAILABLE"
 
-class Station(StationCreate):
-    id: int
+
+Station = StationEntity

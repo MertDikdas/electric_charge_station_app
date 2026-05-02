@@ -1,11 +1,11 @@
 from abc import abstractmethod
 from typing import List
 
-from app.infrastructure.database.tables import Vehicle
+from app.domain.models.vehicle import VehicleEntity
 from app.infrastructure.repositories.abstract.base import AbstractRepository
 
 
-class AbstractVehicleRepository(AbstractRepository[Vehicle]):
+class AbstractVehicleRepository(AbstractRepository[VehicleEntity]):
     @abstractmethod
-    def list_by_user(self, user_id: int) -> List[Vehicle]:
+    def list_by_user(self, user_id: int) -> List[VehicleEntity]:
         raise NotImplementedError

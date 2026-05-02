@@ -1,7 +1,8 @@
 from datetime import date
 from typing import List
 
-from app.infrastructure.database.tables import Reservation
+from app.domain.models.reservation import ReservationEntity
+from app.infrastructure.database.tables import Reservation as ReservationModel
 from app.infrastructure.repositories.abstract.reservation_repository import (
     AbstractReservationRepository,
 )
@@ -9,24 +10,54 @@ from app.infrastructure.repositories.sqlalchemy.base import SqlAlchemyRepository
 
 
 class SqlAlchemyReservationRepository(
-    SqlAlchemyRepository[Reservation],
+    SqlAlchemyRepository[ReservationEntity, ReservationModel],
     AbstractReservationRepository,
 ):
-    model = Reservation
+    model = ReservationModel
 
-    def list_by_user(self, user_id: int) -> List[Reservation]:
-        return self.session.query(Reservation).filter(Reservation.user_id == user_id).all()
+    def to_model(self, entity: ReservationEntity) -> ReservationModel:
+        return ReservationModel(
+            id=entity.id,
+            user_id=entity.user_id,
+            vehicle_id=entity.vehicle_id,
+            charger_id=entity.charger_id,
+            date=entity.date,
+            start_time=entity.start_time,
+            end_time=entity.end_time,
+            status=entity.status.upper(),
+        )
+
+    def to_entity(self, model: ReservationModel) -> ReservationEntity:
+        return ReservationEntity(
+            id=model.id,
+            user_id=model.user_id,
+            vehicle_id=model.vehicle_id,
+            charger_id=model.charger_id,
+            date=model.date,
+            start_time=model.start_time,
+            end_time=model.end_time,
+            status=model.status,
+        )
+
+    def list_by_user(self, user_id: int) -> List[ReservationEntity]:
+        models = (
+            self.session.query(ReservationModel)
+            .filter(ReservationModel.user_id == user_id)
+            .all()
+        )
+        return [self.to_entity(model) for model in models]
 
     def list_by_charger_and_date(
         self,
         charger_id: int,
         reservation_date: date,
-    ) -> List[Reservation]:
-        return (
-            self.session.query(Reservation)
+    ) -> List[ReservationEntity]:
+        models = (
+            self.session.query(ReservationModel)
             .filter(
-                Reservation.charger_id == charger_id,
-                Reservation.date == reservation_date,
+                ReservationModel.charger_id == charger_id,
+                ReservationModel.date == reservation_date,
             )
             .all()
         )
+        return [self.to_entity(model) for model in models]

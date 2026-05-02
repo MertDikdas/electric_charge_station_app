@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.charger_service import ChargerService
 from app.core.dependencies import get_charger_service
+from app.domain.models.charger import ChargerEntity
 from app.schemas.charger import ChargerCreate, Charger
 
 router = APIRouter()
@@ -14,7 +15,8 @@ def create_charger(
     charger: ChargerCreate,
     service: ChargerService = Depends(get_charger_service),
 ):
-    return service.create_charger(charger)
+    charger_entity = ChargerEntity(**charger.model_dump())
+    return service.create_charger(charger_entity)
 
 
 @router.get("/", response_model=List[Charger])

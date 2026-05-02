@@ -1,11 +1,11 @@
 from abc import abstractmethod
 from typing import Optional
 
-from app.infrastructure.database.tables import User
+from app.domain.models.user import UserEntity
 from app.infrastructure.repositories.abstract.base import AbstractRepository
 
 
-class AbstractUserRepository(AbstractRepository[User]):
+class AbstractUserRepository(AbstractRepository[UserEntity]):
     @abstractmethod
-    def get_by_email(self, email: str) -> Optional[User]:
+    def get_by_email(self, email: str) -> Optional[UserEntity]:
         raise NotImplementedError
