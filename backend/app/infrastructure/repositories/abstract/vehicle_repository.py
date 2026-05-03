@@ -9,3 +9,7 @@ class AbstractVehicleRepository(AbstractRepository[VehicleEntity]):
     @abstractmethod
     def list_by_user_id(self, user_id: int) -> List[VehicleEntity]:
         raise NotImplementedError
+
+    @abstractmethod
+    def update(self, vehicle: VehicleEntity) -> None:
+        raise NotImplementedError

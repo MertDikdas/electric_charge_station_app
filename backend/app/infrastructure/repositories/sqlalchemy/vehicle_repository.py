@@ -47,3 +47,16 @@ class SqlAlchemyVehicleRepository(
             .all()
         )
         return [self.to_entity(model) for model in models]
+
+    def update(self, vehicle: VehicleEntity) -> None:
+        model = self.session.query(VehicleModel).get(vehicle.id)
+        if model:
+            model.user_id = vehicle.user_id
+            model.model = vehicle.model
+            model.plate = vehicle.plate
+            model.max_charging_power = vehicle.max_charging_power
+            model.battery_capacity = vehicle.battery_capacity
+            model.connector_type = vehicle.connector_type
+            model.current_type = vehicle.current_type
+            model.is_active = vehicle.is_active
+            self.session.commit()

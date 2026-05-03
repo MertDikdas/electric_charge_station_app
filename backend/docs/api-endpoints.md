@@ -25,10 +25,10 @@ PUT /users/{user_id}
     Updates a specific user's information.
     Only the user themselves or an administrator should be allowed to update this information.
 
-GET /users/{user_id}/vehicles
+GET /users/{user_id}/vehicles + 
     Gets all vehicles of the currently logged-in user.
 
-GET /users/{user_id}/reservations
+GET /users/{user_id}/reservations 
     Gets all reservations of the currently logged-in user.
 
 GET /users/{user_id}/charging-sessions
@@ -41,23 +41,23 @@ DELETE /users/{user_id}
 
 VEHICLES
 
-POST /vehicles
+POST /vehicles +
     Creates a new vehicle for the currently authenticated user.
     The user_id should be taken from the authentication token.
 
-GET /vehicles
+GET /vehicles +
     Gets all vehicles.
     This endpoint should be restricted to administrators.
 
-GET /vehicles/{vehicle_id}
+GET /vehicles/{vehicle_id} +
     Gets a specific vehicle by id.
     The system should check whether the vehicle belongs to the logged-in user, unless the requester is an administrator.
 
-PUT /vehicles/{vehicle_id}
+PUT /vehicles/{vehicle_id} +
     Updates a specific vehicle.
     The system should check vehicle ownership before updating.
 
-DELETE /vehicles/{vehicle_id}
+DELETE /vehicles/{vehicle_id} +
     Deletes a specific vehicle.
     The system should check vehicle ownership before deleting.
 

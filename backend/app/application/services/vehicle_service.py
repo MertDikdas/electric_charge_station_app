@@ -21,3 +21,14 @@ class VehicleService:
     def get_vehicle(self, vehicle_id: int) -> Optional[VehicleEntity]:
         with self.uow:
             return self.uow.vehicles.get(vehicle_id)
+
+    def delete_vehicle(self, vehicle_id: int) -> None:
+        with self.uow:
+            self.uow.vehicles.delete(vehicle_id)
+            self.uow.commit()
+
+    def update_vehicle(self, vehicle: VehicleEntity) -> VehicleEntity:
+        with self.uow:
+            self.uow.vehicles.update(vehicle)
+            self.uow.commit()
+            return vehicle
