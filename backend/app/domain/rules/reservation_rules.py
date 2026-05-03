@@ -1,6 +1,19 @@
 from app.domain.models import Vehicle, Charger, Reservation
 from app.domain.rules.compatibility_rules import are_compatible
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+def to_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def get_start_datetime(reservation) -> datetime:
+    return to_utc(datetime.combine(reservation.date, reservation.start_time))
+
+
+def get_end_datetime(reservation) -> datetime:
+    return to_utc(datetime.combine(reservation.date, reservation.end_time))
 
 def validate_reservation(reservation: Reservation, vehicle: Vehicle, charger: Charger) -> bool:
     """Checks whether the reservation belongs to the given vehicle and charger."""
@@ -28,20 +41,20 @@ def validate_reservation_conflicts(reservation: Reservation, existing_reservatio
 
 def validate_reservation_duration(reservation: Reservation, max_duration_hours: int = 2) -> bool:
     """Checks whether the reservation duration does not exceed the maximum allowed duration."""
-    duration = reservation.end_time - reservation.start_time
+    start_at = datetime.combine(reservation.date, reservation.start_time)
+    end_at = datetime.combine(reservation.date, reservation.end_time)
+    duration = end_at - start_at
     if duration > timedelta(hours=max_duration_hours):
         return False
     return True
 
 def ensure_reservation_not_in_past(reservation: Reservation) -> bool:
     """Checks whether the reservation is not in the past."""
-    if reservation.start_time < datetime.now():
-        return False
-    return True
+    start_at = get_start_datetime(reservation)
+    return start_at >= datetime.now(timezone.utc)
 
 def ensure_reservation_not_too_far_in_future(reservation: Reservation, max_future_days: int = 30) -> bool:
     """Checks whether the reservation is not too far in the future."""
-    if reservation.start_time > datetime.now() + timedelta(days=max_future_days):
-        return False
-    return True
-
+    start_at = get_start_datetime(reservation)
+    max_allowed_time = datetime.now(timezone.utc) + timedelta(days=max_future_days)
+    return start_at <= max_allowed_time

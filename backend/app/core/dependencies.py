@@ -1,4 +1,7 @@
-from fastapi import Depends
+from dataclasses import dataclass
+from typing import Optional
+
+from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.application.services.charger_service import ChargerService
@@ -9,6 +12,33 @@ from app.application.services.user_service import UserService
 from app.application.services.vehicle_service import VehicleService
 from app.core.uow import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from app.infrastructure.database.database import get_db
+
+
+@dataclass
+class AuthenticatedUser:
+    id: int
+    role: str = "user"
+
+    @property
+    def is_staff(self) -> bool:
+        return self.role.lower() in {"admin", "station_manager", "staff"}
+
+
+def get_current_user(
+    x_user_id: Optional[int] = Header(default=None),
+    x_user_role: str = Header(default="user"),
+) -> AuthenticatedUser:
+    if x_user_id is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return AuthenticatedUser(id=x_user_id, role=x_user_role)
+
+
+def get_admin_or_station_manager(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if current_user.role.lower() not in {"admin", "station_manager"}:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return current_user
 
 
 def get_uow(db: Session = Depends(get_db)) -> AbstractUnitOfWork:

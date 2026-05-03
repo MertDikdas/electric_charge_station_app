@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 from typing import List
 
 from app.domain.models.reservation import ReservationEntity
@@ -14,6 +14,7 @@ class SqlAlchemyReservationRepository(
     AbstractReservationRepository,
 ):
     model = ReservationModel
+    blocking_statuses = ("PENDING", "CONFIRMED")
 
     def to_model(self, entity: ReservationEntity) -> ReservationModel:
         return ReservationModel(
@@ -66,6 +67,46 @@ class SqlAlchemyReservationRepository(
         models = (
             self.session.query(ReservationModel)
             .filter(ReservationModel.user_id == user_id)
+            .all()
+        )
+        return [self.to_entity(model) for model in models]
+
+    def list_overlapping_by_charger(
+        self,
+        charger_id: int,
+        reservation_date: date,
+        start_time: time,
+        end_time: time,
+    ) -> List[ReservationEntity]:
+        models = (
+            self.session.query(ReservationModel)
+            .filter(
+                ReservationModel.charger_id == charger_id,
+                ReservationModel.date == reservation_date,
+                ReservationModel.status.in_(self.blocking_statuses),
+                ReservationModel.start_time < end_time,
+                ReservationModel.end_time > start_time,
+            )
+            .all()
+        )
+        return [self.to_entity(model) for model in models]
+
+    def list_overlapping_by_user(
+        self,
+        user_id: int,
+        reservation_date: date,
+        start_time: time,
+        end_time: time,
+    ) -> List[ReservationEntity]:
+        models = (
+            self.session.query(ReservationModel)
+            .filter(
+                ReservationModel.user_id == user_id,
+                ReservationModel.date == reservation_date,
+                ReservationModel.status.in_(self.blocking_statuses),
+                ReservationModel.start_time < end_time,
+                ReservationModel.end_time > start_time,
+            )
             .all()
         )
         return [self.to_entity(model) for model in models]
