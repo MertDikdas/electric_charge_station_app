@@ -1,10 +1,11 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.application.services.station_service import StationService
 from app.core.dependencies import get_station_service
 from app.domain.models.station import StationEntity
+from app.schemas.charger import Charger
 from app.schemas.station import StationCreate, Station
 
 router = APIRouter()
@@ -24,6 +25,26 @@ def get_stations(service: StationService = Depends(get_station_service)):
     return service.get_all_stations()
 
 
+@router.get("/nearby", response_model=List[Station])
+def get_nearby_stations(
+    location: str = Query(..., min_length=1),
+    service: StationService = Depends(get_station_service),
+):
+    return service.get_nearby_stations(location)
+
+
+@router.get("/{station_id}/chargers", response_model=List[Charger])
+def get_station_chargers(
+    station_id: int,
+    service: StationService = Depends(get_station_service),
+):
+    station = service.get_station(station_id)
+    if not station:
+        raise HTTPException(status_code=404, detail="Station not found")
+
+    return service.get_station_chargers(station_id)
+
+
 @router.get("/{station_id}", response_model=Station)
 def get_station(
     station_id: int,
@@ -33,3 +54,29 @@ def get_station(
     if not station:
         raise HTTPException(status_code=404, detail="Station not found")
     return station
+
+
+@router.put("/{station_id}", response_model=Station)
+def update_station(
+    station_id: int,
+    station: StationCreate,
+    service: StationService = Depends(get_station_service),
+):
+    existing_station = service.get_station(station_id)
+    if not existing_station:
+        raise HTTPException(status_code=404, detail="Station not found")
+
+    updated_station = StationEntity(id=station_id, **station.model_dump())
+    return service.update_station(updated_station)
+
+
+@router.delete("/{station_id}", status_code=204)
+def delete_station(
+    station_id: int,
+    service: StationService = Depends(get_station_service),
+):
+    existing_station = service.get_station(station_id)
+    if not existing_station:
+        raise HTTPException(status_code=404, detail="Station not found")
+
+    service.delete_station(station_id)

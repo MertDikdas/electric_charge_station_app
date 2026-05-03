@@ -39,3 +39,19 @@ class SqlAlchemyStationRepository(
             .all()
         )
         return [self.to_entity(model) for model in models]
+
+    def list_nearby(self, location: str) -> List[StationEntity]:
+        models = (
+            self.session.query(StationModel)
+            .filter(StationModel.location.ilike(f"%{location}%"))
+            .all()
+        )
+        return [self.to_entity(model) for model in models]
+
+    def update(self, station: StationEntity) -> None:
+        model = self.session.get(StationModel, station.id)
+        if model:
+            model.address = station.address
+            model.company = station.company
+            model.location = station.location
+            model.status = station.status.upper()
