@@ -141,18 +141,18 @@ PATCH /chargers/status/{charger_id}
 
 CHARGING SESSIONS
 
-POST /charging-sessions/start
+POST /charging-sessions/start +
     Starts a charging session for a valid reservation.
     The system should check whether the reservation is active and whether the charger is available.
 
-PATCH /charging-sessions/{session_id}/finish
+PATCH /charging-sessions/{session_id}/finish +
     Finishes a charging session.
     The system should calculate consumed energy and total cost.
 
-GET /charging-sessions/{session_id}
+GET /charging-sessions/{session_id} +
     Gets a specific charging session by id.
 
-GET /charging-sessions
+GET /charging-sessions +
     Gets all charging sessions.
     This endpoint should be restricted to administrators or station managers.
 
