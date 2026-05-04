@@ -8,9 +8,9 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=2)
+    password: str = Field(..., min_length=6, max_length=72)
 
-class User(UserCreate):
+class User(UserBase):
     id: int
     
     class Config:
