@@ -46,3 +46,9 @@ class SqlAlchemyRepository(AbstractRepository[EntityT], Generic[EntityT, ModelT]
         model = self.session.get(self.model, entity_id)
         if model is not None:
             self.session.delete(model)
+
+    def update(self, entity: EntityT) -> EntityT:
+        model = self.to_model(entity)
+        self.session.merge(model)
+        self.session.flush()
+        return self.to_entity(model)
