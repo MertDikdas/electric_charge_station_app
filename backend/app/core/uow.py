@@ -7,6 +7,7 @@ from app.infrastructure.repositories import (
     AbstractChargingSessionRepository,
     AbstractCouponRepository,
     AbstractNotificationRepository,
+    AbstractPaymentRepository,
     AbstractReservationRepository,
     AbstractStationRepository,
     AbstractUserRepository,
@@ -15,6 +16,7 @@ from app.infrastructure.repositories import (
     SqlAlchemyChargingSessionRepository,
     SqlAlchemyCouponRepository,
     SqlAlchemyNotificationRepository,
+    SqlAlchemyPaymentRepository,
     SqlAlchemyReservationRepository,
     SqlAlchemyStationRepository,
     SqlAlchemyUserRepository,
@@ -30,6 +32,7 @@ class AbstractUnitOfWork(ABC):
     charging_sessions: AbstractChargingSessionRepository
     notifications: AbstractNotificationRepository
     coupons: AbstractCouponRepository
+    payments: AbstractPaymentRepository
 
     def __enter__(self):
         return self
@@ -60,6 +63,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self.charging_sessions = SqlAlchemyChargingSessionRepository(session)
         self.notifications = SqlAlchemyNotificationRepository(session)
         self.coupons = SqlAlchemyCouponRepository(session)
+        self.payments = SqlAlchemyPaymentRepository(session)
 
     def commit(self):
         self.session.commit()

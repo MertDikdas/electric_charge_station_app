@@ -8,6 +8,7 @@ from app.application.services.charger_service import ChargerService
 from app.application.services.charger_session_service import ChargingSessionService
 from app.application.services.coupon_service import CouponService
 from app.application.services.notification_service import NotificationService
+from app.application.services.payment_service import PaymentService
 from app.application.services.reservation_service import ReservationService
 from app.application.services.station_service import StationService
 from app.application.services.user_service import UserService
@@ -81,3 +82,7 @@ def get_notification_service(
 
 def get_coupon_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CouponService:
     return CouponService(uow)
+
+
+def get_payment_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> PaymentService:
+    return PaymentService(uow)

@@ -7,6 +7,7 @@ from app.infrastructure.repositories.abstract.coupon_repository import AbstractC
 from app.infrastructure.repositories.abstract.notification_repository import (
     AbstractNotificationRepository,
 )
+from app.infrastructure.repositories.abstract.payment_repository import AbstractPaymentRepository
 from app.infrastructure.repositories.abstract.reservation_repository import (
     AbstractReservationRepository,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "AbstractChargingSessionRepository",
     "AbstractCouponRepository",
     "AbstractNotificationRepository",
+    "AbstractPaymentRepository",
     "AbstractReservationRepository",
     "AbstractStationRepository",
     "AbstractUserRepository",

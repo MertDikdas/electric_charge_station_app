@@ -11,6 +11,7 @@ from app.presentation.routers.notification_router import router as notification_
 from app.presentation.routers.user_router import router as user_router
 from app.presentation.routers.charger_router import router as charger_router
 from app.presentation.routers.coupon_router import router as coupon_router
+from app.presentation.routers.payment_router import router as payment_router
 
 app = FastAPI(
     title="EV Charging Station Network API",
@@ -36,6 +37,7 @@ app.include_router(notification_router, prefix="/notifications", tags=["Notifica
 app.include_router(user_router, prefix="/users", tags=["Users"])
 app.include_router(charger_router, prefix="/chargers", tags=["Chargers"])
 app.include_router(coupon_router, prefix="/coupons", tags=["Coupons"])
+app.include_router(payment_router, prefix="/payments", tags=["Payments"])
 
 
 @app.get("/")
