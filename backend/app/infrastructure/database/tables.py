@@ -172,7 +172,7 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    charging_session_id = Column(Integer, ForeignKey("charging_sessions.id"), index=True, nullable=False)
+    reservation_id = Column(Integer, ForeignKey("charging_sessions.reservation_id"), nullable=False)
     amount = Column(Float, nullable=False)
     payment_method = Column(String, nullable=False)
     status = Column(String, nullable=False, default="PENDING")
