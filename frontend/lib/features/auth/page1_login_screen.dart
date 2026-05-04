@@ -39,16 +39,13 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CircleAvatar(
-                  radius: 44,
-                  backgroundColor: colorScheme.primaryContainer,
-                  child: Icon(
-                    Icons.ev_station,
-                    size: 48,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                const SizedBox(height: 24),
+                  Center(
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 150,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                 Text(
                   'Ho\u015f Geldin',
                   textAlign: TextAlign.center,
@@ -131,8 +128,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: FilledButton(
                         onPressed: _continueToApp,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFA8E6CF),
-                          foregroundColor: const Color(0xFF124734),
+                          backgroundColor: const Color.fromARGB(255, 54, 177, 202),
+                          foregroundColor: const Color.fromARGB(255, 35, 8, 93),
                         ),
                         child: const Text('\u00dcye Ol'),
                       ),
@@ -142,8 +139,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: FilledButton(
                         onPressed: _continueToApp,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF1B5E46),
-                          foregroundColor: Colors.white,
+                          backgroundColor: const Color.fromARGB(255, 54, 177, 202),
+                          foregroundColor: const Color.fromARGB(255, 35, 8, 93),
                         ),
                         child: const Text('Giri\u015f Yap'),
                       ),

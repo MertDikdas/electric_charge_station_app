@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../features/auth/login_screen.dart';
+import '../features/auth/page1_login_screen.dart';
 import 'app_theme.dart';
 
 class ElectricChargeStationApp extends StatelessWidget {
