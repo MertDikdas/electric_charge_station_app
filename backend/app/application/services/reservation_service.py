@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import date
 
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.reservation import ReservationEntity
@@ -50,6 +51,14 @@ class ReservationService:
             self.uow.reservations.delete(reservation)
             self.uow.commit()
             return True
+
+    def get_reservations_by_charger_and_date(
+        self, charger_id: int, reservation_date: date
+    ) -> List[ReservationEntity]:
+        with self.uow:
+            return self.uow.reservations.list_by_charger_and_date(
+                charger_id, reservation_date
+            )
 
     def _validate_reservation_request(self, reservation: ReservationEntity) -> None:
         if not validate_reservation_time(reservation):

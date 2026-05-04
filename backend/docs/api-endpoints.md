@@ -123,7 +123,7 @@ GET /chargers
 GET /chargers/{charger_id}
     Gets a specific charger by id.
 
-GET /chargers/{charger_id}/reservations?data=DD-MM-YYYY
+GET /chargers/{charger_id}/reservations?date=DD-MM-YYYY
     Gets all reservations for a specific charger on a given date.
 
 GET /chargers/{charger_id}/availability?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
