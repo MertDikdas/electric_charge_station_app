@@ -10,6 +10,8 @@ from app.schemas.vehicle import Vehicle
 from app.schemas.reservation import Reservation
 from app.schemas.charging_session import ChargingSession
 
+from app.core.security import hash_password
+
 router = APIRouter()
 
 
@@ -23,7 +25,7 @@ def create_user(
 
     user_entity = UserEntity(
         **user_data,
-        password_hash=password
+        password_hash=hash_password(password)
     )
     return service.create_user(user_entity)
 
