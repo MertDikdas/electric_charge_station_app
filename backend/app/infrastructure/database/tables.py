@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Column, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Time
+from sqlalchemy import CheckConstraint, Column, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Time, UniqueConstraint
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.infrastructure.database.database import Base
@@ -16,6 +16,7 @@ class User(Base):
     vehicles = relationship("Vehicle", back_populates="user")
     reservations = relationship("Reservation", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
+    coupons = relationship("Coupon", back_populates="user")
 
 class Vehicle(Base):
     __tablename__ = "vehicles"
@@ -132,3 +133,33 @@ class Notification(Base):
     )
 
     user = relationship("User", back_populates="notifications")
+
+
+class Coupon(Base):
+    __tablename__ = "coupons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    code = Column(String, nullable=False, index=True)
+    discount_type = Column(String, nullable=False)
+    discount_value = Column(Float, nullable=False)
+    min_order_amount = Column(Float, nullable=False, default=0.0)
+    max_discount_amount = Column(Float, nullable=True)
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False)
+    usage_limit = Column(Integer, nullable=True)
+    used_count = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "code", name="uq_coupon_user_code"),
+        CheckConstraint("discount_type IN ('PERCENTAGE', 'FIXED_AMOUNT')", name="check_coupon_discount_type"),
+        CheckConstraint("discount_value > 0", name="check_coupon_discount_value_positive"),
+        CheckConstraint("min_order_amount >= 0", name="check_coupon_min_order_amount_non_negative"),
+        CheckConstraint("max_discount_amount IS NULL OR max_discount_amount > 0", name="check_coupon_max_discount_amount_positive"),
+        CheckConstraint("usage_limit IS NULL OR usage_limit > 0", name="check_coupon_usage_limit_positive"),
+        CheckConstraint("used_count >= 0", name="check_coupon_used_count_non_negative"),
+        CheckConstraint("valid_until > valid_from", name="check_coupon_date_range_valid"),
+    )
+
+    user = relationship("User", back_populates="coupons")

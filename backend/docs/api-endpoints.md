@@ -157,3 +157,45 @@ GET /charging-sessions
     This endpoint should be restricted to administrators or station managers.
 
 
+COUPONS
+
+POST /coupons
+    Creates a new coupon.
+    The request must include the user_id that owns the coupon.
+    This endpoint should be restricted to administrators or station managers.
+
+GET /coupons
+    Gets all coupons.
+    This endpoint should be restricted to administrators or station managers.
+
+GET /coupons/{coupon_id}
+    Gets a specific coupon by id.
+    This endpoint should be restricted to administrators or station managers.
+
+GET /coupons/my
+    Gets coupons owned by the currently authenticated user.
+
+GET /coupons/my/by-code/{code}
+    Gets a specific coupon by code for the currently authenticated user.
+
+GET /coupons/users/{user_id}
+    Gets coupons owned by a specific user.
+    This endpoint should be restricted to administrators or station managers.
+
+GET /coupons/users/{user_id}/by-code/{code}
+    Gets a specific coupon by code for a specific user.
+    This endpoint should be restricted to administrators or station managers.
+
+POST /coupons/preview
+    Calculates the discount for a coupon without consuming usage.
+    The system should only find coupons owned by the currently authenticated user.
+    The system should check coupon activity, date range, usage limit, and minimum order amount.
+
+POST /coupons/apply
+    Applies a coupon and consumes one usage.
+    The system should only apply coupons owned by the currently authenticated user.
+    The system should check coupon activity, date range, usage limit, and minimum order amount.
+
+DELETE /coupons/{coupon_id}
+    Deletes a coupon.
+    This endpoint should be restricted to administrators or station managers.

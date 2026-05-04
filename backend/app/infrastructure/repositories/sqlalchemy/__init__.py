@@ -5,6 +5,9 @@ from app.infrastructure.repositories.sqlalchemy.charger_repository import (
 from app.infrastructure.repositories.sqlalchemy.charging_session_repository import (
     SqlAlchemyChargingSessionRepository,
 )
+from app.infrastructure.repositories.sqlalchemy.coupon_repository import (
+    SqlAlchemyCouponRepository,
+)
 from app.infrastructure.repositories.sqlalchemy.notification_repository import (
     SqlAlchemyNotificationRepository,
 )
@@ -23,6 +26,7 @@ __all__ = [
     "SqlAlchemyRepository",
     "SqlAlchemyChargerRepository",
     "SqlAlchemyChargingSessionRepository",
+    "SqlAlchemyCouponRepository",
     "SqlAlchemyNotificationRepository",
     "SqlAlchemyReservationRepository",
     "SqlAlchemyStationRepository",
