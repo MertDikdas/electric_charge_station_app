@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.application.services.charger_service import ChargerService
 from app.application.services.charger_session_service import ChargingSessionService
+from app.application.services.notification_service import NotificationService
 from app.application.services.reservation_service import ReservationService
 from app.application.services.station_service import StationService
 from app.application.services.user_service import UserService
@@ -69,3 +70,9 @@ def get_charging_session_service(
     uow: AbstractUnitOfWork = Depends(get_uow),
 ) -> ChargingSessionService:
     return ChargingSessionService(uow)
+
+
+def get_notification_service(
+    uow: AbstractUnitOfWork = Depends(get_uow),
+) -> NotificationService:
+    return NotificationService(uow)

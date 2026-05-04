@@ -3,6 +3,9 @@ from app.infrastructure.repositories.abstract.charger_repository import Abstract
 from app.infrastructure.repositories.abstract.charging_session_repository import (
     AbstractChargingSessionRepository,
 )
+from app.infrastructure.repositories.abstract.notification_repository import (
+    AbstractNotificationRepository,
+)
 from app.infrastructure.repositories.abstract.reservation_repository import (
     AbstractReservationRepository,
 )
@@ -14,6 +17,7 @@ __all__ = [
     "AbstractRepository",
     "AbstractChargerRepository",
     "AbstractChargingSessionRepository",
+    "AbstractNotificationRepository",
     "AbstractReservationRepository",
     "AbstractStationRepository",
     "AbstractUserRepository",

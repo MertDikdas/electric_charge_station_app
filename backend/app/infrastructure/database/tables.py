@@ -1,4 +1,5 @@
-from sqlalchemy import CheckConstraint, Column, Boolean, Date, Float, ForeignKey, Integer, String, Time
+from sqlalchemy import CheckConstraint, Column, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Time
+from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.infrastructure.database.database import Base
 
@@ -14,6 +15,7 @@ class User(Base):
 
     vehicles = relationship("Vehicle", back_populates="user")
     reservations = relationship("Reservation", back_populates="user")
+    notifications = relationship("Notification", back_populates="user")
 
 class Vehicle(Base):
     __tablename__ = "vehicles"
@@ -113,3 +115,20 @@ class ChargingSession(Base):
     )
 
     reservation = relationship("Reservation", back_populates="charging_session")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    title = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    notification_type = Column(String, nullable=False, default="INFO")
+    is_read = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint("notification_type IN ('INFO', 'SUCCESS', 'WARNING', 'ERROR')", name="check_notification_type"),
+    )
+
+    user = relationship("User", back_populates="notifications")

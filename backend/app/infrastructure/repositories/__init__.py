@@ -1,6 +1,7 @@
 from app.infrastructure.repositories.abstract import (
     AbstractChargerRepository,
     AbstractChargingSessionRepository,
+    AbstractNotificationRepository,
     AbstractRepository,
     AbstractReservationRepository,
     AbstractStationRepository,
@@ -10,6 +11,7 @@ from app.infrastructure.repositories.abstract import (
 from app.infrastructure.repositories.sqlalchemy import (
     SqlAlchemyChargerRepository,
     SqlAlchemyChargingSessionRepository,
+    SqlAlchemyNotificationRepository,
     SqlAlchemyRepository,
     SqlAlchemyReservationRepository,
     SqlAlchemyStationRepository,
@@ -20,6 +22,7 @@ from app.infrastructure.repositories.sqlalchemy import (
 __all__ = [
     "AbstractChargerRepository",
     "AbstractChargingSessionRepository",
+    "AbstractNotificationRepository",
     "AbstractRepository",
     "AbstractReservationRepository",
     "AbstractStationRepository",
@@ -27,6 +30,7 @@ __all__ = [
     "AbstractVehicleRepository",
     "SqlAlchemyChargerRepository",
     "SqlAlchemyChargingSessionRepository",
+    "SqlAlchemyNotificationRepository",
     "SqlAlchemyRepository",
     "SqlAlchemyReservationRepository",
     "SqlAlchemyStationRepository",
