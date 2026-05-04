@@ -53,6 +53,10 @@ GET /vehicles/{vehicle_id} +
     Gets a specific vehicle by id.
     The system should check whether the vehicle belongs to the logged-in user, unless the requester is an administrator.
 
+GET /vehicles/{vehicle_id}/compatible-chargers +
+    Gets chargers compatible with the selected vehicle.
+    The system should check vehicle ownership before listing compatible chargers.
+
 PUT /vehicles/{vehicle_id} +
     Updates a specific vehicle.
     The system should check vehicle ownership before updating.
@@ -151,6 +155,5 @@ GET /charging-sessions/{session_id}
 GET /charging-sessions
     Gets all charging sessions.
     This endpoint should be restricted to administrators or station managers.
-
 
 
