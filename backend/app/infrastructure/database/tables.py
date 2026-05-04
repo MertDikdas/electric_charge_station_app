@@ -17,6 +17,7 @@ class User(Base):
     reservations = relationship("Reservation", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
     coupons = relationship("Coupon", back_populates="user")
+    payments = relationship("Payment", back_populates="user")
 
 class Vehicle(Base):
     __tablename__ = "vehicles"
@@ -116,6 +117,7 @@ class ChargingSession(Base):
     )
 
     reservation = relationship("Reservation", back_populates="charging_session")
+    payment = relationship("Payment", back_populates="charging_session", uselist=False)
 
 class Notification(Base):
     __tablename__ = "notifications"
@@ -163,3 +165,30 @@ class Coupon(Base):
     )
 
     user = relationship("User", back_populates="coupons")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    charging_session_id = Column(Integer, ForeignKey("charging_sessions.id"), index=True, nullable=False)
+    amount = Column(Float, nullable=False)
+    payment_method = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="PENDING")
+    transaction_id = Column(String, unique=True, nullable=True, index=True)
+    payment_date = Column(DateTime, nullable=True)
+    description = Column(String, nullable=True)
+    coupon_id = Column(Integer, ForeignKey("coupons.id"), nullable=True)
+    original_amount = Column(Float, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="check_payment_amount_positive"),
+        CheckConstraint("status IN ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED')", name="check_payment_status"),
+        CheckConstraint("payment_method IN ('CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'MOBILE_PAYMENT', 'WALLET')", name="check_payment_method"),
+        CheckConstraint("original_amount IS NULL OR original_amount > 0", name="check_payment_original_amount_positive"),
+    )
+
+    user = relationship("User", back_populates="payments")
+    charging_session = relationship("ChargingSession", back_populates="payment")
+    coupon = relationship("Coupon")
