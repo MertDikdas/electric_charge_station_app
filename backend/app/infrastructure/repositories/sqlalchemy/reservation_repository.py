@@ -84,8 +84,6 @@ class SqlAlchemyReservationRepository(
                 ReservationModel.charger_id == charger_id,
                 ReservationModel.date == reservation_date,
                 ReservationModel.status.in_(self.blocking_statuses),
-                ReservationModel.start_time < end_time,
-                ReservationModel.end_time > start_time,
             )
             .all()
         )

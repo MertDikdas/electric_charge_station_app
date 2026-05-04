@@ -7,6 +7,8 @@ def to_utc(dt: datetime) -> datetime:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 
+def add_minutes_to_time(t, minutes: int):
+    return (datetime.combine(datetime.today(), t) + timedelta(minutes=minutes)).time()
 
 def get_start_datetime(reservation) -> datetime:
     return to_utc(datetime.combine(reservation.date, reservation.start_time))
@@ -31,11 +33,12 @@ def validate_reservation_time(reservation: Reservation) -> bool:
         return False
     return True
 
-def validate_reservation_conflicts(reservation: Reservation, existing_reservations: list[Reservation]) -> bool:
+def validate_reservation_conflicts(reservation: Reservation, existing_reservations: list[Reservation], buffer_minutes: int = 10) -> bool:
     """Checks whether the reservation conflicts with existing reservations for the same charger."""
     for existing in existing_reservations:
+        existing_end_with_buffer = add_minutes_to_time(existing.end_time, buffer_minutes)
         if existing.charger_id == reservation.charger_id:
-            if (reservation.start_time < existing.end_time and reservation.end_time > existing.start_time):
+            if (reservation.start_time < existing_end_with_buffer and reservation.end_time > existing.start_time):
                 return False
     return True
 
@@ -58,3 +61,4 @@ def ensure_reservation_not_too_far_in_future(reservation: Reservation, max_futur
     start_at = get_start_datetime(reservation)
     max_allowed_time = datetime.now(timezone.utc) + timedelta(days=max_future_days)
     return start_at <= max_allowed_time
+

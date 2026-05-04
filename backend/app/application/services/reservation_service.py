@@ -9,7 +9,10 @@ from app.domain.rules.reservation_rules import (
     validate_reservation_conflicts,
     validate_reservation_duration,
     validate_reservation_time,
+    add_minutes_to_time,
 )
+
+BUFFER_MINUTES = 10
 
 class ReservationService:
     allowed_statuses = {"PENDING", "CONFIRMED"}
@@ -91,10 +94,10 @@ class ReservationService:
         charger_conflicts = self.uow.reservations.list_overlapping_by_charger(
             reservation.charger_id,
             reservation.date,
-            reservation.start_time,
+            add_minutes_to_time(reservation.start_time, BUFFER_MINUTES),
             reservation.end_time,
         )
-        if not validate_reservation_conflicts(reservation, charger_conflicts):
+        if not validate_reservation_conflicts(reservation, charger_conflicts, BUFFER_MINUTES):
             raise ValueError("Charger already has a reservation in this time range")
 
         user_conflicts = self.uow.reservations.list_overlapping_by_user(
