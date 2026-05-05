@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 class UserBase(BaseModel):
     name: str
     surname: str
-    mail: str
+    email: str
     balance: float = 0.0
 
 

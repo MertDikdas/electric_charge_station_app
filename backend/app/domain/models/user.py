@@ -7,7 +7,7 @@ from app.domain.models.base import BaseEntity
 class UserEntity(BaseEntity):
     name: str
     surname: str
-    mail: str
+    email: str
     balance: float = 0.0
     password_hash: str = ""
 
