@@ -18,6 +18,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _openSignupFlow() {
+    Navigator.of(context).pushNamed('/signup-phone');
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -126,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Expanded(
                       child: FilledButton(
-                        onPressed: _continueToApp,
+                        onPressed: _openSignupFlow,
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color.fromARGB(255, 54, 177, 202),
                           foregroundColor: const Color.fromARGB(255, 35, 8, 93),

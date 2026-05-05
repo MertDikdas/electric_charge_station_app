@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../features/auth/page1_login_screen.dart';
+import '../features/page2_3_4_sign_up/page2_signup_phone_page.dart';
+import '../features/page1_auth/page1_login_screen.dart';
+import 'main_navigation_shell.dart';
 import 'app_theme.dart';
 
 class ElectricChargeStationApp extends StatelessWidget {
-  const ElectricChargeStationApp({super.key});
+  const ElectricChargeStationApp({super.key, this.initialRoute = '/'});
+
+  final String initialRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +16,12 @@ class ElectricChargeStationApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Electric Charge Station',
       theme: AppTheme.light,
-      home: const LoginScreen(),
+      initialRoute: initialRoute,
+      routes: {
+        '/': (_) => const LoginScreen(),
+        '/signup-phone': (_) => const SignupPhonePage(),
+        '/home': (_) => const MainNavigationShell(),
+      },
     );
   }
 }
