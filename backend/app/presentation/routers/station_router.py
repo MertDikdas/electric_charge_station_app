@@ -3,21 +3,32 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.application.services.station_service import StationService
-from app.core.dependencies import get_station_service
+from app.core.dependencies import get_station_service, AuthenticatedUser, get_current_user
 from app.domain.models.station import StationEntity
 from app.schemas.charger import Charger
 from app.schemas.station import StationCreate, Station
+from app.domain.rules.station_rules import validate_station_entity
 
 router = APIRouter()
 
+def ensure_admin_role(current_user: AuthenticatedUser) -> None:
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=403, detail="Not enough permissions")
 
 @router.post("/", response_model=Station, status_code=201)
 def create_station(
     station: StationCreate,
     service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
+    ensure_admin_role(current_user)
     station_entity = StationEntity(**station.model_dump())
-    return service.create_station(station_entity)
+    try:
+        validate_station_entity(station_entity)
+        return service.create_station(station_entity)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 
 @router.get("/", response_model=List[Station])
@@ -61,20 +72,29 @@ def update_station(
     station_id: int,
     station: StationCreate,
     service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
+    
+    ensure_admin_role(current_user)
     existing_station = service.get_station(station_id)
     if not existing_station:
         raise HTTPException(status_code=404, detail="Station not found")
 
     updated_station = StationEntity(id=station_id, **station.model_dump())
-    return service.update_station(updated_station)
+    try:
+        validate_station_entity(updated_station)
+        return service.update_station(updated_station)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/{station_id}", status_code=204)
 def delete_station(
     station_id: int,
     service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
+    ensure_admin_role(current_user)
     existing_station = service.get_station(station_id)
     if not existing_station:
         raise HTTPException(status_code=404, detail="Station not found")
