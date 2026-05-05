@@ -11,6 +11,11 @@ from app.domain.rules.reservation_rules import (
     validate_reservation_duration,
     validate_reservation_time,
     add_minutes_to_time,
+    validate_reservation_status,
+    validate_charger_id,
+    validate_vehicle_id,
+    validate_compatibility,
+    validate_user_reservation_conflicts,
 )
 
 BUFFER_MINUTES = 10
@@ -61,24 +66,24 @@ class ReservationService:
             )
 
     def _validate_reservation_request(self, reservation: ReservationEntity) -> None:
-        if not validate_reservation_time(reservation):
-            raise ValueError("Reservation end_time must be after start_time")
+        validate_reservation_time(reservation)
+        validate_reservation_status(reservation)
 
-        if reservation.status not in self.allowed_statuses:
-            raise ValueError("Reservation status must be PENDING or CONFIRMED")
-
-        if not ensure_reservation_not_in_past(reservation):
-            raise ValueError("Reservation cannot be in the past")
-
-        if not ensure_reservation_not_too_far_in_future(reservation):
-            raise ValueError("Reservation cannot be more than 30 days in the future")
-
-        if not validate_reservation_duration(reservation):
-            raise ValueError("Reservation duration cannot exceed 2 hours")
-
+        ensure_reservation_not_in_past(reservation)
+        ensure_reservation_not_too_far_in_future(reservation)
+        validate_reservation_duration(reservation)
+        
         user = self.uow.users.get(reservation.user_id)
         if not user:
             raise LookupError("User not found")
+
+        bad_reservations_count = self.uow.reservations.get_expired_or_cancelled_count_last_2_months(
+            reservation.user_id
+        )
+        if bad_reservations_count >= 3:
+            raise ValueError(
+                "User has 3 or more expired or cancelled reservations in the last 2 months and cannot make a new reservation"
+            )
 
         vehicle = self.uow.vehicles.get(reservation.vehicle_id)
         if not vehicle:
@@ -97,8 +102,9 @@ class ReservationService:
         if charger.status != "AVAILABLE":
             raise ValueError("Charger is not available")
 
-        if not validate_reservation(reservation, vehicle, charger):
-            raise ValueError("Vehicle is not compatible with charger")
+        validate_vehicle_id(reservation, vehicle)
+        validate_charger_id(reservation, charger)
+        validate_compatibility(reservation, vehicle, charger)
 
         charger_conflicts = self.uow.reservations.list_overlapping_by_charger(
             reservation.charger_id,
@@ -106,8 +112,7 @@ class ReservationService:
             add_minutes_to_time(reservation.start_time, BUFFER_MINUTES),
             reservation.end_time,
         )
-        if not validate_reservation_conflicts(reservation, charger_conflicts, BUFFER_MINUTES):
-            raise ValueError("Charger already has a reservation in this time range")
+        validate_reservation_conflicts(reservation, charger_conflicts, BUFFER_MINUTES)
 
         user_conflicts = self.uow.reservations.list_overlapping_by_user(
             reservation.user_id,
@@ -115,5 +120,4 @@ class ReservationService:
             reservation.start_time,
             reservation.end_time,
         )
-        if user_conflicts:
-            raise ValueError("User already has a reservation in this time range")
+        validate_user_reservation_conflicts(reservation, user_conflicts)

@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, timedelta, time
 from typing import List
 
 from app.domain.models.reservation import ReservationEntity
@@ -108,3 +108,15 @@ class SqlAlchemyReservationRepository(
             .all()
         )
         return [self.to_entity(model) for model in models]
+
+    def get_expired_or_cancelled_count_last_2_months(self, user_id: int) -> int:
+        two_months_ago = datetime.utcnow().date() - timedelta(days=60)
+        return (
+            self.session.query(ReservationModel)
+            .filter(
+                ReservationModel.user_id == user_id,
+                ReservationModel.status.in_(["EXPIRED", "CANCELLED"]),
+                ReservationModel.date >= two_months_ago,
+            )
+            .count()
+        )

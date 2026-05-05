@@ -14,6 +14,13 @@ from app.schemas.reservation import ReservationCreate, Reservation
 
 router = APIRouter()
 
+def ensure_admin_role(current_user: AuthenticatedUser) -> None:
+    if current_user.role.lower() != "admin":
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+def ensure_authenticated(current_user: AuthenticatedUser) -> None:
+    if not current_user.is_authenticated and current_user.role.lower() != "admin":
+        raise HTTPException(status_code=401, detail="Authentication required")
 
 @router.post("", response_model=Reservation, status_code=201)
 def create_reservation(
@@ -38,6 +45,7 @@ def get_reservations(
     service: ReservationService = Depends(get_reservation_service),
     current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
+    ensure_admin_role(current_user)
     return service.get_all_reservations()
 
 
@@ -67,3 +75,6 @@ def delete_reservation(
     if reservation.user_id != current_user.id and not current_user.is_staff:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     service.delete_reservation(reservation_id)
+
+
+## UPDATE ETME EKLENEBİLİR İLERDE
