@@ -19,6 +19,9 @@ class VehicleService:
 
             vehicle.user_id = current_user_id
             validate_vehicle(vehicle)
+            existing_vehicle = self.uow.vehicles.get_all_vehicles_by_plate(vehicle.plate)
+            if existing_vehicle:
+                raise ValueError("Vehicle with this plate already exists")
             new_vehicle = self.uow.vehicles.add(vehicle)
             self.uow.commit()
             return new_vehicle

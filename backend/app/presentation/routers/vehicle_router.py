@@ -105,3 +105,6 @@ def update_vehicle(
         return service.update_vehicle(updated_vehicle)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+## ARABAYI DEACTİVE ETMEK İÇİN BİR ENDPOİNT EKLENECEK
