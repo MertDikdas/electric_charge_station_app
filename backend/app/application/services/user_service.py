@@ -30,9 +30,9 @@ class UserService:
 
             return AuthResponseEntity(access_token=access_token, user=new_user)
         
-    def login_user(self, mail: str, password: str) -> Optional[AuthResponseEntity]:
+    def login_user(self, email: str, password: str) -> Optional[AuthResponseEntity]:
         with self.uow:
-            user = self.uow.users.get_by_email(mail)
+            user = self.uow.users.get_by_email(email)
             if not user or not verify_password(password, user.password_hash):
                 return None
 
@@ -52,7 +52,7 @@ class UserService:
         expires_delta = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
         expires_at = created_at + expires_delta
         access_token = create_access_token(
-            data={"sub": user.mail, "user_id": user.id},
+            data={"sub": user.email, "user_id": user.id},
             expires_delta=expires_delta,
         )
 

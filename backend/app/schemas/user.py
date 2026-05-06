@@ -17,7 +17,7 @@ class User(UserBase):
         from_attributes = True
 
 class UserLogin(BaseModel):
-    mail: str
+    email: str
     password: str
 
 class AuthResponse(BaseModel):

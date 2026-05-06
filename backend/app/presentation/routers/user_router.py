@@ -52,7 +52,7 @@ def login_user(
     login_data: UserLogin,
     service: UserService = Depends(get_user_service),
 ):
-    auth_response = service.login_user(login_data.mail, login_data.password)
+    auth_response = service.login_user(login_data.email, login_data.password)
     if not auth_response:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return auth_response
