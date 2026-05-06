@@ -27,8 +27,7 @@ class _SignupPhonePageState extends State<SignupPhonePage> {
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            SignupUserPage(phoneNumber: '+90${_phoneController.text.trim()}'),
+        builder: (_) => SignupUserPage(phoneNumber: '+90${_phoneController.text.trim()}'),
       ),
     );
   }
@@ -154,9 +153,7 @@ InputDecoration _inputDecoration(
     contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(
-        color: colorScheme.outline.withValues(alpha: 0.55),
-      ),
+      borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.55)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -220,12 +217,10 @@ class _GradientButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           foregroundColor: const Color(0xFF18305F),
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
           ),
-          textStyle: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         child: Text(label),
       ),
