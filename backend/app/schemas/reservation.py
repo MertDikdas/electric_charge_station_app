@@ -12,3 +12,7 @@ class ReservationCreate(BaseModel):
 class Reservation(ReservationCreate):
     id: int
     user_id: int
+
+
+class ReservationStatusUpdate(BaseModel):
+    status: str

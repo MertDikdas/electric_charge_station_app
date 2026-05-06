@@ -124,7 +124,21 @@ class SqlAlchemyReservationRepository(
             .all()
         )
         return [self.to_entity(model) for model in models]
-
+    def list_by_user_after_date(
+        self,
+        user_id: int,
+        after_date: date,
+    ) -> List[ReservationEntity]:
+        models = (
+            self.session.query(ReservationModel)
+            .filter(
+                ReservationModel.user_id == user_id,
+                ReservationModel.date > after_date,
+                ReservationModel.status.in_(self.blocking_statuses),
+            )
+            .all()
+        )
+        return [self.to_entity(model) for model in models]
     def get_expired_or_cancelled_count_last_2_months(self, user_id: int) -> int:
         two_months_ago = datetime.utcnow().date() - timedelta(days=60)
         return (

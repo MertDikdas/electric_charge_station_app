@@ -52,5 +52,13 @@ class AbstractReservationRepository(AbstractRepository[ReservationEntity]):
         raise NotImplementedError
 
     @abstractmethod
+    def list_by_user_after_date(
+        self,
+        user_id: int,
+        after_date: date,
+    ) -> List[ReservationEntity]:
+        raise NotImplementedError
+
+    @abstractmethod
     def get_expired_or_cancelled_count_last_2_months(self, user_id: int) -> int:
         raise NotImplementedError
