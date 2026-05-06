@@ -9,6 +9,7 @@ from app.presentation.routers.reservation_router import router as reservation_ro
 from app.presentation.routers.charging_session_router import router as charging_session_router
 from app.presentation.routers.user_router import router as user_router
 from app.presentation.routers.charger_router import router as charger_router
+from app.presentation.routers.auth_router import router as auth_router
 
 app = FastAPI(
     title="EV Charging Station Network API",
@@ -32,6 +33,7 @@ app.include_router(reservation_router, prefix="/reservations", tags=["Reservatio
 app.include_router(charging_session_router, prefix="/charging-sessions", tags=["Charging Sessions"])
 app.include_router(user_router, prefix="/users", tags=["Users"])
 app.include_router(charger_router, prefix="/chargers", tags=["Chargers"])
+app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 
 
 @app.get("/")
