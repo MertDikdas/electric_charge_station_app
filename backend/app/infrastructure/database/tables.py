@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Column, Boolean, Date, Float, ForeignKey, Integer, String, Time
+from sqlalchemy import CheckConstraint, Column, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Time
 from sqlalchemy.orm import relationship
 from app.infrastructure.database.database import Base
 
@@ -14,6 +14,21 @@ class User(Base):
 
     vehicles = relationship("Vehicle", back_populates="user")
     reservations = relationship("Reservation", back_populates="user")
+    sessions = relationship("UserSession", back_populates="user")
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, unique=True, index=True, nullable=False)
+    is_revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+
+    user = relationship("User", back_populates="sessions")
+
 
 class Vehicle(Base):
     __tablename__ = "vehicles"
