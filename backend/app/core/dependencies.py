@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.application.services.charger_service import ChargerService
@@ -11,6 +12,7 @@ from app.application.services.reservation_service import ReservationService
 from app.application.services.station_service import StationService
 from app.application.services.user_service import UserService
 from app.application.services.vehicle_service import VehicleService
+from app.core.security import ALGORITHM, SECRET_KEY
 from app.core.uow import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from app.infrastructure.database.database import get_db
 from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
@@ -40,9 +42,21 @@ def get_current_user(
     if scheme.lower() != "bearer" or not token:
         raise HTTPException(status_code=401, detail="Invalid authentication header")
 
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    token_user_id = payload.get("user_id")
+    if token_user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
     session = SqlAlchemyUserSessionRepository(db).get_by_token(token)
     if session is None or session.is_revoked or session.expires_at <= datetime.utcnow():
         raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    if session.user_id != token_user_id:
+        raise HTTPException(status_code=401, detail="Token does not match session")
 
     return AuthenticatedUser(id=session.user_id, role=x_user_role)
 
