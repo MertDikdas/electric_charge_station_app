@@ -11,16 +11,35 @@ POST /users
   - `surname: str`
   - `mail: str`
   - `password: str` (min length 6, max length 72)
-- Response schema: `User`
-  - `id: int`
-  - `name: str`
-  - `surname: str`
-  - `mail: str`
-  - `balance: float`
+- Response schema: `AuthResponse`
+  - `access_token: str`
+  - `token_type: str`
+  - `user: User`
+
+POST /users/login
+- Authenticates a user.
+- Request schema: `UserLogin`
+  - `email: str`
+  - `password: str`
+- Response schema: `AuthResponse`
+  - `access_token: str`
+  - `token_type: str`
+  - `user: User`
 
 GET /users
 - Returns all users.
 - Response schema: `List[User]`
+
+GET /users/me/reservations
+- Returns reservations for the authenticated user.
+- Response schema: `List[Reservation]`
+
+GET /users/me/charging_sessions
+- Returns charging sessions for the authenticated user.
+- Response schema: `List[ChargingSession]`
+
+DELETE /users/me
+- Deletes the authenticated user.
 
 GET /users/{user_id}
 - Returns a user by id.

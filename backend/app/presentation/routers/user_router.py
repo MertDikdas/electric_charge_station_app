@@ -64,6 +64,38 @@ def get_users(service: UserService = Depends(get_user_service),
     ensure_admin_role(user_id=None, current_user=current_user)
     return service.get_all_users()
 
+@router.get("/me/reservations", response_model=List[Reservation])
+def get_user_reservations(
+    service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    current_user_id = current_user.id
+    user = service.get_user(current_user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return service.get_user_reservations(current_user_id)
+
+@router.get("/me/charging_sessions", response_model=List[ChargingSession])
+def get_user_charging_sessions(
+    service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    current_user_id = current_user.id
+    user = service.get_user(current_user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return service.get_user_charging_sessions(current_user_id)
+
+@router.delete("/me", status_code=204)
+def delete_user(
+    service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    current_user_id = current_user.id
+    user = service.get_user(current_user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    service.delete_user(current_user_id)
 
 @router.get("/{user_id}", response_model=User)
 def get_user(
