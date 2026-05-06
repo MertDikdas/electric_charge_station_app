@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException
@@ -12,6 +13,9 @@ from app.application.services.user_service import UserService
 from app.application.services.vehicle_service import VehicleService
 from app.core.uow import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from app.infrastructure.database.database import get_db
+from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
+    SqlAlchemyUserSessionRepository,
+)
 
 
 @dataclass
@@ -25,12 +29,22 @@ class AuthenticatedUser:
 
 
 def get_current_user(
-    x_user_id: Optional[int] = Header(default=None),
+    authorization: Optional[str] = Header(default=None),
     x_user_role: str = Header(default="user"),
+    db: Session = Depends(get_db),
 ) -> AuthenticatedUser:
-    if x_user_id is None:
+    if not authorization:
         raise HTTPException(status_code=401, detail="Authentication required")
-    return AuthenticatedUser(id=x_user_id, role=x_user_role)
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="Invalid authentication header")
+
+    session = SqlAlchemyUserSessionRepository(db).get_by_token(token)
+    if session is None or session.is_revoked or session.expires_at <= datetime.utcnow():
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    return AuthenticatedUser(id=session.user_id, role=x_user_role)
 
 
 def get_admin_or_station_manager(
