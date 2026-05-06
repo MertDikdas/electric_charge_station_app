@@ -127,3 +127,37 @@ class ReservationService:
             reservation.end_time,
         )
         validate_user_reservation_conflicts(reservation, user_conflicts)
+
+    def _delete_future_reservations(self, reservation: ReservationEntity) -> None:
+        future_reservations = self.uow.reservations.list_by_user_after_date(
+            reservation.user_id,
+            reservation.date,
+        )
+        for future in future_reservations:
+            self.uow.reservations.delete(future)
+
+    def update_reservation_status(
+        self,
+        reservation_id: int,
+        status: str,
+        current_user_id: int,
+        current_user_is_staff: bool = False,
+    ) -> ReservationEntity:
+        with self.uow:
+            reservation = self.uow.reservations.get(reservation_id)
+            if not reservation:
+                raise LookupError("Reservation not found")
+            if reservation.user_id != current_user_id and not current_user_is_staff:
+                raise PermissionError("Not enough permissions")
+
+            reservation.status = status.upper()
+            validate_reservation_status(reservation)
+
+            updated = self.uow.reservations.update(reservation)
+            if reservation.status in {"EXPIRED", "CANCELLED"}:
+                bad_count = self.uow.reservations.get_expired_or_cancelled_count_last_2_months(
+                    reservation.user_id
+                )
+                if bad_count >= 2:
+                    self._delete_future_reservations(reservation)
+            return updated
