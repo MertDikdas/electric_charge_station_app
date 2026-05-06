@@ -33,6 +33,12 @@ class UserService:
 
             return AuthResponseEntity(access_token=access_token, user=user)
 
+    def logout_user(self, token: str) -> bool:
+        with self.uow:
+            revoked = self.uow.user_sessions.revoke_token(token)
+            self.uow.commit()
+            return revoked
+
     def _create_session(self, user: UserEntity) -> str:
         created_at = datetime.utcnow()
         expires_delta = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
