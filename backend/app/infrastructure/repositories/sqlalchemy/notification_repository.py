@@ -57,6 +57,23 @@ class SqlAlchemyNotificationRepository(
         )
         return [self.to_entity(model) for model in models]
 
+    def exists_by_user_and_title_and_message(
+        self,
+        user_id: int,
+        title: str,
+        message: str,
+    ) -> bool:
+        existing = (
+            self.session.query(NotificationModel)
+            .filter(
+                NotificationModel.user_id == user_id,
+                NotificationModel.title == title,
+                NotificationModel.message == message,
+            )
+            .first()
+        )
+        return existing is not None
+
     def mark_as_read(self, notification_id: int) -> NotificationEntity | None:
         model = self.session.get(NotificationModel, notification_id)
         if model is None:

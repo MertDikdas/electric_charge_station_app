@@ -418,10 +418,11 @@ POST /notifications
   - `is_read: bool`
   - `created_at: datetime`
 
-GET /notifications
+GET /notifications/me
 - Returns notifications for authenticated user.
 - Optional query: `unread_only: bool`
 - Response schema: `List[Notification]`
+- Includes automatic reservation reminders when a session is 30 minutes away.
 
 GET /notifications/all
 - Returns all notifications.

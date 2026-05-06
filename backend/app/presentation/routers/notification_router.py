@@ -19,7 +19,6 @@ router = APIRouter()
 def create_notification(
     notification: NotificationCreate,
     service: NotificationService = Depends(get_notification_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     notification_entity = NotificationEntity(**notification.model_dump())
     try:
@@ -30,7 +29,7 @@ def create_notification(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=List[Notification])
+@router.get("/me", response_model=List[Notification])
 def get_notifications(
     service: NotificationService = Depends(get_notification_service),
     current_user: AuthenticatedUser = Depends(get_current_user),

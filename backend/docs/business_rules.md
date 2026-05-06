@@ -23,6 +23,7 @@
 - By default, a reservation cannot be created more than 30 days in advance.
 - A reservation duration cannot exceed 2 hours by default.
 - A charger cannot have overlapping reservations for the same time slot.
+- Users receive a reminder notification 30 minutes before their reservation starts.
 
 ## Coupon Rules
 
