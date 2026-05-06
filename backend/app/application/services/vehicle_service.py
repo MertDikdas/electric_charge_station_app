@@ -30,6 +30,12 @@ class VehicleService:
         with self.uow:
             return self.uow.vehicles.list()
 
+    def get_user_vehicles(self, user_id: int) -> List[VehicleEntity]:
+        with self.uow:
+            user = self.uow.users.get(user_id)
+            if not user:
+                raise LookupError("User not found")
+            return self.uow.vehicles.list_by_user_id(user_id)
     def get_vehicle(self, vehicle_id: int) -> Optional[VehicleEntity]:
         with self.uow:
             return self.uow.vehicles.get(vehicle_id)

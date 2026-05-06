@@ -27,7 +27,7 @@ def create_charger(
     return service.create_charger(charger_entity)
 
 
-@router.get("/", response_model=List[Charger])
+@router.get("/all", response_model=List[Charger])
 def get_chargers(service: ChargerService = Depends(get_charger_service)):
     return service.get_all_chargers()
 
@@ -48,7 +48,6 @@ def update_charger(
     charger_id: int,
     charger: ChargerCreate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     existing_charger = service.get_charger(charger_id)
     if not existing_charger:
@@ -65,7 +64,6 @@ def update_charger(
 def delete_charger(
     charger_id: int,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     charger = service.get_charger(charger_id)
     if not charger:
@@ -78,7 +76,6 @@ def update_charger_status(
     charger_id: int,
     status_update: ChargerStatusUpdate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     try:
         charger = service.update_charger_status(charger_id, status_update.status)

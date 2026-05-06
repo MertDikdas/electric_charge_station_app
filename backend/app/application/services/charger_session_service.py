@@ -16,14 +16,26 @@ class ChargingSessionService:
 
     def create_session(self, session: ChargingSessionEntity) -> ChargingSessionEntity:
         with self.uow:
+            reservation = self.uow.reservations.get(session.reservation_id)
+            if not reservation:
+                raise LookupError("Reservation not found")
+
+            vehicle = self.uow.vehicles.get(reservation.vehicle_id)
+            if not vehicle:
+                raise LookupError("Vehicle not found")
+
+            charger = self.uow.chargers.get(reservation.charger_id)
+            if not charger:
+                raise LookupError("Charger not found")
+
             validate_can_start_charging_session(
-                charger=self.uow.chargers.get(self.uow.reservations.get(session.reservation_id).charger_id),
-                vehicle=self.uow.vehicles.get(self.uow.reservations.get(session.reservation_id).vehicle_id),
-                active_reservations=self.uow.reservations.get(session.reservation_id),
-                active_charging_sessions=self.uow.charging_sessions.list_by_chargerger_id(
-                    self.uow.reservations.get(session.reservation_id).charger_id
+                charger=charger,
+                vehicle=vehicle,
+                active_reservations=reservation,
+                active_charging_sessions=self.uow.charging_sessions.list_active_by_charger_id(
+                    charger.id
                 ),
-            ) 
+            )
             new_session = self.uow.charging_sessions.add(session)
             self.uow.commit()
             return new_session
@@ -35,6 +47,14 @@ class ChargingSessionService:
     def get_session(self, session_id: int) -> Optional[ChargingSessionEntity]:
         with self.uow:
             return self.uow.charging_sessions.get(session_id)
+
+    def get_user_sessions(self, user_id: int) -> List[ChargingSessionEntity]:
+        with self.uow:
+            return self.uow.charging_sessions.list_by_user_id(user_id)
+
+    def get_active_sessions_by_user_id(self, user_id: int) -> List[ChargingSessionEntity]:
+        with self.uow:
+            return self.uow.charging_sessions.list_active_by_user_id(user_id)
 
     def can_access_session(
         self,
@@ -193,12 +213,9 @@ class ChargingSessionService:
         return active_reservations[0]
 
     def _find_current_active_session(self, current_user_id: int) -> ChargingSessionEntity:
-        sessions = self.uow.charging_sessions.list_by_user_id(current_user_id)
-        active_sessions = [
-            session
-            for session in sessions
-            if session.status in RUNNING_SESSION_STATUSES
-        ]
+        active_sessions = self.uow.charging_sessions.list_active_by_user_id(
+            current_user_id
+        )
 
         if not active_sessions:
             raise LookupError("No active charging session found")

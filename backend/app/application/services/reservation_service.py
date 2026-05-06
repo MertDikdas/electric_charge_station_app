@@ -43,6 +43,13 @@ class ReservationService:
         with self.uow:
             return self.uow.reservations.list()
 
+    def get_user_reservations(self, user_id: int) -> List[ReservationEntity]:
+        with self.uow:
+            user = self.uow.users.get(user_id)
+            if not user:
+                raise LookupError("User not found")
+            return self.uow.reservations.list_by_user_id(user_id)
+
     def get_reservation(self, reservation_id: int) -> Optional[ReservationEntity]:
         with self.uow:
             return self.uow.reservations.get(reservation_id)

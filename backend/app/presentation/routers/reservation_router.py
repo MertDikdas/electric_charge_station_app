@@ -14,13 +14,6 @@ from app.schemas.reservation import ReservationCreate, Reservation, ReservationS
 
 router = APIRouter()
 
-def ensure_admin_role(current_user: AuthenticatedUser) -> None:
-    if current_user.role.lower() != "admin":
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-
-def ensure_authenticated(current_user: AuthenticatedUser) -> None:
-    if not current_user.is_authenticated and current_user.role.lower() != "admin":
-        raise HTTPException(status_code=401, detail="Authentication required")
 
 @router.post("", response_model=Reservation, status_code=201)
 def create_reservation(
@@ -40,16 +33,21 @@ def create_reservation(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=List[Reservation])
+@router.get("/all", response_model=List[Reservation])
 def get_reservations(
     service: ReservationService = Depends(get_reservation_service),
     current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
-    ensure_admin_role(current_user)
     return service.get_all_reservations()
 
+@router.get("/my", response_model=List[Reservation])
+def get_user_reservations(
+    service: ReservationService = Depends(get_reservation_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    return service.get_user_reservations(current_user.id)
 
-@router.get("/{reservation_id}", response_model=Reservation)
+@router.get("/my/{reservation_id}", response_model=Reservation)
 def get_reservation(
     reservation_id: int,
     service: ReservationService = Depends(get_reservation_service),
@@ -63,7 +61,7 @@ def get_reservation(
     return reservation
 
 
-@router.delete("/{reservation_id}", status_code=204)
+@router.delete("/my/{reservation_id}", status_code=204)
 def delete_reservation(
     reservation_id: int,
     service: ReservationService = Depends(get_reservation_service),
@@ -76,7 +74,7 @@ def delete_reservation(
         raise HTTPException(status_code=403, detail="Not enough permissions")
     service.delete_reservation(reservation_id)
 
-@router.patch("/{reservation_id}/status", response_model=Reservation)
+@router.patch("/my/{reservation_id}/status", response_model=Reservation)
 def update_reservation_status(
     reservation_id: int,
     request: ReservationStatusUpdate,

@@ -81,12 +81,26 @@ def finish_session_by_id(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=List[ChargingSession])
+@router.get("/all", response_model=List[ChargingSession])
 def get_sessions(
     service: ChargingSessionService = Depends(get_charging_session_service),
     current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     return service.get_all_sessions()
+
+@router.get("/my", response_model=List[ChargingSession])
+def get_user_sessions(
+    service: ChargingSessionService = Depends(get_charging_session_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    return service.get_user_sessions(current_user.id)
+
+@router.get("/my/active", response_model=List[ChargingSession])
+def get_active_sessions(
+    service: ChargingSessionService = Depends(get_charging_session_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    return service.get_active_sessions_by_user_id(current_user.id)
 
 
 @router.get("/{session_id}", response_model=ChargingSession)
