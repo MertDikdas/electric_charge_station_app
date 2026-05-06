@@ -1,4 +1,4 @@
-from app.domain.models import UserEntity
+from app.domain.models.user import UserEntity
 
 def validate_user_email(user: UserEntity) -> bool:
     """Checks whether the user's email is valid."""

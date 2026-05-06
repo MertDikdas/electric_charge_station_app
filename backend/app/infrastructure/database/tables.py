@@ -1,4 +1,5 @@
-from sqlalchemy import CheckConstraint, Column, Boolean, Date, Float, ForeignKey, Integer, String, Time
+from sqlalchemy import CheckConstraint, Column, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Time, UniqueConstraint
+from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.infrastructure.database.database import Base
 
@@ -14,6 +15,24 @@ class User(Base):
 
     vehicles = relationship("Vehicle", back_populates="user")
     reservations = relationship("Reservation", back_populates="user")
+    notifications = relationship("Notification", back_populates="user")
+    coupons = relationship("Coupon", back_populates="user")
+    payments = relationship("Payment", back_populates="user")
+    sessions = relationship("UserSession", back_populates="user")
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token = Column(String, unique=True, index=True, nullable=False)
+    is_revoked = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+
+    user = relationship("User", back_populates="sessions")
+
 
 class Vehicle(Base):
     __tablename__ = "vehicles"
@@ -113,3 +132,78 @@ class ChargingSession(Base):
     )
 
     reservation = relationship("Reservation", back_populates="charging_session")
+    payment = relationship("Payment", back_populates="charging_session", uselist=False)
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    title = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    notification_type = Column(String, nullable=False, default="INFO")
+    is_read = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        CheckConstraint("notification_type IN ('INFO', 'SUCCESS', 'WARNING', 'ERROR')", name="check_notification_type"),
+    )
+
+    user = relationship("User", back_populates="notifications")
+
+
+class Coupon(Base):
+    __tablename__ = "coupons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    code = Column(String, nullable=False, index=True)
+    discount_type = Column(String, nullable=False)
+    discount_value = Column(Float, nullable=False)
+    min_order_amount = Column(Float, nullable=False, default=0.0)
+    max_discount_amount = Column(Float, nullable=True)
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False)
+    usage_limit = Column(Integer, nullable=True)
+    used_count = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "code", name="uq_coupon_user_code"),
+        CheckConstraint("discount_type IN ('PERCENTAGE', 'FIXED_AMOUNT')", name="check_coupon_discount_type"),
+        CheckConstraint("discount_value > 0", name="check_coupon_discount_value_positive"),
+        CheckConstraint("min_order_amount >= 0", name="check_coupon_min_order_amount_non_negative"),
+        CheckConstraint("max_discount_amount IS NULL OR max_discount_amount > 0", name="check_coupon_max_discount_amount_positive"),
+        CheckConstraint("usage_limit IS NULL OR usage_limit > 0", name="check_coupon_usage_limit_positive"),
+        CheckConstraint("used_count >= 0", name="check_coupon_used_count_non_negative"),
+        CheckConstraint("valid_until > valid_from", name="check_coupon_date_range_valid"),
+    )
+
+    user = relationship("User", back_populates="coupons")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    reservation_id = Column(Integer, ForeignKey("charging_sessions.reservation_id"), nullable=False)
+    amount = Column(Float, nullable=False)
+    payment_method = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="PENDING")
+    transaction_id = Column(String, unique=True, nullable=True, index=True)
+    payment_date = Column(DateTime, nullable=True)
+    description = Column(String, nullable=True)
+    coupon_id = Column(Integer, ForeignKey("coupons.id"), nullable=True)
+    original_amount = Column(Float, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="check_payment_amount_positive"),
+        CheckConstraint("status IN ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED')", name="check_payment_status"),
+        CheckConstraint("payment_method IN ('CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'MOBILE_PAYMENT', 'WALLET')", name="check_payment_method"),
+        CheckConstraint("original_amount IS NULL OR original_amount > 0", name="check_payment_original_amount_positive"),
+    )
+
+    user = relationship("User", back_populates="payments")
+    charging_session = relationship("ChargingSession", back_populates="payment")
+    coupon = relationship("Coupon")

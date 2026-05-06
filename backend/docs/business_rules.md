@@ -24,6 +24,24 @@
 - A reservation duration cannot exceed 2 hours by default.
 - A charger cannot have overlapping reservations for the same time slot.
 
+## Coupon Rules
+
+- A coupon must belong to a user.
+- A coupon code must be unique for the same user.
+- Different users may have coupons with the same code.
+- A user can only preview or apply coupons that belong to them.
+- A coupon code must be 3-32 characters and may contain only uppercase letters, numbers, underscores, or hyphens.
+- Coupon codes are normalized to uppercase before they are stored or used.
+- A coupon discount type must be `PERCENTAGE` or `FIXED_AMOUNT`.
+- A percentage coupon must have a discount value greater than 0 and no more than 100.
+- A fixed amount coupon must have a discount value greater than 0.
+- A coupon `valid_until` date must be after its `valid_from` date.
+- A coupon can only be used while it is active and inside its valid date range.
+- A coupon cannot be used after its usage limit is reached.
+- A coupon can require a minimum order amount.
+- A coupon discount cannot reduce the final amount below 0.
+- A coupon maximum discount amount limits the calculated discount when present.
+
 ## Purpose
 
-These rules ensure vehicle-charger compatibility, prevent invalid reservations, avoid double booking, and allow charging sessions to start only under valid conditions.
+These rules ensure vehicle-charger compatibility, prevent invalid reservations, avoid double booking, allow charging sessions to start only under valid conditions, and keep coupon discounts predictable.

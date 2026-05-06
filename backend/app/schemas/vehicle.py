@@ -1,7 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-class VehicleCreate(BaseModel):
-    user_id: int
+class VehicleBase(BaseModel):
     model: str
     plate: str
     max_charging_power: float
@@ -9,5 +8,11 @@ class VehicleCreate(BaseModel):
     connector_type: str
     current_type: str
 
-class Vehicle(VehicleCreate):
+
+class VehicleCreate(VehicleBase):
+    pass
+
+
+class Vehicle(VehicleBase):
     id: int
+    user_id: int

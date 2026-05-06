@@ -14,7 +14,7 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository[UserEntity, UserModel], Abst
             id=entity.id,
             name=entity.name,
             surname=entity.surname,
-            email=entity.mail,
+            email=entity.email,
             password_hash=entity.password_hash,
             balance=entity.balance,
         )
@@ -24,7 +24,7 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository[UserEntity, UserModel], Abst
             id=model.id,
             name=model.name,
             surname=model.surname,
-            mail=model.email,
+            email=model.email,
             balance=model.balance,
             password_hash=model.password_hash,
         )

@@ -1,156 +1,421 @@
-AUTH
+# API Endpoints
 
-POST /auth/register
-    Creates a new user account.
+> Note: The current backend does not include a mounted `/auth` router, so `POST /auth/register` and `POST /auth/login` are not implemented in this codebase.
 
-POST /auth/login
-    Authenticates the user and returns an access token.
+## USERS
 
+POST /users
+- Creates a new user.
+- Request schema: `UserCreate`
+  - `name: str`
+  - `surname: str`
+  - `mail: str`
+  - `password: str` (min length 6, max length 72)
+- Response schema: `User`
+  - `id: int`
+  - `name: str`
+  - `surname: str`
+  - `mail: str`
+  - `balance: float`
 
-USERS
+GET /users
+- Returns all users.
+- Response schema: `List[User]`
 
-POST /users +
-    Creates a new user.
-    This endpoint may be used by the system or admin panel. For public registration, /auth/register should be preferred.
+GET /users/{user_id}
+- Returns a user by id.
+- Response schema: `User`
 
-GET /users +
-    Gets all users.
-    This endpoint should be restricted to administrators.
+GET /users/{user_id}/vehicles
+- Returns vehicles for the specified user.
+- Response schema: `List[Vehicle]`
 
-GET /users/{user_id} +
-    Gets a specific user by id.
-    This endpoint should be restricted to administrators or authorized support staff.
+GET /users/{user_id}/reservations
+- Returns reservations for the specified user.
+- Response schema: `List[Reservation]`
 
-PUT /users/{user_id} 
-    Updates a specific user's information.
-    Only the user themselves or an administrator should be allowed to update this information.
-
-GET /users/{user_id}/vehicles + 
-    Gets all vehicles of the currently logged-in user.
-
-GET /users/{user_id}/reservations 
-    Gets all reservations of the currently logged-in user.
-
-GET /users/{user_id}/charging-sessions
-    Gets all charging sessions of the currently logged-in user.
+GET /users/{user_id}/charging_sessions
+- Returns charging sessions for the specified user.
+- Response schema: `List[ChargingSession]`
 
 DELETE /users/{user_id}
-    Deletes a specific user.
-    This endpoint should be restricted to administrators.
+- Deletes a user by id.
 
+---
 
-VEHICLES
+## VEHICLES
 
-POST /vehicles +
-    Creates a new vehicle for the currently authenticated user.
-    The user_id should be taken from the authentication token.
+POST /vehicles
+- Creates a vehicle for the authenticated user.
+- Request schema: `VehicleCreate`
+  - `model: str`
+  - `plate: str`
+  - `max_charging_power: float`
+  - `battery_capacity: float`
+  - `connector_type: str`
+  - `current_type: str`
+- Response schema: `Vehicle`
+  - `id: int`
+  - `user_id: int`
+  - all `VehicleCreate` fields
 
-GET /vehicles +
-    Gets all vehicles.
-    This endpoint should be restricted to administrators.
+GET /vehicles
+- Returns all vehicles.
+- Response schema: `List[Vehicle]`
+- Admin-only
 
-GET /vehicles/{vehicle_id} +
-    Gets a specific vehicle by id.
-    The system should check whether the vehicle belongs to the logged-in user, unless the requester is an administrator.
+GET /vehicles/{vehicle_id}
+- Returns a vehicle by id.
+- Response schema: `Vehicle`
 
-PUT /vehicles/{vehicle_id} +
-    Updates a specific vehicle.
-    The system should check vehicle ownership before updating.
+GET /vehicles/{vehicle_id}/compatible-chargers
+- Returns chargers compatible with the vehicle.
+- Response schema: `List[Charger]`
 
-DELETE /vehicles/{vehicle_id} +
-    Deletes a specific vehicle.
-    The system should check vehicle ownership before deleting.
+PUT /vehicles/{vehicle_id}
+- Updates a vehicle.
+- Request schema: `VehicleCreate`
+- Response schema: `Vehicle`
 
-RESERVATIONS
+DELETE /vehicles/{vehicle_id}
+- Deletes a vehicle.
+
+---
+
+## RESERVATIONS
 
 POST /reservations
-    Creates a new reservation for the currently authenticated user.
-    The system should check charger availability, reservation rules, and double booking before creating the reservation.
+- Creates a reservation for the authenticated user.
+- Request schema: `ReservationCreate`
+  - `vehicle_id: int`
+  - `charger_id: int`
+  - `date: date`
+  - `start_time: time`
+  - `end_time: time`
+  - `status: str` (default: `PENDING`)
+- Response schema: `Reservation`
+  - `id: int`
+  - `user_id: int`
+  - all `ReservationCreate` fields
 
 GET /reservations
-    Gets all reservations.
-    This endpoint should be restricted to administrators or station managers.
+- Returns all reservations.
+- Response schema: `List[Reservation]`
+- Admin or station manager only
 
 GET /reservations/{reservation_id}
-    Gets a specific reservation by id.
-    The system should check whether the reservation belongs to the logged-in user, unless the requester is an administrator or authorized staff.
+- Returns a reservation by id.
+- Response schema: `Reservation`
 
 DELETE /reservations/{reservation_id}
-    Deletes a specific reservation.
-    In most cases, cancellation should be preferred instead of deletion, because reservation history may be needed later.
+- Deletes a reservation.
 
-------------------------------------------------------------------------------------------------------------------
-STATIONS
+---
+
+## STATIONS
 
 POST /stations
-    Creates a new charging station.
-    This endpoint should be restricted to station managers or administrators.
+- Creates a charging station.
+- Request schema: `StationCreate`
+  - `address: str`
+  - `company: str`
+  - `location: str`
+  - `status: str`
+- Response schema: `Station`
+  - `id: int`
+  - all `StationCreate` fields
 
 GET /stations
-    Gets all charging stations.
-
-GET /stations/{station_id}
-    Gets a specific charging station by id.
-
-PUT /stations/{station_id}
-    Updates a specific charging station.
-    This endpoint should be restricted to station managers or administrators.
-
-DELETE /stations/{station_id}
-    Deletes a specific charging station.
-    This endpoint should be restricted to administrators or authorized station managers.
+- Returns all stations.
+- Response schema: `List[Station]`
 
 GET /stations/nearby
-    Gets nearby charging stations based on user location.
+- Returns nearby stations by `location` query param.
+- Query params:
+  - `location: str`
+- Response schema: `List[Station]`
+
+GET /stations/{station_id}
+- Returns a station by id.
+- Response schema: `Station`
 
 GET /stations/{station_id}/chargers
-    Gets all chargers that belong to a specific charging station.
+- Returns chargers at a station.
+- Response schema: `List[Charger]`
 
+PUT /stations/{station_id}
+- Updates a station.
+- Request schema: `StationCreate`
+- Response schema: `Station`
 
-CHARGERS
+DELETE /stations/{station_id}
+- Deletes a station.
+
+---
+
+## CHARGERS
 
 POST /chargers
-    Creates a new charger for a charging station.
-    This endpoint should be restricted to station managers or administrators.
+- Creates a charger.
+- Request schema: `ChargerCreate`
+  - `station_id: int`
+  - `connector_type: ConnectorType`
+  - `current_type: CurrentType`
+  - `max_power: float`
+  - `price_per_kwh: float`
+  - `status: ChargerStatus`
+- Response schema: `Charger`
+  - `id: int`
+  - all `ChargerCreate` fields
 
 GET /chargers
-    Gets all chargers.
+- Returns all chargers.
+- Response schema: `List[Charger]`
 
 GET /chargers/{charger_id}
-    Gets a specific charger by id.
+- Returns a charger by id.
+- Response schema: `Charger`
 
-GET /chargers/{charger_id}/reservations?data=DD-MM-YYYY
-    Gets all reservations for a specific charger on a given date.
+GET /chargers/{charger_id}/reservations
+- Returns reservations for a charger on a date.
+- Query params:
+  - `date: DD-MM-YYYY`
+- Response schema: `List[Reservation]`
 
-GET /chargers/{charger_id}/availability?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
-    Gets available time slots for a specific charger between two dates.
+GET /chargers/{charger_id}/availability
+- Returns availability for a charger.
+- Query params:
+  - `start_date: YYYY-MM-DD`
+  - `end_date: YYYY-MM-DD`
 
 PUT /chargers/{charger_id}
-    Updates a specific charger's information.
+- Updates a charger.
+- Request schema: `ChargerCreate`
+- Response schema: `Charger`
 
 DELETE /chargers/{charger_id}
-    Deletes a specific charger.
+- Deletes a charger.
 
 PATCH /chargers/status/{charger_id}
-    Changes the status of charger.
+- Updates charger status.
+- Request schema: `ChargerStatusUpdate`
+  - `status: ChargerStatus`
 
+---
 
-CHARGING SESSIONS
+## CHARGING SESSIONS
 
 POST /charging-sessions/start
-    Starts a charging session for a valid reservation.
-    The system should check whether the reservation is active and whether the charger is available.
+- Starts a charging session.
+- Request schema: `ChargingSessionStartRequest`
+  - `reservation_id: int`
+- Response schema: `ChargingSession`
+  - `id: int`
+  - `reservation_id: int`
+  - `start_time: time`
+  - `end_time: Optional[time]`
+  - `consuming_power: float`
+  - `cost: float`
+  - `status: str`
 
 PATCH /charging-sessions/{session_id}/finish
-    Finishes a charging session.
-    The system should calculate consumed energy and total cost.
-
-GET /charging-sessions/{session_id}
-    Gets a specific charging session by id.
+- Finishes a charging session.
+- Request schema: `ChargingSessionFinishRequest`
+  - `end_time: Optional[time]`
+- Response schema: `ChargingSession`
 
 GET /charging-sessions
-    Gets all charging sessions.
-    This endpoint should be restricted to administrators or station managers.
+- Returns all charging sessions.
+- Response schema: `List[ChargingSession]`
+- Admin or station manager only
 
+GET /charging-sessions/{session_id}
+- Returns a charging session by id.
+- Response schema: `ChargingSession`
 
+---
 
+## COUPONS
+
+POST /coupons
+- Creates a coupon.
+- Request schema: `CouponCreate`
+  - `user_id: int`
+  - `code: str`
+  - `discount_type: str`
+  - `discount_value: float`
+  - `valid_from: datetime`
+  - `valid_until: datetime`
+  - `min_order_amount: float`
+  - `max_discount_amount: Optional[float]`
+  - `usage_limit: Optional[int]`
+  - `is_active: bool`
+- Response schema: `Coupon`
+  - `id: int`
+  - `used_count: int`
+  - all `CouponCreate` fields
+
+GET /coupons
+- Returns all coupons.
+- Response schema: `List[Coupon]`
+- Admin or station manager only
+
+GET /coupons/{coupon_id}
+- Returns a coupon by id.
+- Response schema: `Coupon`
+
+GET /coupons/my
+- Returns coupons for authenticated user.
+- Response schema: `List[Coupon]`
+
+GET /coupons/my/by-code/{code}
+- Returns current user coupon by code.
+- Response schema: `Coupon`
+
+GET /coupons/users/{user_id}
+- Returns coupons for a user.
+- Response schema: `List[Coupon]`
+
+GET /coupons/users/{user_id}/by-code/{code}
+- Returns a coupon by user and code.
+- Response schema: `Coupon`
+
+POST /coupons/preview
+- Previews coupon discount without consuming usage.
+- Request schema: `CouponApplyRequest`
+  - `code: str`
+  - `order_amount: float`
+- Response schema: `CouponApplyResult`
+  - `user_id: int`
+  - `code: str`
+  - `order_amount: float`
+  - `discount_amount: float`
+  - `final_amount: float`
+
+POST /coupons/apply
+- Applies a coupon and consumes usage.
+- Request schema: `CouponApplyRequest`
+- Response schema: `CouponApplyResult`
+
+DELETE /coupons/{coupon_id}
+- Deletes a coupon.
+
+---
+
+## PAYMENTS
+
+POST /payments
+- Creates a payment.
+- Request schema: `PaymentCreate`
+  - `user_id: int`
+  - `charging_session_id: int`
+  - `amount: float`
+  - `payment_method: str`
+  - `status: str`
+  - `transaction_id: Optional[str]`
+  - `description: Optional[str]`
+  - `coupon_id: Optional[int]`
+  - `original_amount: Optional[float]`
+- Response schema: `PaymentResponse`
+  - `id: int`
+  - `user_id: int`
+  - `charging_session_id: int`
+  - `amount: float`
+  - `payment_method: str`
+  - `status: str`
+  - `transaction_id: Optional[str]`
+  - `payment_date: Optional[datetime]`
+  - `description: Optional[str]`
+  - `coupon_id: Optional[int]`
+  - `original_amount: Optional[float]`
+
+GET /payments
+- Returns completed payments.
+- Response schema: `List[PaymentResponse]`
+- Admin/station manager only
+
+GET /payments/my
+- Returns authenticated user payments.
+- Response schema: `List[PaymentResponse]`
+
+GET /payments/status/{status}
+- Returns payments filtered by status.
+- Response schema: `List[PaymentResponse]`
+
+GET /payments/transaction/{transaction_id}
+- Returns payment by transaction id.
+- Response schema: `PaymentResponse`
+
+GET /payments/charging-session/{charging_session_id}
+- Returns payment for a charging session.
+- Response schema: `PaymentResponse`
+
+GET /payments/{payment_id}
+- Returns a payment by id.
+- Response schema: `PaymentResponse`
+
+PATCH /payments/{payment_id}
+- Updates payment fields.
+- Request schema: `PaymentUpdate`
+  - `amount: Optional[float]`
+  - `status: Optional[str]`
+  - `transaction_id: Optional[str]`
+  - `payment_date: Optional[datetime]`
+  - `description: Optional[str}`
+- Response schema: `PaymentResponse`
+
+POST /payments/{payment_id}/complete
+- Marks payment complete.
+- Response schema: `PaymentResponse`
+
+POST /payments/{payment_id}/fail
+- Marks payment failed.
+- Response schema: `PaymentResponse`
+
+POST /payments/{payment_id}/refund
+- Refunds a payment.
+- Response schema: `PaymentResponse`
+
+DELETE /payments/{payment_id}
+- Deletes a payment.
+
+---
+
+## NOTIFICATIONS
+
+POST /notifications
+- Creates a notification.
+- Request schema: `NotificationCreate`
+  - `user_id: int`
+  - `title: str`
+  - `message: str`
+  - `notification_type: str`
+- Response schema: `Notification`
+  - `id: int`
+  - `user_id: int`
+  - `title: str`
+  - `message: str`
+  - `notification_type: str`
+  - `is_read: bool`
+  - `created_at: datetime`
+
+GET /notifications
+- Returns notifications for authenticated user.
+- Optional query: `unread_only: bool`
+- Response schema: `List[Notification]`
+
+GET /notifications/all
+- Returns all notifications.
+- Response schema: `List[Notification]`
+- Admin only
+
+GET /notifications/{notification_id}
+- Returns a notification by id.
+- Response schema: `Notification`
+
+PATCH /notifications/{notification_id}/read
+- Marks a notification read.
+- Response schema: `Notification`
+
+DELETE /notifications/{notification_id}
+- Deletes a notification.

@@ -20,3 +20,7 @@ class AbstractRepository(ABC, Generic[T]):
     @abstractmethod
     def delete(self, entity: T) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    def update(self, entity: T) -> T:
+        raise NotImplementedError
