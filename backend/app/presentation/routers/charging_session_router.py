@@ -38,8 +38,29 @@ def start_session(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.patch("/{session_id}/finish", response_model=ChargingSession)
+@router.patch("/finish", response_model=ChargingSession)
 def finish_session(
+    request: Optional[ChargingSessionFinishRequest] = Body(default=None),
+    service: ChargingSessionService = Depends(get_charging_session_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    try:
+        return service.finish_session(
+            None,
+            current_user.id,
+            current_user.is_staff,
+            request.end_time if request else None,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/{session_id}/finish", response_model=ChargingSession)
+def finish_session_by_id(
     session_id: int,
     request: Optional[ChargingSessionFinishRequest] = Body(default=None),
     service: ChargingSessionService = Depends(get_charging_session_service),

@@ -1,11 +1,17 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from threading import Event, Thread
 from time import sleep
+
+from sqlalchemy.orm import joinedload
 
 from app.core.uow import SqlAlchemyUnitOfWork
 from app.domain.models.notification import NotificationEntity
 from app.infrastructure.database.database import SessionLocal
+from app.infrastructure.database.tables import (
+    ChargingSession as ChargingSessionModel,
+    Reservation as ReservationModel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +71,63 @@ def _find_upcoming_reservations() -> list:
         return uow.reservations.list_starting_between(start_window, end_window)
 
 
+def _calculate_consumed_energy(start_time, end_time, charging_power_kw: float) -> float:
+    start_datetime = datetime.combine(date.today(), start_time)
+    end_datetime = datetime.combine(date.today(), end_time)
+    duration_hours = (end_datetime - start_datetime).total_seconds() / 3600
+    return round(duration_hours * charging_power_kw, 3)
+
+
+def _finish_expired_charging_sessions() -> None:
+    now = datetime.now()
+    with SessionLocal() as db:
+        query = (
+            db.query(ChargingSessionModel)
+            .join(ReservationModel, ChargingSessionModel.reservation)
+            .options(
+                joinedload(ChargingSessionModel.reservation).joinedload(ReservationModel.vehicle),
+                joinedload(ChargingSessionModel.reservation).joinedload(ReservationModel.charger),
+            )
+            .filter(
+                ChargingSessionModel.status.in_(("STARTED", "IN_PROGRESS")),
+                ReservationModel.date == now.date(),
+                ReservationModel.end_time <= now.time(),
+                ReservationModel.status.in_(("PENDING", "CONFIRMED")),
+            )
+        )
+        sessions = query.all()
+
+        if not sessions:
+            return
+
+        for session_model in sessions:
+            reservation = session_model.reservation
+            if not reservation or session_model.end_time is not None:
+                continue
+
+            vehicle = reservation.vehicle
+            charger = reservation.charger
+            if not vehicle or not charger:
+                continue
+
+            charging_power_kw = min(vehicle.max_charging_power, charger.max_power)
+            session_model.end_time = reservation.end_time
+            session_model.consuming_power = _calculate_consumed_energy(
+                session_model.start_time,
+                reservation.end_time,
+                charging_power_kw,
+            )
+            session_model.cost = round(
+                session_model.consuming_power * charger.price_per_kwh,
+                2,
+            )
+            session_model.status = "COMPLETED"
+            reservation.status = "COMPLETED"
+            charger.status = "AVAILABLE"
+
+        db.commit()
+
+
 def _run_scheduler() -> None:
     logger.info("Starting reservation reminder scheduler")
     while not _scheduler_stop_event.is_set():
@@ -75,6 +138,8 @@ def _run_scheduler() -> None:
                     uow = SqlAlchemyUnitOfWork(db)
                     for reservation in reservations:
                         _create_reservation_reminder(uow, reservation)
+
+            _finish_expired_charging_sessions()
         except Exception as exc:
             logger.exception("Reservation reminder scheduler failed: %s", exc)
         _scheduler_stop_event.wait(SCHEDULER_LOOP_SECONDS)
