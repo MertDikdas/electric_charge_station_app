@@ -8,7 +8,7 @@ from app.domain.models.base import BaseEntity
 @dataclass
 class PaymentEntity(BaseEntity):
     user_id: int
-    charging_session_id: int
+    reservation_id: int
     amount: float
     payment_method: str
     status: str

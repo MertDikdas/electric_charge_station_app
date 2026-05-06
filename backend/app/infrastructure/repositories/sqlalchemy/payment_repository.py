@@ -18,7 +18,7 @@ class SqlAlchemyPaymentRepository(
         return PaymentModel(
             id=entity.id,
             user_id=entity.user_id,
-            charging_session_id=entity.charging_session_id,
+            reservation_id=entity.reservation_id,
             amount=entity.amount,
             payment_method=entity.payment_method,
             status=entity.status,
@@ -33,7 +33,7 @@ class SqlAlchemyPaymentRepository(
         return PaymentEntity(
             id=model.id,
             user_id=model.user_id,
-            charging_session_id=model.charging_session_id,
+            reservation_id=model.reservation_id,
             amount=model.amount,
             payment_method=model.payment_method,
             status=model.status,
@@ -52,10 +52,10 @@ class SqlAlchemyPaymentRepository(
         )
         return [self.to_entity(model) for model in models]
 
-    def get_by_charging_session_id(self, charging_session_id: int) -> Optional[PaymentEntity]:
+    def get_by_reservation_id(self, reservation_id: int) -> Optional[PaymentEntity]:
         model = (
             self.session.query(PaymentModel)
-            .filter(PaymentModel.charging_session_id == charging_session_id)
+            .filter(PaymentModel.reservation_id == reservation_id)
             .first()
         )
         if model is None:
@@ -95,7 +95,7 @@ class SqlAlchemyPaymentRepository(
             raise LookupError("Payment not found")
 
         model.user_id = payment.user_id
-        model.charging_session_id = payment.charging_session_id
+        model.reservation_id = payment.reservation_id
         model.amount = payment.amount
         model.payment_method = payment.payment_method
         model.status = payment.status

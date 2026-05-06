@@ -11,7 +11,7 @@ class AbstractPaymentRepository(AbstractRepository[PaymentEntity]):
         raise NotImplementedError
 
     @abstractmethod
-    def get_by_charging_session_id(self, charging_session_id: int) -> Optional[PaymentEntity]:
+    def get_by_reservation_id(self, charging_session_id: int) -> Optional[PaymentEntity]:
         raise NotImplementedError
 
     @abstractmethod

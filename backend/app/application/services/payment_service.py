@@ -3,31 +3,31 @@ from typing import List, Optional
 
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.payment import PaymentEntity
+from app.domain.rules.payment_rules import PaymentRules
 
 
 class PaymentService:
-    allowed_payment_methods = {"CREDIT_CARD", "DEBIT_CARD", "BANK_TRANSFER", "MOBILE_PAYMENT", "WALLET"}
-    allowed_payment_statuses = {"PENDING", "COMPLETED", "FAILED", "REFUNDED"}
 
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
+        self.rules = PaymentRules()
 
     def create_payment(self, payment: PaymentEntity) -> PaymentEntity:
         with self.uow:
-            self._validate_payment(payment)
+            self.rules.validate_new_payment(payment)
 
             if not self.uow.users.get(payment.user_id):
                 raise LookupError("User not found")
 
-            if not self.uow.charging_sessions.get(payment.charging_session_id):
-                raise LookupError("Charging session not found")
+            if not self.uow.reservations.get(payment.reservation_id):
+                raise LookupError("Reservation not found")
 
             if payment.coupon_id and not self.uow.coupons.get(payment.coupon_id):
                 raise LookupError("Coupon not found")
 
-            existing_payment = self.uow.payments.get_by_charging_session_id(payment.charging_session_id)
+            existing_payment = self.uow.payments.get_by_reservation_id(payment.reservation_id)
             if existing_payment:
-                raise ValueError("Payment already exists for this charging session")
+                raise ValueError("Payment already exists for this reservation")
 
             new_payment = self.uow.payments.add(payment)
             self.uow.commit()
@@ -49,15 +49,14 @@ class PaymentService:
 
     def get_payments_by_status(self, status: str) -> List[PaymentEntity]:
         with self.uow:
-            if status not in self.allowed_payment_statuses:
-                raise ValueError(f"Invalid payment status: {status}")
+            self.rules.validate_payment_status(status)
             return self.uow.payments.list_by_status(status)
 
-    def get_payment_for_charging_session(self, charging_session_id: int) -> Optional[PaymentEntity]:
+    def get_payment_for_reservation(self, reservation_id: int) -> Optional[PaymentEntity]:
         with self.uow:
-            if not self.uow.charging_sessions.get(charging_session_id):
-                raise LookupError("Charging session not found")
-            return self.uow.payments.get_by_charging_session_id(charging_session_id)
+            if not self.uow.reservations.get(reservation_id):
+                raise LookupError("Reservation not found")
+            return self.uow.payments.get_by_reservation_id(reservation_id)
 
     def update_payment(self, payment: PaymentEntity) -> PaymentEntity:
         with self.uow:
@@ -65,11 +64,7 @@ class PaymentService:
             if not existing:
                 raise LookupError("Payment not found")
 
-            if payment.status and payment.status not in self.allowed_payment_statuses:
-                raise ValueError(f"Invalid payment status: {payment.status}")
-
-            if payment.payment_method and payment.payment_method not in self.allowed_payment_methods:
-                raise ValueError(f"Invalid payment method: {payment.payment_method}")
+            self.rules.validate_payment_update(payment)
 
             updated_payment = self.uow.payments.update(payment)
             self.uow.commit()
@@ -109,8 +104,7 @@ class PaymentService:
             if not payment:
                 raise LookupError("Payment not found")
 
-            if payment.status not in {"COMPLETED", "PENDING"}:
-                raise ValueError(f"Cannot refund payment with status: {payment.status}")
+            self.rules.validate_refund(payment)
 
             payment.status = "REFUNDED"
             updated_payment = self.uow.payments.update(payment)
@@ -126,10 +120,3 @@ class PaymentService:
             self.uow.commit()
             return True
 
-    def _validate_payment(self, payment: PaymentEntity) -> None:
-        if payment.amount <= 0:
-            raise ValueError("Payment amount must be greater than 0")
-        if payment.payment_method not in self.allowed_payment_methods:
-            raise ValueError(f"Invalid payment method: {payment.payment_method}")
-        if payment.status not in self.allowed_payment_statuses:
-            raise ValueError(f"Invalid payment status: {payment.status}")

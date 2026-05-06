@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 class PaymentCreate(BaseModel):
     user_id: int
-    charging_session_id: int
+    reservation_id: int
     amount: float
     payment_method: str
     status: str = "PENDING"
@@ -32,7 +32,7 @@ class Payment(PaymentCreate):
 class PaymentResponse(BaseModel):
     id: int
     user_id: int
-    charging_session_id: int
+    reservation_id: int
     amount: float
     payment_method: str
     status: str
