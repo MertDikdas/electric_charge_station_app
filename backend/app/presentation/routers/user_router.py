@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.application.services.user_service import UserService
 from app.core.dependencies import get_user_service, get_current_user, AuthenticatedUser
 from app.domain.models.user import UserEntity
-from app.schemas.user import UserCreate, User
+from app.schemas.user import UserCreate, User, UserLogin, AuthResponse
 from app.schemas.vehicle import Vehicle
 from app.schemas.reservation import Reservation
 from app.schemas.charging_session import ChargingSession
@@ -27,7 +27,7 @@ def ensure_authenticated_user(
     if current_user.role.lower() != "admin" and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
-@router.post("/", response_model=User, status_code=201)
+@router.post("/", response_model=AuthResponse, status_code=201)
 def create_user(
     user: UserCreate,
     service: UserService = Depends(get_user_service),
@@ -45,6 +45,17 @@ def create_user(
         return service.create_user(user_entity)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/login", response_model=AuthResponse)
+def login_user(
+    login_data: UserLogin,
+    service: UserService = Depends(get_user_service),
+):
+    auth_response = service.login_user(login_data.mail, login_data.password)
+    if not auth_response:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return auth_response
 
 
 @router.get("/", response_model=List[User])

@@ -18,6 +18,21 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user")
     coupons = relationship("Coupon", back_populates="user")
     payments = relationship("Payment", back_populates="user")
+    sessions = relationship("UserSession", back_populates="user")
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token = Column(String, unique=True, index=True, nullable=False)
+    is_revoked = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+
+    user = relationship("User", back_populates="sessions")
+
 
 class Vehicle(Base):
     __tablename__ = "vehicles"

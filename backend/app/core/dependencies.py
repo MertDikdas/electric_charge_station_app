@@ -1,7 +1,10 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.application.services.charger_service import ChargerService
@@ -13,8 +16,14 @@ from app.application.services.reservation_service import ReservationService
 from app.application.services.station_service import StationService
 from app.application.services.user_service import UserService
 from app.application.services.vehicle_service import VehicleService
+from app.core.security import ALGORITHM, SECRET_KEY
 from app.core.uow import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from app.infrastructure.database.database import get_db
+from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
+    SqlAlchemyUserSessionRepository,
+)
+
+security = HTTPBearer(auto_error=False)
 
 
 @dataclass
@@ -28,12 +37,36 @@ class AuthenticatedUser:
 
 
 def get_current_user(
-    x_user_id: Optional[int] = Header(default=None),
-    x_user_role: str = Header(default="user"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    x_user_role: str = Header(default="user", alias="x-user-role"),
+    db: Session = Depends(get_db),
 ) -> AuthenticatedUser:
-    if x_user_id is None:
+    if credentials is None:
         raise HTTPException(status_code=401, detail="Authentication required")
-    return AuthenticatedUser(id=x_user_id, role=x_user_role)
+
+    if credentials.scheme.lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Invalid authentication header")
+
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    try:
+        token_user_id = int(payload.get("user_id"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    session = SqlAlchemyUserSessionRepository(db).get_by_token(token)
+    if session is None or session.is_revoked or session.expires_at <= datetime.utcnow():
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    if session.user_id != token_user_id:
+        raise HTTPException(status_code=401, detail="Token does not match session")
+
+    return AuthenticatedUser(id=session.user_id, role=x_user_role)
 
 
 def get_admin_or_station_manager(

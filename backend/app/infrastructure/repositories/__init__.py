@@ -8,6 +8,7 @@ from app.infrastructure.repositories.abstract import (
     AbstractReservationRepository,
     AbstractStationRepository,
     AbstractUserRepository,
+    AbstractUserSessionRepository,
     AbstractVehicleRepository,
 )
 from app.infrastructure.repositories.sqlalchemy import (
@@ -20,6 +21,7 @@ from app.infrastructure.repositories.sqlalchemy import (
     SqlAlchemyReservationRepository,
     SqlAlchemyStationRepository,
     SqlAlchemyUserRepository,
+    SqlAlchemyUserSessionRepository,
     SqlAlchemyVehicleRepository,
 )
 
@@ -33,6 +35,7 @@ __all__ = [
     "AbstractReservationRepository",
     "AbstractStationRepository",
     "AbstractUserRepository",
+    "AbstractUserSessionRepository",
     "AbstractVehicleRepository",
     "SqlAlchemyChargerRepository",
     "SqlAlchemyChargingSessionRepository",
@@ -43,5 +46,6 @@ __all__ = [
     "SqlAlchemyReservationRepository",
     "SqlAlchemyStationRepository",
     "SqlAlchemyUserRepository",
+    "SqlAlchemyUserSessionRepository",
     "SqlAlchemyVehicleRepository",
 ]

@@ -15,3 +15,15 @@ class User(UserBase):
     
     class Config:
         from_attributes = True
+
+class UserLogin(BaseModel):
+    mail: str
+    password: str
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: User
+
+    class Config:
+        from_attributes = True

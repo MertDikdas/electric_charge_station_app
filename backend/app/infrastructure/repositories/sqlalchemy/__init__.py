@@ -21,6 +21,9 @@ from app.infrastructure.repositories.sqlalchemy.station_repository import (
     SqlAlchemyStationRepository,
 )
 from app.infrastructure.repositories.sqlalchemy.user_repository import SqlAlchemyUserRepository
+from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
+    SqlAlchemyUserSessionRepository,
+)
 from app.infrastructure.repositories.sqlalchemy.vehicle_repository import (
     SqlAlchemyVehicleRepository,
 )
@@ -35,5 +38,6 @@ __all__ = [
     "SqlAlchemyReservationRepository",
     "SqlAlchemyStationRepository",
     "SqlAlchemyUserRepository",
+    "SqlAlchemyUserSessionRepository",
     "SqlAlchemyVehicleRepository",
 ]
