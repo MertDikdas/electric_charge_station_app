@@ -6,7 +6,6 @@ from app.domain.models.reservation import ReservationEntity
 from app.domain.rules.reservation_rules import (
     ensure_reservation_not_in_past,
     ensure_reservation_not_too_far_in_future,
-    validate_reservation,
     validate_reservation_conflicts,
     validate_reservation_duration,
     validate_reservation_time,
@@ -84,6 +83,13 @@ class ReservationService:
             raise ValueError(
                 "User has 3 or more expired or cancelled reservations in the last 2 months and cannot make a new reservation"
             )
+
+        same_day_reservations = self.uow.reservations.list_by_user_and_date(
+            reservation.user_id,
+            reservation.date,
+        )
+        if same_day_reservations:
+            raise ValueError("User may only create one reservation per day")
 
         vehicle = self.uow.vehicles.get(reservation.vehicle_id)
         if not vehicle:
