@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,8 @@ from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
     SqlAlchemyUserSessionRepository,
 )
 
+security = HTTPBearer(auto_error=False)
+
 
 @dataclass
 class AuthenticatedUser:
@@ -31,24 +34,26 @@ class AuthenticatedUser:
 
 
 def get_current_user(
-    authorization: Optional[str] = Header(default=None),
-    x_user_role: str = Header(default="user"),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    x_user_role: str = Header(default="user", alias="x-user-role"),
     db: Session = Depends(get_db),
 ) -> AuthenticatedUser:
-    if not authorization:
+    if credentials is None:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
+    if credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Invalid authentication header")
+
+    token = credentials.credentials
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    token_user_id = payload.get("user_id")
-    if token_user_id is None:
+    try:
+        token_user_id = int(payload.get("user_id"))
+    except (TypeError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
     session = SqlAlchemyUserSessionRepository(db).get_by_token(token)
