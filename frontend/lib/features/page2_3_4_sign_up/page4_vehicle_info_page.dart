@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/main_navigation_shell.dart';
+import '../../data/models/vehicle.dart';
+import '../../data/services/auth_service.dart';
+import '../../data/services/vehicle_service.dart';
 
 class VehicleInfoPage extends StatefulWidget {
   const VehicleInfoPage({
@@ -9,11 +12,13 @@ class VehicleInfoPage extends StatefulWidget {
     required this.phoneNumber,
     required this.fullName,
     required this.email,
+    required this.password,
   });
 
   final String phoneNumber;
   final String fullName;
   final String email;
+  final String password;
 
   @override
   State<VehicleInfoPage> createState() => _VehicleInfoPageState();
@@ -26,6 +31,10 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
   final _plateController = TextEditingController();
   final _chargingPowerController = TextEditingController();
   final List<_VehicleInfo> _vehicles = [];
+  final _authService = AuthService();
+  final _vehicleService = VehicleService();
+
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -101,35 +110,61 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     _finishSignup(skippedVehicleInfo: false);
   }
 
-  void _finishSignup({required bool skippedVehicleInfo}) {
-    debugPrint('Signup completed');
-    debugPrint('Phone: ${widget.phoneNumber}');
-    debugPrint('Full name: ${widget.fullName}');
-    debugPrint('Email: ${widget.email}');
-    debugPrint('Vehicle info skipped: $skippedVehicleInfo');
-    debugPrint('Vehicle count: ${_vehicles.length}');
+  Future<void> _finishSignup({required bool skippedVehicleInfo}) async {
+    setState(() {
+      _isSubmitting = true;
+    });
 
-    for (final (index, vehicle) in _vehicles.indexed) {
-      debugPrint(
-        'Vehicle ${index + 1}: ${vehicle.brand} ${vehicle.model}, '
-        '${vehicle.licensePlate}, ${vehicle.chargingPower} kW',
+    try {
+      final user = await _authService.register(
+        fullName: widget.fullName,
+        mail: widget.email,
+        password: widget.password,
       );
-    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          skippedVehicleInfo
-              ? 'Signup completed without vehicle info'
-              : 'Signup completed',
+      if (!skippedVehicleInfo) {
+        for (final vehicle in _vehicles) {
+          await _vehicleService.createVehicle(
+            VehicleInput(
+              userId: user.id,
+              model: '${vehicle.brand} ${vehicle.model}'.trim(),
+              plate: vehicle.licensePlate,
+              maxChargingPower: double.parse(vehicle.chargingPower),
+              batteryCapacity: double.parse(vehicle.chargingPower),
+              connectorType: 'Type 2',
+              currentType: 'AC',
+            ),
+          );
+        }
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            skippedVehicleInfo
+                ? 'Uyelik arac bilgisi olmadan tamamlandi'
+                : 'Uyelik ve arac bilgileri kaydedildi',
+          ),
         ),
-      ),
-    );
+      );
 
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
-      (route) => false,
-    );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -282,13 +317,12 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                     const SizedBox(height: 14),
                     _GradientButton(
                       label: 'Complete Signup',
-                      onPressed: _completeSignup,
+                      onPressed: _isSubmitting ? null : _completeSignup,
                     ),
                     const SizedBox(height: 8),
                     TextButton(
-                      onPressed: () => _finishSignup(
-                        skippedVehicleInfo: _vehicles.isEmpty,
-                      ),
+                      onPressed: () =>
+                          _finishSignup(skippedVehicleInfo: _vehicles.isEmpty),
                       child: Text(
                         _vehicles.isEmpty
                             ? 'Skip for Now'
@@ -373,7 +407,9 @@ InputDecoration _inputDecoration(
     contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.55)),
+      borderSide: BorderSide(
+        color: colorScheme.outline.withValues(alpha: 0.55),
+      ),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -412,7 +448,7 @@ class _GradientButton extends StatelessWidget {
   const _GradientButton({required this.label, required this.onPressed});
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -437,10 +473,12 @@ class _GradientButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           foregroundColor: const Color(0xFF18305F),
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
+          textStyle: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         child: Text(label),
       ),

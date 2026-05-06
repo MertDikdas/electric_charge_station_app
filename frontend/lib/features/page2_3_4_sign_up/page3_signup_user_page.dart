@@ -41,6 +41,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
           phoneNumber: widget.phoneNumber,
           fullName: _fullNameController.text.trim(),
           email: _emailController.text.trim(),
+          password: _passwordController.text,
         ),
       ),
     );
