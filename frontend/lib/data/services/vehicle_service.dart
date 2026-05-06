@@ -1,4 +1,5 @@
 import '../api/api_client.dart';
+import '../models/charger.dart';
 import '../models/vehicle.dart';
 import 'json_helpers.dart';
 
@@ -21,6 +22,13 @@ class VehicleService {
   Future<Vehicle> getVehicle(int vehicleId) async {
     return Vehicle.fromJson(
       parseObject(await _apiClient.get('/vehicles/$vehicleId')),
+    );
+  }
+
+  Future<List<Charger>> getCompatibleChargers(int vehicleId) async {
+    return parseList(
+      await _apiClient.get('/vehicles/$vehicleId/compatible-chargers'),
+      Charger.fromJson,
     );
   }
 

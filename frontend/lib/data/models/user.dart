@@ -30,7 +30,7 @@ class AppUser {
     final json = {
       'name': name,
       'surname': surname,
-      'mail': mail,
+      'email': mail,
       'balance': balance,
     };
     if (password != null) {

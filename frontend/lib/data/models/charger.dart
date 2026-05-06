@@ -4,6 +4,8 @@ class Charger {
     required this.stationId,
     required this.connectorType,
     required this.currentType,
+    this.maxPower = 0,
+    this.pricePerKwh = 0,
     required this.status,
   });
 
@@ -11,6 +13,8 @@ class Charger {
   final int stationId;
   final String connectorType;
   final String currentType;
+  final double maxPower;
+  final double pricePerKwh;
   final String status;
 
   factory Charger.fromJson(Map<String, dynamic> json) {
@@ -21,6 +25,8 @@ class Charger {
           .toString(),
       currentType: (json['current_type'] ?? json['currentType'] ?? '')
           .toString(),
+      maxPower: _asDouble(json['max_power'] ?? json['maxPower']),
+      pricePerKwh: _asDouble(json['price_per_kwh'] ?? json['pricePerKwh']),
       status: (json['status'] ?? '').toString(),
     );
   }
@@ -30,6 +36,8 @@ class Charger {
       'station_id': stationId,
       'connector_type': connectorType,
       'current_type': currentType,
+      'max_power': maxPower,
+      'price_per_kwh': pricePerKwh,
       'status': status,
     };
   }
@@ -38,5 +46,11 @@ class Charger {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static double _asDouble(Object? value) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 }

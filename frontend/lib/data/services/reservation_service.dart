@@ -30,4 +30,18 @@ class ReservationService {
   Future<void> deleteReservation(int reservationId) {
     return _apiClient.delete('/reservations/$reservationId');
   }
+
+  Future<Reservation> updateReservationStatus(
+    int reservationId,
+    String status,
+  ) async {
+    return Reservation.fromJson(
+      parseObject(
+        await _apiClient.patch(
+          '/reservations/$reservationId/status',
+          body: {'status': status},
+        ),
+      ),
+    );
+  }
 }

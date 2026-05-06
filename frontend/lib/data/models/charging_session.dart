@@ -24,9 +24,11 @@ class ChargingSession {
       startTime: (json['start_time'] ?? json['startTime'] ?? '').toString(),
       endTime: (json['end_time'] ?? json['endTime'] ?? '').toString(),
       consumedEnergy: _asDouble(
-        json['consumed_energy'] ?? json['consumedEnergy'],
+        json['consuming_power'] ??
+            json['consumed_energy'] ??
+            json['consumedEnergy'],
       ),
-      totalCost: _asDouble(json['total_cost'] ?? json['totalCost']),
+      totalCost: _asDouble(json['cost'] ?? json['total_cost'] ?? json['totalCost']),
       status: (json['status'] ?? '').toString(),
     );
   }

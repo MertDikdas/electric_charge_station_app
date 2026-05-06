@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _identifierController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    hintText: 'Telefon veya e-posta',
+                    hintText: 'E-mail',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
                 ),
@@ -124,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    hintText: 'Parola',
+                    hintText: 'Password',
                     prefixIcon: Icon(Icons.lock_outline),
                     suffixIcon: Icon(Icons.visibility_outlined),
                   ),
@@ -142,13 +142,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        'Beni Hat\u0131rla',
+                        'Beni Hat\u0131rla(deneme)',
                         style: textTheme.bodyMedium,
                       ),
                     ),
                     TextButton(
                       onPressed: () {},
-                      child: const Text('\u015eifremi Unuttum'),
+                      child: const Text('\u015eifremi Unuttum(deneme)'),
                     ),
                   ],
                 ),
@@ -167,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           foregroundColor: const Color.fromARGB(255, 35, 8, 93),
                         ),
-                        child: const Text('\u00dcye Ol'),
+                        child: const Text('Sign Up'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -190,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text('Giri\u015f Yap'),
+                            : const Text('Login'),
                       ),
                     ),
                   ],

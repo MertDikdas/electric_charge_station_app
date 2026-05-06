@@ -12,12 +12,22 @@ class ChargingSessionService {
     return ChargingSession.fromJson(
       parseObject(
         await _apiClient.post(
-          '/charging-sessions/',
-          body: {
-            'reservation_id': reservationId,
-            'start_time': _formatTime(DateTime.now()),
-            'status': 'active',
-          },
+          '/charging-sessions/start',
+          body: {'reservation_id': reservationId},
+        ),
+      ),
+    );
+  }
+
+  Future<ChargingSession> finishSession({
+    required int sessionId,
+    String? endTime,
+  }) async {
+    return ChargingSession.fromJson(
+      parseObject(
+        await _apiClient.patch(
+          '/charging-sessions/$sessionId/finish',
+          body: {'end_time': endTime},
         ),
       ),
     );
@@ -30,8 +40,9 @@ class ChargingSessionService {
     );
   }
 
-  String _formatTime(DateTime value) {
-    String pad(int component) => component.toString().padLeft(2, '0');
-    return '${pad(value.hour)}:${pad(value.minute)}:${pad(value.second)}';
+  Future<ChargingSession> getSession(int sessionId) async {
+    return ChargingSession.fromJson(
+      parseObject(await _apiClient.get('/charging-sessions/$sessionId')),
+    );
   }
 }

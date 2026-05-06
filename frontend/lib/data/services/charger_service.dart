@@ -23,4 +23,39 @@ class ChargerService {
       parseObject(await _apiClient.get('/chargers/$chargerId')),
     );
   }
+
+  Future<Charger> updateCharger(int chargerId, Charger charger) async {
+    return Charger.fromJson(
+      parseObject(
+        await _apiClient.put('/chargers/$chargerId', body: charger.toJson()),
+      ),
+    );
+  }
+
+  Future<void> deleteCharger(int chargerId) {
+    return _apiClient.delete('/chargers/$chargerId');
+  }
+
+  Future<Charger> updateChargerStatus(int chargerId, String status) async {
+    return Charger.fromJson(
+      parseObject(
+        await _apiClient.patch(
+          '/chargers/status/$chargerId',
+          body: {'status': status},
+        ),
+      ),
+    );
+  }
+
+  Future<List<dynamic>> getChargerAvailability({
+    required int chargerId,
+    required String startDate,
+    required String endDate,
+  }) async {
+    final json = await _apiClient.get(
+      '/chargers/$chargerId/availability',
+      queryParameters: {'start_date': startDate, 'end_date': endDate},
+    );
+    return json is List ? json : const [];
+  }
 }

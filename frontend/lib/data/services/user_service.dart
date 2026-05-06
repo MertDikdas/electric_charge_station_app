@@ -22,13 +22,13 @@ class UserService {
         body: {
           'name': name,
           'surname': surname,
-          'mail': mail,
+          'email': mail,
           'balance': 0.0,
           'password': password,
         },
       ),
     );
-    return AppUser.fromJson(json);
+    return AppUser.fromJson(parseObject(json['user']));
   }
 
   Future<List<AppUser>> getUsers() async {

@@ -26,12 +26,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return _userService.getUser(userId);
   }
 
+  Future<void> _logout() async {
+    await _tokenStorage.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: const AppAppBar(title: 'Profil'),
+      appBar: AppAppBar(
+        title: 'Profile',
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Logout',
+          ),
+        ],
+      ),
       body: SafeArea(
         child: FutureBuilder<AppUser?>(
           future: _userFuture,
