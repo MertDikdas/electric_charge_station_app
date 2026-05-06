@@ -1,30 +1,32 @@
-from app.core.uow import AbstractUnitOfWork
-from app.domain.models.user import UserEntity
 from typing import List, Optional
+
+from app.core.uow import AbstractUnitOfWork
+from app.domain.models.auth_response import AuthResponseEntity
+from app.domain.models.user import UserEntity
 from app.core.security import verify_password, create_access_token
 
 class UserService:
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
 
-    def create_user(self, user: UserEntity) -> dict:
+    def create_user(self, user: UserEntity) -> AuthResponseEntity:
         with self.uow:
             new_user = self.uow.users.add(user)
             self.uow.commit()
 
             access_token = create_access_token(data={"sub": new_user.mail, "user_id": new_user.id}) 
-            
-            return {"access_token": access_token, "token_type": "bearer", "user": new_user}
+
+            return AuthResponseEntity(access_token=access_token, user=new_user)
         
-    def login_user(self, mail: str, password: str) -> Optional[dict]:
+    def login_user(self, mail: str, password: str) -> Optional[AuthResponseEntity]:
         with self.uow:
-            user = self.uow.users.get_by_mail(mail)
+            user = self.uow.users.get_by_email(mail)
             if not user or not verify_password(password, user.password_hash):
                 return None
 
             access_token = create_access_token(data = {"sub": user.mail, "user_id": user.id})
 
-            return {"access_token": access_token, "token_type": "bearer", "user": user}
+            return AuthResponseEntity(access_token=access_token, user=user)
 
 
     def get_all_users(self) -> List[UserEntity]:
