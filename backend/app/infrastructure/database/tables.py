@@ -20,10 +20,10 @@ class User(Base):
 class UserSession(Base):
     __tablename__ = "user_sessions"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     token = Column(String, unique=True, index=True, nullable=False)
-    is_revoked = Column(Boolean, default=False)
+    is_revoked = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False)
     expires_at = Column(DateTime, nullable=False)
 
