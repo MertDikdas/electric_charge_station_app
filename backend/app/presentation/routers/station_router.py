@@ -40,6 +40,16 @@ def get_nearby_stations(
 ):
     return service.get_nearby_stations(latitude, longitude)
 
+@router.get("/nearby/area", response_model=List[Station])
+def get_nearby_stations_in_area(
+    north_latitude: float = Query(..., ge=-90, le=90),
+    south_latitude: float = Query(..., ge=-90, le=90),
+    east_longitude: float = Query(..., ge=-180, le=180),
+    west_longitude: float = Query(..., ge=-180, le=180),
+    radius: float = Query(..., gt=0),
+    service: StationService = Depends(get_station_service),
+):
+    return service.get_nearby_stations_in_area(north_latitude, south_latitude, east_longitude, west_longitude, radius)
 
 @router.get("/{station_id}/chargers", response_model=List[Charger])
 def get_station_chargers(

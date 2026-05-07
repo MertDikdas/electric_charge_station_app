@@ -59,3 +59,12 @@ class SqlAlchemyStationRepository(
             model.latitude = station.latitude
             model.longitude = station.longitude
             model.status = station.status.upper()
+
+    def list_nearby_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float, radius: float) -> List[StationEntity]:
+        models = (
+            self.session.query(StationModel)
+            .filter(StationModel.latitude >= south_latitude, StationModel.latitude <= north_latitude)
+            .filter(StationModel.longitude >= west_longitude, StationModel.longitude <= east_longitude)
+            .all()
+        )
+        return [self.to_entity(model) for model in models]
