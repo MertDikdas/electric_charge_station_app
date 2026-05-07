@@ -32,48 +32,47 @@ class UserService {
   }
 
   Future<List<AppUser>> getUsers() async {
-    return parseList(await _apiClient.get('/users/'), AppUser.fromJson);
+    return parseList(await _apiClient.get('/users/all'), AppUser.fromJson);
   }
 
   Future<AppUser> getUser(int userId) async {
-    return AppUser.fromJson(
-      parseObject(await _apiClient.get('/users/$userId')),
-    );
+    return AppUser.fromJson(parseObject(await _apiClient.get('/users/me')));
   }
 
-  Future<AppUser> updateUser(
-    int userId,
-    AppUser user, {
-    String? password,
-  }) async {
-    return AppUser.fromJson(
-      parseObject(
-        await _apiClient.put(
-          '/users/$userId',
-          body: user.toJson(password: password),
-        ),
-      ),
-    );
+  Future<AppUser> getCurrentUser() async {
+    return AppUser.fromJson(parseObject(await _apiClient.get('/users/me')));
+  }
+
+  Future<AppUser> updateUser(int userId, AppUser user, {String? password}) {
+    throw UnsupportedError('User update endpoint is not available.');
   }
 
   Future<List<Vehicle>> getUserVehicles(int userId) async {
-    return parseList(
-      await _apiClient.get('/users/$userId/vehicles'),
-      Vehicle.fromJson,
-    );
+    return parseList(await _apiClient.get('/vehicles/my'), Vehicle.fromJson);
   }
 
   Future<List<Reservation>> getUserReservations(int userId) async {
     return parseList(
-      await _apiClient.get('/users/$userId/reservations'),
+      await _apiClient.get('/reservations/my'),
       Reservation.fromJson,
     );
   }
 
   Future<List<ChargingSession>> getUserChargingSessions(int userId) async {
     return parseList(
-      await _apiClient.get('/users/$userId/charging_sessions'),
+      await _apiClient.get('/charging-sessions/my'),
       ChargingSession.fromJson,
+    );
+  }
+
+  Future<AppUser> addBalance(double amount) async {
+    return AppUser.fromJson(
+      parseObject(
+        await _apiClient.patch(
+          '/users/add_balance/me',
+          queryParameters: {'amount': amount.toString()},
+        ),
+      ),
     );
   }
 

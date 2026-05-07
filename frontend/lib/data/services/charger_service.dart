@@ -15,7 +15,7 @@ class ChargerService {
   }
 
   Future<List<Charger>> getChargers() async {
-    return parseList(await _apiClient.get('/chargers/'), Charger.fromJson);
+    return parseList(await _apiClient.get('/chargers/all'), Charger.fromJson);
   }
 
   Future<Charger> getCharger(int chargerId) async {

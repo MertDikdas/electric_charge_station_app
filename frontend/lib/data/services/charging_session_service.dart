@@ -35,7 +35,21 @@ class ChargingSessionService {
 
   Future<List<ChargingSession>> getSessions() async {
     return parseList(
-      await _apiClient.get('/charging-sessions/'),
+      await _apiClient.get('/charging-sessions/my'),
+      ChargingSession.fromJson,
+    );
+  }
+
+  Future<List<ChargingSession>> getAllSessions() async {
+    return parseList(
+      await _apiClient.get('/charging-sessions/all'),
+      ChargingSession.fromJson,
+    );
+  }
+
+  Future<List<ChargingSession>> getActiveSessions() async {
+    return parseList(
+      await _apiClient.get('/charging-sessions/my/active'),
       ChargingSession.fromJson,
     );
   }

@@ -14,7 +14,7 @@ class CouponService {
   }
 
   Future<List<Coupon>> getCoupons() async {
-    return parseList(await _apiClient.get('/coupons'), Coupon.fromJson);
+    return parseList(await _apiClient.get('/coupons/all'), Coupon.fromJson);
   }
 
   Future<Coupon> getCoupon(int couponId) async {

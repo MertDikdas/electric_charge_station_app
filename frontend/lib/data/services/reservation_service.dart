@@ -16,19 +16,26 @@ class ReservationService {
 
   Future<List<Reservation>> getReservations() async {
     return parseList(
-      await _apiClient.get('/reservations'),
+      await _apiClient.get('/reservations/my'),
+      Reservation.fromJson,
+    );
+  }
+
+  Future<List<Reservation>> getAllReservations() async {
+    return parseList(
+      await _apiClient.get('/reservations/all'),
       Reservation.fromJson,
     );
   }
 
   Future<Reservation> getReservation(int reservationId) async {
     return Reservation.fromJson(
-      parseObject(await _apiClient.get('/reservations/$reservationId')),
+      parseObject(await _apiClient.get('/reservations/my/$reservationId')),
     );
   }
 
   Future<void> deleteReservation(int reservationId) {
-    return _apiClient.delete('/reservations/$reservationId');
+    return _apiClient.delete('/reservations/my/$reservationId');
   }
 
   Future<Reservation> updateReservationStatus(
@@ -38,7 +45,7 @@ class ReservationService {
     return Reservation.fromJson(
       parseObject(
         await _apiClient.patch(
-          '/reservations/$reservationId/status',
+          '/reservations/my/$reservationId/status',
           body: {'status': status},
         ),
       ),

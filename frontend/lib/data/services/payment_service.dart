@@ -3,7 +3,8 @@ import '../models/payment.dart';
 import 'json_helpers.dart';
 
 class PaymentService {
-  PaymentService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  PaymentService({ApiClient? apiClient})
+    : _apiClient = apiClient ?? ApiClient();
 
   final ApiClient _apiClient;
 
