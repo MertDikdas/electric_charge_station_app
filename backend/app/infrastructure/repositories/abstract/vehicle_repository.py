@@ -13,3 +13,7 @@ class AbstractVehicleRepository(AbstractRepository[VehicleEntity]):
     @abstractmethod
     def update(self, vehicle: VehicleEntity) -> None:
         raise NotImplementedError
+    
+    @abstractmethod
+    def get_by_id(self, vehicle_id: int) -> VehicleEntity | None:
+        raise NotImplementedError

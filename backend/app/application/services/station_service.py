@@ -43,11 +43,11 @@ class StationService:
             if vehicle.user_id != current_user_id:
                 raise PermissionError("You can only search with your own vehicle")
 
-            stations = self.uow.stations.list_in_area(
-                north=north_latitude,
-                south=south_latitude,
-                east=east_longitude,
-                west=west_longitude,
+            stations = self.uow.stations.list_nearby_in_area(
+                north_latitude=north_latitude,
+                south_latitude=south_latitude,
+                east_longitude=east_longitude,
+                west_longitude=west_longitude,
             )
 
             result = []
@@ -71,7 +71,7 @@ class StationService:
 
                 result.append({
                     "id": station.id,
-                    "name": station.name,
+                    "company": station.company,
                     "address": station.address,
                     "latitude": station.latitude,
                     "longitude": station.longitude,
@@ -87,9 +87,10 @@ class StationService:
             return result
         
     def _calculate_station_availability(self, compatible_chargers) -> str:
+        print(compatible_chargers)
         if not compatible_chargers:
             return "UNAVAILABLE"
-
+        
         if any(charger.status == "AVAILABLE" for charger in compatible_chargers):
             return "AVAILABLE"
 

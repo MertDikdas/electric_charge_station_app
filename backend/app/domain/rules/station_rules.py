@@ -42,3 +42,25 @@ def validate_station_entity(station: StationEntity) -> None:
     validate_station_status(station.status)
     validate_station_address(station.address)
     validate_station_location(station.latitude, station.longitude)
+
+def calculate_station_availability_by_compatible_chargers(compatible_chargers) -> str:
+    if not compatible_chargers:
+        return "UNAVAILABLE"
+
+    available_count = sum(
+        1 for charger in compatible_chargers
+        if charger.status == "AVAILABLE"
+    )
+
+    if available_count > 0:
+        return "AVAILABLE"
+
+    active_count = sum(
+        1 for charger in compatible_chargers
+        if charger.status in {"AVAILABLE", "OCCUPIED"}
+    )
+
+    if active_count > 0:
+        return "FULL"
+
+    return "OUT_OF_SERVICE"

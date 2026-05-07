@@ -1,13 +1,14 @@
 from typing import List
 
 from math import cos, radians
-from app.utils.geo import calculate_distance
 from app.domain.models.station import StationEntity
 from app.infrastructure.database.tables import Station as StationModel
 from app.infrastructure.repositories.abstract.station_repository import (
     AbstractStationRepository,
 )
 from app.infrastructure.repositories.sqlalchemy.base import SqlAlchemyRepository
+from app.domain.models.charger import ChargerEntity
+from sqlalchemy.orm import joinedload
 
 
 class SqlAlchemyStationRepository(
@@ -24,6 +25,7 @@ class SqlAlchemyStationRepository(
             latitude=entity.latitude,
             longitude=entity.longitude,
             status=entity.status.upper(),
+
         )
 
     def to_entity(self, model: StationModel) -> StationEntity:
@@ -34,6 +36,19 @@ class SqlAlchemyStationRepository(
             latitude=model.latitude,
             longitude=model.longitude,
             status=model.status,
+            chargers=[
+                ChargerEntity(
+                    id=charger.id,
+                    station_id=charger.station_id,
+                    connector_type=charger.connector_type,
+                    current_type=charger.current_type,
+                    max_power=charger.max_power,
+                    price_per_kwh=charger.price_per_kwh,
+                    status=charger.status,
+                )
+                for charger in model.chargers
+            ],
+
         )
 
     def list_by_status(self, status: str) -> List[StationEntity]:
@@ -69,9 +84,10 @@ class SqlAlchemyStationRepository(
             model.longitude = station.longitude
             model.status = station.status.upper()
 
-    def list_nearby_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float, radius: float) -> List[StationEntity]:
+    def list_nearby_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float) -> List[StationEntity]:
         models = (
             self.session.query(StationModel)
+            .options(joinedload(StationModel.chargers))
             .filter(StationModel.latitude >= south_latitude, StationModel.latitude <= north_latitude)
             .filter(StationModel.longitude >= west_longitude, StationModel.longitude <= east_longitude)
             .all()

@@ -8,6 +8,7 @@ from app.domain.models.station import StationEntity
 from app.schemas.charger import Charger
 from app.schemas.station import StationCreate, Station
 from app.domain.rules.station_rules import validate_station_entity
+from typing import Dict, Any
 
 router = APIRouter()
 
@@ -52,7 +53,7 @@ def get_nearby_stations_in_area(
 ):
     return service.get_nearby_stations_in_area(north_latitude, south_latitude, east_longitude, west_longitude, radius)
 
-@router.get("/search-compatible-in-area", response_model=List[Station])
+@router.get("/search-compatible-in-area", response_model=List[Dict[str, Any]])
 def get_nearby_compatible_stations(
     north_latitude: float = Query(..., ge=-90, le=90),
     south_latitude: float = Query(..., ge=-90, le=90),
