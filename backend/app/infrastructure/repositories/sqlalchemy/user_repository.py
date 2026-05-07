@@ -17,6 +17,7 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository[UserEntity, UserModel], Abst
             email=entity.email,
             password_hash=entity.password_hash,
             balance=entity.balance,
+            role=entity.role,
         )
 
     def to_entity(self, model: UserModel) -> UserEntity:
@@ -27,6 +28,7 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository[UserEntity, UserModel], Abst
             email=model.email,
             balance=model.balance,
             password_hash=model.password_hash,
+            role=model.role,
         )
 
     def get_by_email(self, email: str) -> Optional[UserEntity]:
