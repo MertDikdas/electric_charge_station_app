@@ -392,14 +392,10 @@ POST /payments
 - Creates a payment.
 - Request schema: `PaymentCreate`
   - `user_id: int`
-  - `charging_session_id: int`
+  - `reservation_id: int`
   - `amount: float`
-  - `payment_method: str`
   - `status: str`
-  - `transaction_id: Optional[str]`
-  - `description: Optional[str]`
   - `coupon_id: Optional[int]`
-  - `original_amount: Optional[float]`
 - Response schema: `PaymentResponse`
 - Status Code: 201
 - Authentication: Required (Owner or Staff)
@@ -419,11 +415,6 @@ GET /payments/status/{status}
 - Response schema: `List[PaymentResponse]`
 - Authentication: Required (Admin or Station Manager)
 
-GET /payments/transaction/{transaction_id}
-- Returns payment by transaction id.
-- Response schema: `PaymentResponse`
-- Authentication: Required (Admin or Station Manager)
-
 GET /payments/charging-session/{charging_session_id}
 - Returns payment for a specific charging session.
 - Response schema: `PaymentResponse`
@@ -439,16 +430,12 @@ PATCH /payments/{payment_id}
 - Request schema: `PaymentUpdate`
   - `amount: Optional[float]`
   - `status: Optional[str]`
-  - `transaction_id: Optional[str]`
   - `payment_date: Optional[datetime]`
-  - `description: Optional[str]`
 - Response schema: `PaymentResponse`
 - Authentication: Required (Admin or Station Manager)
 
 POST /payments/{payment_id}/complete
-- Marks payment as completed with transaction id.
-- Request params:
-  - `transaction_id: str` (query param)
+- Marks payment as completed.
 - Response schema: `PaymentResponse`
 - Authentication: Required (Admin or Station Manager)
 

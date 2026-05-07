@@ -11,7 +11,6 @@ from app.core.dependencies import (
 )
 from app.domain.models.payment import PaymentEntity
 from app.schemas.payment import (
-    Payment,
     PaymentCreate,
     PaymentResponse,
     PaymentUpdate,
@@ -64,18 +63,6 @@ def get_payments_by_status(
         return service.get_payments_by_status(status.upper())
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.get("/transaction/{transaction_id}", response_model=PaymentResponse)
-def get_payment_by_transaction_id(
-    transaction_id: str,
-    service: PaymentService = Depends(get_payment_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
-):
-    payment = service.get_payment_by_transaction_id(transaction_id)
-    if not payment:
-        raise HTTPException(status_code=404, detail="Payment not found")
-    return payment
 
 
 @router.get("/charging-session/{charging_session_id}", response_model=PaymentResponse)
@@ -135,12 +122,11 @@ def update_payment(
 @router.post("/{payment_id}/complete", response_model=PaymentResponse)
 def complete_payment(
     payment_id: int,
-    transaction_id: str,
     service: PaymentService = Depends(get_payment_service),
     current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     try:
-        return service.complete_payment(payment_id, transaction_id)
+        return service.complete_payment(payment_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -150,12 +136,11 @@ def complete_payment(
 @router.post("/{payment_id}/fail", response_model=PaymentResponse)
 def fail_payment(
     payment_id: int,
-    reason: str = "",
     service: PaymentService = Depends(get_payment_service),
     current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     try:
-        return service.fail_payment(payment_id, reason if reason else None)
+        return service.fail_payment(payment_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

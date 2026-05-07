@@ -15,10 +15,6 @@ class AbstractPaymentRepository(AbstractRepository[PaymentEntity]):
         raise NotImplementedError
 
     @abstractmethod
-    def get_by_transaction_id(self, transaction_id: str) -> Optional[PaymentEntity]:
-        raise NotImplementedError
-
-    @abstractmethod
     def list_by_user_id(self, user_id: int) -> List[PaymentEntity]:
         raise NotImplementedError
 

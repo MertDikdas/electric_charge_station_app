@@ -189,19 +189,13 @@ class Payment(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     reservation_id = Column(Integer, ForeignKey("charging_sessions.reservation_id"), nullable=False)
     amount = Column(Float, nullable=False)
-    payment_method = Column(String, nullable=False)
     status = Column(String, nullable=False, default="PENDING")
-    transaction_id = Column(String, unique=True, nullable=True, index=True)
     payment_date = Column(DateTime, nullable=True)
-    description = Column(String, nullable=True)
     coupon_id = Column(Integer, ForeignKey("coupons.id"), nullable=True)
-    original_amount = Column(Float, nullable=True)
 
     __table_args__ = (
         CheckConstraint("amount > 0", name="check_payment_amount_positive"),
         CheckConstraint("status IN ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED')", name="check_payment_status"),
-        CheckConstraint("payment_method IN ('CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'MOBILE_PAYMENT', 'WALLET')", name="check_payment_method"),
-        CheckConstraint("original_amount IS NULL OR original_amount > 0", name="check_payment_original_amount_positive"),
     )
 
     user = relationship("User", back_populates="payments")

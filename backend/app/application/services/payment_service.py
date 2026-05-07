@@ -37,10 +37,6 @@ class PaymentService:
         with self.uow:
             return self.uow.payments.get(payment_id)
 
-    def get_payment_by_transaction_id(self, transaction_id: str) -> Optional[PaymentEntity]:
-        with self.uow:
-            return self.uow.payments.get_by_transaction_id(transaction_id)
-
     def get_user_payments(self, user_id: int) -> List[PaymentEntity]:
         with self.uow:
             if not self.uow.users.get(user_id):
@@ -52,11 +48,11 @@ class PaymentService:
             self.rules.validate_payment_status(status)
             return self.uow.payments.list_by_status(status)
 
-    def get_payment_for_reservation(self, reservation_id: int) -> Optional[PaymentEntity]:
+    def get_payment_for_charging_session(self, charging_session_id: int) -> Optional[PaymentEntity]:
         with self.uow:
-            if not self.uow.reservations.get(reservation_id):
-                raise LookupError("Reservation not found")
-            return self.uow.payments.get_by_reservation_id(reservation_id)
+            if not self.uow.charging_sessions.get(charging_session_id):
+                raise LookupError("Charging session not found")
+            return self.uow.payments.get_by_reservation_id(charging_session_id)
 
     def update_payment(self, payment: PaymentEntity) -> PaymentEntity:
         with self.uow:
@@ -70,29 +66,26 @@ class PaymentService:
             self.uow.commit()
             return updated_payment
 
-    def complete_payment(self, payment_id: int, transaction_id: str) -> PaymentEntity:
+    def complete_payment(self, payment_id: int) -> PaymentEntity:
         with self.uow:
             payment = self.uow.payments.get(payment_id)
             if not payment:
                 raise LookupError("Payment not found")
 
             payment.status = "COMPLETED"
-            payment.transaction_id = transaction_id
             payment.payment_date = datetime.now()
 
             updated_payment = self.uow.payments.update(payment)
             self.uow.commit()
             return updated_payment
 
-    def fail_payment(self, payment_id: int, reason: Optional[str] = None) -> PaymentEntity:
+    def fail_payment(self, payment_id: int) -> PaymentEntity:
         with self.uow:
             payment = self.uow.payments.get(payment_id)
             if not payment:
                 raise LookupError("Payment not found")
 
             payment.status = "FAILED"
-            if reason:
-                payment.description = reason
 
             updated_payment = self.uow.payments.update(payment)
             self.uow.commit()
@@ -119,4 +112,3 @@ class PaymentService:
             self.uow.payments.delete(payment)
             self.uow.commit()
             return True
-
