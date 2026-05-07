@@ -16,6 +16,7 @@ from app.domain.models.charger import ChargerEntity
 from app.schemas.charger import (
     Charger,
     ChargerCreate,
+    ChargerPriceUpdate,
     ChargerStatusUpdate,
 )
 from app.schemas.reservation import Reservation
@@ -93,6 +94,25 @@ def update_charger_status(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return charger
+
+
+@router.patch("/{charger_id}/price", response_model=Charger)
+def update_charger_price(
+    charger_id: int,
+    price_update: ChargerPriceUpdate,
+    service: ChargerService = Depends(get_charger_service),
+    _current_user: AuthenticatedUser = Depends(get_only_station_manager),
+):
+    try:
+        charger = service.update_charger_price(
+            charger_id=charger_id,
+            price_per_kwh=price_update.price_per_kwh,
+        )
+        if not charger:
+            raise HTTPException(status_code=404, detail="Charger not found")
+        return charger
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/{charger_id}/reservations", response_model=List[Reservation])
