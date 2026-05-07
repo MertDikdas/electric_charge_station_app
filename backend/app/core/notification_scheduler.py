@@ -1,17 +1,11 @@
 import logging
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 from threading import Event, Thread
-from time import sleep
 
-from sqlalchemy.orm import joinedload
-
+from app.application.services.charger_session_service import ChargingSessionService
 from app.core.uow import SqlAlchemyUnitOfWork
 from app.domain.models.notification import NotificationEntity
 from app.infrastructure.database.database import SessionLocal
-from app.infrastructure.database.tables import (
-    ChargingSession as ChargingSessionModel,
-    Reservation as ReservationModel,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -71,61 +65,30 @@ def _find_upcoming_reservations() -> list:
         return uow.reservations.list_starting_between(start_window, end_window)
 
 
-def _calculate_consumed_energy(start_time, end_time, charging_power_kw: float) -> float:
-    start_datetime = datetime.combine(date.today(), start_time)
-    end_datetime = datetime.combine(date.today(), end_time)
-    duration_hours = (end_datetime - start_datetime).total_seconds() / 3600
-    return round(duration_hours * charging_power_kw, 3)
-
-
 def _finish_expired_charging_sessions() -> None:
     now = datetime.now()
     with SessionLocal() as db:
-        query = (
-            db.query(ChargingSessionModel)
-            .join(ReservationModel, ChargingSessionModel.reservation)
-            .options(
-                joinedload(ChargingSessionModel.reservation).joinedload(ReservationModel.vehicle),
-                joinedload(ChargingSessionModel.reservation).joinedload(ReservationModel.charger),
-            )
-            .filter(
-                ChargingSessionModel.status.in_(("STARTED", "IN_PROGRESS")),
-                ReservationModel.date == now.date(),
-                ReservationModel.end_time <= now.time(),
-                ReservationModel.status.in_(("PENDING", "CONFIRMED")),
-            )
-        )
-        sessions = query.all()
+        uow = SqlAlchemyUnitOfWork(db)
+        expired_sessions = uow.charging_sessions.list_expired_for_auto_finish(now)
 
-        if not sessions:
+        if not expired_sessions:
             return
 
-        for session_model in sessions:
-            reservation = session_model.reservation
-            if not reservation or session_model.end_time is not None:
-                continue
-
-            vehicle = reservation.vehicle
-            charger = reservation.charger
-            if not vehicle or not charger:
-                continue
-
-            charging_power_kw = min(vehicle.max_charging_power, charger.max_power)
-            session_model.end_time = reservation.end_time
-            session_model.consuming_power = _calculate_consumed_energy(
-                session_model.start_time,
-                reservation.end_time,
-                charging_power_kw,
-            )
-            session_model.cost = round(
-                session_model.consuming_power * charger.price_per_kwh,
-                2,
-            )
-            session_model.status = "COMPLETED"
-            reservation.status = "COMPLETED"
-            charger.status = "AVAILABLE"
-
-        db.commit()
+        service = ChargingSessionService(uow)
+        for expired_session in expired_sessions:
+            try:
+                service.finish_session(
+                    session_id=expired_session.reservation_id,
+                    current_user_id=expired_session.user_id,
+                    is_staff=True,
+                    end_time=expired_session.end_time,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Failed to finish expired charging session %s: %s",
+                    expired_session.reservation_id,
+                    exc,
+                )
 
 
 def _run_scheduler() -> None:

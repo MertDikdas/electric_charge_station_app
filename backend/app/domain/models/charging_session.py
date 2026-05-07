@@ -15,4 +15,11 @@ class ChargingSessionEntity(BaseEntity):
     status: str = "PENDING"
 
 
+@dataclass
+class ExpiredChargingSessionForAutoFinish:
+    reservation_id: int
+    user_id: int
+    end_time: time
+
+
 ChargingSession = ChargingSessionEntity

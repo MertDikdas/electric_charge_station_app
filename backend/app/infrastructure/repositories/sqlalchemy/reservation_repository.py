@@ -136,7 +136,6 @@ class SqlAlchemyReservationRepository(
             .filter(
                 ReservationModel.user_id == user_id,
                 ReservationModel.date > after_date,
-                ReservationModel.status.in_(self.blocking_statuses),
             )
             .all()
         )

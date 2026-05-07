@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.charging_session import ChargingSessionEntity
+from app.domain.models.payment import PaymentEntity
 from app.domain.rules.charger_rules import can_start_charging_session
 from app.domain.rules.charging_session_rules import validate_can_start_charging_session
 
@@ -188,8 +189,36 @@ class ChargingSessionService:
             reservation.status = "COMPLETED"
             self.uow.reservations.update(reservation)
 
+            self._create_pending_payment_for_finished_session(
+                reservation_user_id=reservation.user_id,
+                reservation_id=session.reservation_id,
+                amount=session.cost,
+            )
+
             self.uow.commit()
             return finished_session
+
+    def _create_pending_payment_for_finished_session(
+        self,
+        reservation_user_id: int,
+        reservation_id: int,
+        amount: float,
+    ) -> None:
+        existing_payment = self.uow.payments.get_by_reservation_id(reservation_id)
+        if existing_payment:
+            return
+
+        if amount <= 0:
+            return
+
+        self.uow.payments.add(
+            PaymentEntity(
+                user_id=reservation_user_id,
+                reservation_id=reservation_id,
+                amount=amount,
+                status="PENDING",
+            )
+        )
 
     def _find_current_active_reservation(
         self,
