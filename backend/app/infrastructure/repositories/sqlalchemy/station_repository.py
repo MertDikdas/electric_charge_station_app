@@ -1,5 +1,7 @@
 from typing import List
 
+from math import cos, radians
+from app.utils.geo import calculate_distance
 from app.domain.models.station import StationEntity
 from app.infrastructure.database.tables import Station as StationModel
 from app.infrastructure.repositories.abstract.station_repository import (
@@ -42,13 +44,20 @@ class SqlAlchemyStationRepository(
         )
         return [self.to_entity(model) for model in models]
 
-    def list_nearby(self, latitude: float, longitude: float) -> List[StationEntity]:
+    def list_nearby(self, latitude: float, longitude: float, km_radius: float) -> List[StationEntity]:
+        lat_delta = km_radius / 111.0
+
+        lon_delta = km_radius / (111.0 * cos(radians(latitude)))
+
         models = (
             self.session.query(StationModel)
-            .filter(StationModel.latitude >= latitude - 0.1, StationModel.latitude <= latitude + 0.1)
-            .filter(StationModel.longitude >= longitude - 0.1, StationModel.longitude <= longitude + 0.1)
+            .filter(StationModel.latitude >= latitude - lat_delta)
+            .filter(StationModel.latitude <= latitude + lat_delta)
+            .filter(StationModel.longitude >= longitude - lon_delta)
+            .filter(StationModel.longitude <= longitude + lon_delta)
             .all()
         )
+
         return [self.to_entity(model) for model in models]
 
     def update(self, station: StationEntity) -> None:
