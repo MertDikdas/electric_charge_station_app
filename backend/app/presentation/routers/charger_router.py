@@ -8,10 +8,16 @@ from app.core.dependencies import (
     AuthenticatedUser,
     get_admin_or_station_manager,
     get_charger_service,
+    get_only_station_manager,
     get_reservation_service,
+    get_station_staff,
 )
 from app.domain.models.charger import ChargerEntity
-from app.schemas.charger import ChargerCreate, Charger, ChargerStatusUpdate
+from app.schemas.charger import (
+    Charger,
+    ChargerCreate,
+    ChargerStatusUpdate,
+)
 from app.schemas.reservation import Reservation
 
 router = APIRouter()
@@ -48,6 +54,7 @@ def update_charger(
     charger_id: int,
     charger: ChargerCreate,
     service: ChargerService = Depends(get_charger_service),
+    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     existing_charger = service.get_charger(charger_id)
     if not existing_charger:
@@ -64,6 +71,7 @@ def update_charger(
 def delete_charger(
     charger_id: int,
     service: ChargerService = Depends(get_charger_service),
+    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     charger = service.get_charger(charger_id)
     if not charger:
@@ -76,6 +84,7 @@ def update_charger_status(
     charger_id: int,
     status_update: ChargerStatusUpdate,
     service: ChargerService = Depends(get_charger_service),
+    _current_user: AuthenticatedUser = Depends(get_station_staff),
 ):
     try:
         charger = service.update_charger_status(charger_id, status_update.status)
