@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.charging_session import ChargingSessionEntity
+from app.domain.models.notification import NotificationEntity
 from app.domain.models.payment import PaymentEntity
 from app.domain.rules.charger_rules import can_start_charging_session
 from app.domain.rules.charging_session_rules import validate_can_start_charging_session
@@ -194,6 +195,11 @@ class ChargingSessionService:
                 reservation_id=session.reservation_id,
                 amount=session.cost,
             )
+            self._create_session_finished_notification(
+                reservation_user_id=reservation.user_id,
+                reservation_id=session.reservation_id,
+                amount=session.cost,
+            )
 
             self.uow.commit()
             return finished_session
@@ -217,6 +223,34 @@ class ChargingSessionService:
                 reservation_id=reservation_id,
                 amount=amount,
                 status="PENDING",
+            )
+        )
+
+    def _create_session_finished_notification(
+        self,
+        reservation_user_id: int,
+        reservation_id: int,
+        amount: float,
+    ) -> None:
+        title = "Charging session completed"
+        message = (
+            f"Your charging session for reservation {reservation_id} has been completed. "
+            f"Payment amount: {amount:.2f}."
+        )
+
+        if self.uow.notifications.exists_by_user_and_title_and_message(
+            reservation_user_id,
+            title,
+            message,
+        ):
+            return
+
+        self.uow.notifications.add(
+            NotificationEntity(
+                user_id=reservation_user_id,
+                title=title,
+                message=message,
+                notification_type="SUCCESS",
             )
         )
 

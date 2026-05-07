@@ -123,7 +123,7 @@ def update_payment(
 def complete_payment(
     payment_id: int,
     service: PaymentService = Depends(get_payment_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     try:
         return service.complete_payment(payment_id)

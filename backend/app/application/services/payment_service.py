@@ -3,6 +3,10 @@ from typing import List, Optional
 
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.payment import PaymentEntity
+from app.domain.rules.coupon_rules import (
+    calculate_coupon_discount,
+    ensure_coupon_is_usable,
+)
 from app.domain.rules.payment_rules import PaymentRules
 
 
@@ -71,6 +75,19 @@ class PaymentService:
             payment = self.uow.payments.get(payment_id)
             if not payment:
                 raise LookupError("Payment not found")
+            if payment.status == "COMPLETED":
+                return payment
+
+            user = self.uow.users.get(payment.user_id)
+            if not user:
+                raise LookupError("User not found")
+
+            payable_amount = self._calculate_payable_amount(payment)
+            if user.balance < payable_amount:
+                raise ValueError("Insufficient balance")
+
+            user.balance = round(user.balance - payable_amount, 2)
+            self.uow.users.update(user)
 
             payment.status = "COMPLETED"
             payment.payment_date = datetime.now()
@@ -78,6 +95,24 @@ class PaymentService:
             updated_payment = self.uow.payments.update(payment)
             self.uow.commit()
             return updated_payment
+
+    def _calculate_payable_amount(self, payment: PaymentEntity) -> float:
+        if payment.coupon_id is None:
+            return payment.amount
+
+        coupon = self.uow.coupons.get(payment.coupon_id)
+        if not coupon:
+            raise LookupError("Coupon not found")
+        if coupon.user_id != payment.user_id:
+            raise ValueError("Coupon does not belong to payment user")
+        if not ensure_coupon_is_usable(coupon, payment.amount):
+            raise ValueError("Coupon is not usable for this payment")
+
+        discount_amount = calculate_coupon_discount(coupon, payment.amount)
+        coupon.used_count += 1
+        self.uow.coupons.update(coupon)
+
+        return round(payment.amount - discount_amount, 2)
 
     def fail_payment(self, payment_id: int) -> PaymentEntity:
         with self.uow:
