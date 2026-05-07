@@ -11,7 +11,7 @@ class AbstractStationRepository(AbstractRepository[StationEntity]):
         raise NotImplementedError
 
     @abstractmethod
-    def list_nearby(self, location: str) -> List[StationEntity]:
+    def list_nearby(self, latitude: float, longitude: float) -> List[StationEntity]:
         raise NotImplementedError
 
     @abstractmethod
