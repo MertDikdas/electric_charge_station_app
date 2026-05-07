@@ -85,7 +85,7 @@ def update_charger_status(
     charger_id: int,
     status_update: ChargerStatusUpdate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_station_staff, get_only_station_manager),
+    _current_user: AuthenticatedUser = Depends(get_station_staff),
 ):
     try:
         charger = service.update_charger_status(charger_id, status_update.status)
