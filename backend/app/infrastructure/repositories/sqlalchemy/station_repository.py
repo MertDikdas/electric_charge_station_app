@@ -1,11 +1,14 @@
 from typing import List
 
+from math import cos, radians
 from app.domain.models.station import StationEntity
 from app.infrastructure.database.tables import Station as StationModel
 from app.infrastructure.repositories.abstract.station_repository import (
     AbstractStationRepository,
 )
 from app.infrastructure.repositories.sqlalchemy.base import SqlAlchemyRepository
+from app.domain.models.charger import ChargerEntity
+from sqlalchemy.orm import joinedload
 
 
 class SqlAlchemyStationRepository(
@@ -19,8 +22,10 @@ class SqlAlchemyStationRepository(
             id=entity.id,
             address=entity.address,
             company=entity.company,
-            location=entity.location,
+            latitude=entity.latitude,
+            longitude=entity.longitude,
             status=entity.status.upper(),
+
         )
 
     def to_entity(self, model: StationModel) -> StationEntity:
@@ -28,8 +33,22 @@ class SqlAlchemyStationRepository(
             id=model.id,
             address=model.address,
             company=model.company,
-            location=model.location,
+            latitude=model.latitude,
+            longitude=model.longitude,
             status=model.status,
+            chargers=[
+                ChargerEntity(
+                    id=charger.id,
+                    station_id=charger.station_id,
+                    connector_type=charger.connector_type,
+                    current_type=charger.current_type,
+                    max_power=charger.max_power,
+                    price_per_kwh=charger.price_per_kwh,
+                    status=charger.status,
+                )
+                for charger in model.chargers
+            ],
+
         )
 
     def list_by_status(self, status: str) -> List[StationEntity]:
@@ -40,12 +59,20 @@ class SqlAlchemyStationRepository(
         )
         return [self.to_entity(model) for model in models]
 
-    def list_nearby(self, location: str) -> List[StationEntity]:
+    def list_nearby(self, latitude: float, longitude: float, km_radius: float) -> List[StationEntity]:
+        lat_delta = km_radius / 111.0
+
+        lon_delta = km_radius / (111.0 * cos(radians(latitude)))
+
         models = (
             self.session.query(StationModel)
-            .filter(StationModel.location.ilike(f"%{location}%"))
+            .filter(StationModel.latitude >= latitude - lat_delta)
+            .filter(StationModel.latitude <= latitude + lat_delta)
+            .filter(StationModel.longitude >= longitude - lon_delta)
+            .filter(StationModel.longitude <= longitude + lon_delta)
             .all()
         )
+
         return [self.to_entity(model) for model in models]
 
     def update(self, station: StationEntity) -> None:
@@ -53,5 +80,16 @@ class SqlAlchemyStationRepository(
         if model:
             model.address = station.address
             model.company = station.company
-            model.location = station.location
+            model.latitude = station.latitude
+            model.longitude = station.longitude
             model.status = station.status.upper()
+
+    def list_nearby_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float) -> List[StationEntity]:
+        models = (
+            self.session.query(StationModel)
+            .options(joinedload(StationModel.chargers))
+            .filter(StationModel.latitude >= south_latitude, StationModel.latitude <= north_latitude)
+            .filter(StationModel.longitude >= west_longitude, StationModel.longitude <= east_longitude)
+            .all()
+        )
+        return [self.to_entity(model) for model in models]

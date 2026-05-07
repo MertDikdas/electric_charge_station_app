@@ -64,3 +64,9 @@ class SqlAlchemyVehicleRepository(
     def get_all_vehicles_by_plate(self, plate: str) -> list[VehicleEntity]:
         models = self.session.query(VehicleModel).filter(VehicleModel.plate == plate).all()
         return [self.to_entity(model) for model in models]
+    
+    def get_by_id(self, vehicle_id: int) -> VehicleEntity | None:
+        model = self.session.query(VehicleModel).get(vehicle_id)
+        if model:
+            return self.to_entity(model)
+        return None
