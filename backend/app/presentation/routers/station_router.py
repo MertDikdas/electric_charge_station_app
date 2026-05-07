@@ -3,10 +3,15 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.application.services.station_service import StationService
-from app.core.dependencies import get_station_service, AuthenticatedUser, get_current_user, get_admin_or_station_manager
+from app.core.dependencies import (
+    AuthenticatedUser,
+    get_admin_or_station_manager,
+    get_station_service,
+    get_station_staff,
+)
 from app.domain.models.station import StationEntity
 from app.schemas.charger import Charger
-from app.schemas.station import StationCreate, Station
+from app.schemas.station import StationCreate, Station, StationStatusUpdate
 from app.domain.rules.station_rules import validate_station_entity
 
 router = APIRouter()
@@ -79,6 +84,22 @@ def update_station(
     try:
         validate_station_entity(updated_station)
         return service.update_station(updated_station)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/{station_id}/status", response_model=Station)
+def update_station_status(
+    station_id: int,
+    status_update: StationStatusUpdate,
+    service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_station_staff),
+):
+    try:
+        station = service.update_station_status(station_id, status_update.status)
+        if not station:
+            raise HTTPException(status_code=404, detail="Station not found")
+        return station
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
