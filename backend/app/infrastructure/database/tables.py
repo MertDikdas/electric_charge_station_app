@@ -12,6 +12,14 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     balance = Column(Float, default=0.0)
+    role = Column(String, nullable=False, default="USER")
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('USER', 'STATION_MANAGER', 'STATION_OPERATOR', 'ADMIN')",
+            name="check_user_role",
+        ),
+    )
 
     vehicles = relationship("Vehicle", back_populates="user")
     reservations = relationship("Reservation", back_populates="user")
