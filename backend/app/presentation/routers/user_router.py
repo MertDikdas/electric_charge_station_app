@@ -81,3 +81,16 @@ def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     service.delete_user(user_id)
+
+@router.patch("/add_balance/me", response_model=User)
+def add_balance(
+    amount: float,
+    service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    try:
+        return service.add_balance(current_user.id, amount)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

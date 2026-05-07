@@ -110,6 +110,18 @@ class UserService:
         with self.uow:
             return self.uow.users.get_by_email(email)
 
+    def add_balance(self, user_id: int, amount: float) -> Optional[UserEntity]:
+        with self.uow:
+            user = self.uow.users.get(user_id)
+            if not user:
+                return None
+            if amount < 0:
+                raise ValueError("Amount must be positive")
+            user.balance = round(user.balance + amount, 2)
+            updated_user = self.uow.users.update(user)
+            self.uow.commit()
+            return updated_user
+        
     def _validate_user(self, user: UserEntity) -> None:
         if not validate_user_email(user):
             raise ValueError("Invalid email format")
@@ -117,3 +129,5 @@ class UserService:
             raise ValueError("Password does not meet requirements")
         if not validate_balance(user):
             raise ValueError("Balance cannot be negative")
+        
+    
