@@ -9,6 +9,7 @@ from app.core.dependencies import (
     get_only_station_manager,
     get_station_service,
     get_station_staff,
+    get_current_user,
 )
 from app.domain.models.station import StationEntity
 from app.schemas.charger import Charger
