@@ -19,7 +19,8 @@ class SqlAlchemyStationRepository(
             id=entity.id,
             address=entity.address,
             company=entity.company,
-            location=entity.location,
+            latitude=entity.latitude,
+            longitude=entity.longitude,
             status=entity.status.upper(),
         )
 
@@ -28,7 +29,8 @@ class SqlAlchemyStationRepository(
             id=model.id,
             address=model.address,
             company=model.company,
-            location=model.location,
+            latitude=model.latitude,
+            longitude=model.longitude,
             status=model.status,
         )
 
@@ -40,10 +42,11 @@ class SqlAlchemyStationRepository(
         )
         return [self.to_entity(model) for model in models]
 
-    def list_nearby(self, location: str) -> List[StationEntity]:
+    def list_nearby(self, latitude: float, longitude: float) -> List[StationEntity]:
         models = (
             self.session.query(StationModel)
-            .filter(StationModel.location.ilike(f"%{location}%"))
+            .filter(StationModel.latitude >= latitude - 0.1, StationModel.latitude <= latitude + 0.1)
+            .filter(StationModel.longitude >= longitude - 0.1, StationModel.longitude <= longitude + 0.1)
             .all()
         )
         return [self.to_entity(model) for model in models]
@@ -53,5 +56,6 @@ class SqlAlchemyStationRepository(
         if model:
             model.address = station.address
             model.company = station.company
-            model.location = station.location
+            model.latitude = station.latitude
+            model.longitude = station.longitude
             model.status = station.status.upper()

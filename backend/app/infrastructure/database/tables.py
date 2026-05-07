@@ -61,13 +61,16 @@ class Station(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     company = Column(String, nullable=False)
-    location = Column(String, nullable=False, index=True)
+    longitude = Column(Float, nullable=False)
+    latitude = Column(Float, nullable=False)
     address = Column(String, nullable=False)
     status = Column(String, nullable=False, default="AVAILABLE")
 
 
     __table_args__ = (
         CheckConstraint("status IN ('AVAILABLE', 'OCCUPIED', 'OUT_OF_SERVICE', 'MAINTENANCE', 'CLOSED')", name="check_station_status"),
+        CheckConstraint("latitude >= -90 AND latitude <= 90", name="check_station_latitude_range"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180", name="check_station_longitude_range"),
     )
     chargers = relationship("Charger", back_populates="station")
 

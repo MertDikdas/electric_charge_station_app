@@ -21,9 +21,9 @@ class StationService:
         with self.uow:
             return self.uow.stations.get(station_id)
 
-    def get_nearby_stations(self, location: str) -> List[StationEntity]:
+    def get_nearby_stations(self, latitude: float, longitude: float) -> List[StationEntity]:
         with self.uow:
-            return self.uow.stations.list_nearby(location)
+            return self.uow.stations.list_nearby(latitude, longitude)
 
     def get_station_chargers(self, station_id: int) -> List[ChargerEntity]:
         with self.uow:

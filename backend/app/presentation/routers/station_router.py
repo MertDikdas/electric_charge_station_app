@@ -34,10 +34,11 @@ def get_stations(service: StationService = Depends(get_station_service)):
 
 @router.get("/nearby", response_model=List[Station])
 def get_nearby_stations(
-    location: str = Query(..., min_length=1),
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
     service: StationService = Depends(get_station_service),
 ):
-    return service.get_nearby_stations(location)
+    return service.get_nearby_stations(latitude, longitude)
 
 
 @router.get("/{station_id}/chargers", response_model=List[Charger])

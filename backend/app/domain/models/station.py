@@ -7,7 +7,8 @@ from app.domain.models.base import BaseEntity
 class StationEntity(BaseEntity):
     address: str
     company: str
-    location: str
+    latitude: float
+    longitude: float
     status: str = "AVAILABLE"
 
 
