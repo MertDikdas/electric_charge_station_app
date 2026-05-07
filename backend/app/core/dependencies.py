@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -22,23 +22,28 @@ from app.infrastructure.database.database import get_db
 from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
     SqlAlchemyUserSessionRepository,
 )
+from app.infrastructure.repositories.sqlalchemy.user_repository import SqlAlchemyUserRepository
 
 security = HTTPBearer(auto_error=False)
+
+USER_ROLE = "USER"
+STATION_MANAGER_ROLE = "STATION_MANAGER"
+STATION_OPERATOR_ROLE = "STATION_OPERATOR"
+ADMIN_ROLE = "ADMIN"
 
 
 @dataclass
 class AuthenticatedUser:
     id: int
-    role: str = "user"
+    role: str = USER_ROLE
 
     @property
     def is_staff(self) -> bool:
-        return self.role.lower() in {"admin", "station_manager", "staff"}
+        return self.role in {ADMIN_ROLE, STATION_MANAGER_ROLE, STATION_OPERATOR_ROLE}
 
 
 def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    x_user_role: str = Header(default="user", alias="x-user-role"),
     db: Session = Depends(get_db),
 ) -> AuthenticatedUser:
     if credentials is None:
@@ -66,13 +71,45 @@ def get_current_user(
     if session.user_id != token_user_id:
         raise HTTPException(status_code=401, detail="Token does not match session")
 
-    return AuthenticatedUser(id=session.user_id, role=x_user_role)
+    user = SqlAlchemyUserRepository(db).get(session.user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return AuthenticatedUser(id=session.user_id, role=user.role or USER_ROLE)
 
 
 def get_admin_or_station_manager(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> AuthenticatedUser:
-    if current_user.role.lower() not in {"admin", "station_manager"}:
+    if current_user.role not in {ADMIN_ROLE, STATION_MANAGER_ROLE}:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return current_user
+
+
+def get_station_manager(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if current_user.role not in {ADMIN_ROLE, STATION_MANAGER_ROLE}:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return current_user
+
+
+def get_only_station_manager(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if current_user.role != STATION_MANAGER_ROLE:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return current_user
+
+
+def get_station_staff(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if current_user.role not in {
+        ADMIN_ROLE,
+        STATION_MANAGER_ROLE,
+        STATION_OPERATOR_ROLE,
+    }:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
 
