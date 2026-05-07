@@ -94,7 +94,7 @@ def update_station_status(
     station_id: int,
     status_update: StationStatusUpdate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_station_staff, get_only_station_manager),
+    current_user: AuthenticatedUser = Depends(get_station_staff),
 ):
     try:
         station = service.update_station_status(station_id, status_update.status)
