@@ -1,4 +1,8 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+UserRole = Literal["USER", "STATION_MANAGER", "STATION_OPERATOR", "ADMIN"]
 
 class UserBase(BaseModel):
     name: str
@@ -7,11 +11,16 @@ class UserBase(BaseModel):
     balance: float = 0.0
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
+    name: str
+    surname: str
+    email: str
+    balance: float = 0.0
     password: str = Field(..., min_length=6, max_length=72)
 
 class User(UserBase):
     id: int
+    role: UserRole = "USER"
     
     class Config:
         from_attributes = True
