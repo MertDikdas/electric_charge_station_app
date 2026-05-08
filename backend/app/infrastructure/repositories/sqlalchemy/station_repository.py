@@ -21,7 +21,7 @@ class SqlAlchemyStationRepository(
         return StationModel(
             id=entity.id,
             address=entity.address,
-            company=entity.company,
+            company_id=entity.company_id,
             latitude=entity.latitude,
             longitude=entity.longitude,
             status=entity.status.upper(),
@@ -32,7 +32,7 @@ class SqlAlchemyStationRepository(
         return StationEntity(
             id=model.id,
             address=model.address,
-            company=model.company,
+            company_id=model.company_id,
             latitude=model.latitude,
             longitude=model.longitude,
             status=model.status,
@@ -79,7 +79,7 @@ class SqlAlchemyStationRepository(
         model = self.session.get(StationModel, station.id)
         if model:
             model.address = station.address
-            model.company = station.company
+            model.company_id = station.company_id
             model.latitude = station.latitude
             model.longitude = station.longitude
             model.status = station.status.upper()
