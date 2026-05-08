@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -16,29 +16,36 @@ from app.application.services.reservation_service import ReservationService
 from app.application.services.station_service import StationService
 from app.application.services.user_service import UserService
 from app.application.services.vehicle_service import VehicleService
+from app.application.services.chatbot_service import ChatbotService
 from app.core.security import ALGORITHM, SECRET_KEY
 from app.core.uow import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from app.infrastructure.database.database import get_db
 from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
     SqlAlchemyUserSessionRepository,
 )
+from app.infrastructure.repositories.sqlalchemy.user_repository import SqlAlchemyUserRepository
+from backend.app.schemas.company_member import CompanyMember
 
 security = HTTPBearer(auto_error=False)
+
+USER_ROLE = "USER"
+STATION_MANAGER_ROLE = "STATION_MANAGER"
+STATION_OPERATOR_ROLE = "STATION_OPERATOR"
+ADMIN_ROLE = "ADMIN"
 
 
 @dataclass
 class AuthenticatedUser:
     id: int
-    role: str = "user"
+    role: str = USER_ROLE
 
     @property
     def is_staff(self) -> bool:
-        return self.role.lower() in {"admin", "station_manager", "staff"}
+        return self.role in {ADMIN_ROLE, STATION_MANAGER_ROLE, STATION_OPERATOR_ROLE}
 
 
 def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    x_user_role: str = Header(default="user", alias="x-user-role"),
     db: Session = Depends(get_db),
 ) -> AuthenticatedUser:
     if credentials is None:
@@ -66,15 +73,90 @@ def get_current_user(
     if session.user_id != token_user_id:
         raise HTTPException(status_code=401, detail="Token does not match session")
 
-    return AuthenticatedUser(id=session.user_id, role=x_user_role)
+    user = SqlAlchemyUserRepository(db).get(session.user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
 
+    return AuthenticatedUser(id=session.user_id, role=user.role or USER_ROLE)
 
-def get_admin_or_station_manager(
+def get_current_company_member(
+    company_id: int,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CompanyMember:
+    member = (
+        db.query(CompanyMember)
+        .filter(
+            CompanyMember.company_id == company_id,
+            CompanyMember.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if member is None:
+        raise HTTPException(status_code=403, detail="Company membership required")
+
+    return member
+
+def get_admin(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> AuthenticatedUser:
-    if current_user.role.lower() not in {"admin", "station_manager"}:
+    if current_user.role != ADMIN_ROLE:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
+
+
+def get_station_manager(
+    member: CompanyMember = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if member.role != STATION_MANAGER_ROLE:
+        raise HTTPException(status_code=403, detail="Station manager role required")
+    return current_user
+
+
+
+def get_station_operator(
+    member: CompanyMember = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if member.role not in {STATION_MANAGER_ROLE, STATION_OPERATOR_ROLE}:
+        raise HTTPException(status_code=403, detail="Station operator role required")
+    return current_user
+
+def get_company_member(
+    member: CompanyMember = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    if member.role not in {STATION_MANAGER_ROLE, STATION_OPERATOR_ROLE}:
+        raise HTTPException(status_code=403, detail="Station staff role required")
+    return current_user
+
+def get_admin_or_station_manager(
+    company_id: int,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AuthenticatedUser:
+    if current_user.role == ADMIN_ROLE:
+        return current_user
+
+    member = (
+        db.query(CompanyMember)
+        .filter(
+            CompanyMember.company_id == company_id,
+            CompanyMember.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if member is None:
+        raise HTTPException(status_code=403, detail="Company membership required")
+
+    if member.role != STATION_MANAGER_ROLE:
+        raise HTTPException(status_code=403, detail="Admin or station manager role required")
+
+    return current_user
+
 
 
 def get_uow(db: Session = Depends(get_db)) -> AbstractUnitOfWork:
@@ -119,3 +201,6 @@ def get_coupon_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CouponServ
 
 def get_payment_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> PaymentService:
     return PaymentService(uow)
+
+def get_chatbot_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> ChatbotService:
+    return ChatbotService(uow)

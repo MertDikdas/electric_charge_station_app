@@ -3,8 +3,10 @@ from typing import List, Optional
 
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.charging_session import ChargingSessionEntity
+from app.domain.models.notification import NotificationEntity
+from app.domain.models.payment import PaymentEntity
 from app.domain.rules.charger_rules import can_start_charging_session
-
+from app.domain.rules.charging_session_rules import validate_can_start_charging_session
 
 ACTIVE_RESERVATION_STATUSES = {"PENDING", "CONFIRMED"}
 RUNNING_SESSION_STATUSES = {"STARTED", "IN_PROGRESS"}
@@ -16,6 +18,26 @@ class ChargingSessionService:
 
     def create_session(self, session: ChargingSessionEntity) -> ChargingSessionEntity:
         with self.uow:
+            reservation = self.uow.reservations.get(session.reservation_id)
+            if not reservation:
+                raise LookupError("Reservation not found")
+
+            vehicle = self.uow.vehicles.get(reservation.vehicle_id)
+            if not vehicle:
+                raise LookupError("Vehicle not found")
+
+            charger = self.uow.chargers.get(reservation.charger_id)
+            if not charger:
+                raise LookupError("Charger not found")
+
+            validate_can_start_charging_session(
+                charger=charger,
+                vehicle=vehicle,
+                active_reservations=reservation,
+                active_charging_sessions=self.uow.charging_sessions.list_active_by_charger_id(
+                    charger.id
+                ),
+            )
             new_session = self.uow.charging_sessions.add(session)
             self.uow.commit()
             return new_session
@@ -27,6 +49,14 @@ class ChargingSessionService:
     def get_session(self, session_id: int) -> Optional[ChargingSessionEntity]:
         with self.uow:
             return self.uow.charging_sessions.get(session_id)
+
+    def get_user_sessions(self, user_id: int) -> List[ChargingSessionEntity]:
+        with self.uow:
+            return self.uow.charging_sessions.list_by_user_id(user_id)
+
+    def get_active_sessions_by_user_id(self, user_id: int) -> List[ChargingSessionEntity]:
+        with self.uow:
+            return self.uow.charging_sessions.list_active_by_user_id(user_id)
 
     def can_access_session(
         self,
@@ -42,14 +72,19 @@ class ChargingSessionService:
 
     def start_session(
         self,
-        reservation_id: int,
+        reservation_id: Optional[int],
         current_user_id: int,
         is_staff: bool = False,
     ) -> ChargingSessionEntity:
         with self.uow:
-            reservation = self.uow.reservations.get(reservation_id)
-            if not reservation:
-                raise LookupError("Reservation not found")
+            now = datetime.now()
+            if reservation_id is None:
+                reservation = self._find_current_active_reservation(current_user_id, now)
+                reservation_id = reservation.id
+            else:
+                reservation = self.uow.reservations.get(reservation_id)
+                if not reservation:
+                    raise LookupError("Reservation not found")
 
             if reservation.user_id != current_user_id and not is_staff:
                 raise PermissionError("Not enough permissions")
@@ -57,7 +92,6 @@ class ChargingSessionService:
             if reservation.status not in ACTIVE_RESERVATION_STATUSES:
                 raise ValueError("Reservation is not active")
 
-            now = datetime.now()
             if not self._is_reservation_time_active(reservation, now):
                 raise ValueError("Reservation is not active")
 
@@ -96,15 +130,19 @@ class ChargingSessionService:
 
     def finish_session(
         self,
-        session_id: int,
+        session_id: Optional[int],
         current_user_id: int,
         is_staff: bool = False,
         end_time: Optional[time] = None,
     ) -> ChargingSessionEntity:
         with self.uow:
-            session = self.uow.charging_sessions.get(session_id)
-            if not session:
-                raise LookupError("Charging session not found")
+            if session_id is None:
+                session = self._find_current_active_session(current_user_id)
+                session_id = session.id
+            else:
+                session = self.uow.charging_sessions.get(session_id)
+                if not session:
+                    raise LookupError("Charging session not found")
 
             if session.status not in RUNNING_SESSION_STATUSES:
                 raise ValueError("Charging session is not in progress")
@@ -124,12 +162,19 @@ class ChargingSessionService:
             if not vehicle:
                 raise LookupError("Vehicle not found")
 
-            finish_time = (end_time or datetime.now().time()).replace(microsecond=0)
-            if finish_time <= session.start_time:
+            finish_time = self._normalize_time(
+                (end_time or datetime.now().time()).replace(microsecond=0)
+            )
+            session_start_time = self._normalize_time(session.start_time)
+            reservation_end_time = self._normalize_time(reservation.end_time)
+
+            if finish_time <= session_start_time:
                 raise ValueError("Session finish time must be after start time")
+            if finish_time > reservation_end_time:
+                raise ValueError("Session finish time cannot be after reservation end time")
 
             consumed_energy = self._calculate_consumed_energy(
-                session.start_time,
+                session_start_time,
                 finish_time,
                 min(vehicle.max_charging_power, charger.max_power),
             )
@@ -145,14 +190,112 @@ class ChargingSessionService:
             reservation.status = "COMPLETED"
             self.uow.reservations.update(reservation)
 
+            self._create_pending_payment_for_finished_session(
+                reservation_user_id=reservation.user_id,
+                reservation_id=session.reservation_id,
+                amount=session.cost,
+            )
+            self._create_session_finished_notification(
+                reservation_user_id=reservation.user_id,
+                reservation_id=session.reservation_id,
+                amount=session.cost,
+            )
+
             self.uow.commit()
             return finished_session
 
+    def _create_pending_payment_for_finished_session(
+        self,
+        reservation_user_id: int,
+        reservation_id: int,
+        amount: float,
+    ) -> None:
+        existing_payment = self.uow.payments.get_by_reservation_id(reservation_id)
+        if existing_payment:
+            return
+
+        if amount <= 0:
+            return
+
+        self.uow.payments.add(
+            PaymentEntity(
+                user_id=reservation_user_id,
+                reservation_id=reservation_id,
+                amount=amount,
+                status="PENDING",
+            )
+        )
+
+    def _create_session_finished_notification(
+        self,
+        reservation_user_id: int,
+        reservation_id: int,
+        amount: float,
+    ) -> None:
+        title = "Charging session completed"
+        message = (
+            f"Your charging session for reservation {reservation_id} has been completed. "
+            f"Payment amount: {amount:.2f}."
+        )
+
+        if self.uow.notifications.exists_by_user_and_title_and_message(
+            reservation_user_id,
+            title,
+            message,
+        ):
+            return
+
+        self.uow.notifications.add(
+            NotificationEntity(
+                user_id=reservation_user_id,
+                title=title,
+                message=message,
+                notification_type="SUCCESS",
+            )
+        )
+
+    def _find_current_active_reservation(
+        self,
+        user_id: int,
+        current_datetime: datetime,
+    ):
+        reservations = self.uow.reservations.list_by_user_and_date(
+            user_id, current_datetime.date()
+        )
+        active_reservations = [
+            reservation
+            for reservation in reservations
+            if self._is_reservation_time_active(reservation, current_datetime)
+        ]
+
+        if not active_reservations:
+            raise ValueError("No active reservation found for current time")
+        if len(active_reservations) > 1:
+            raise ValueError("Multiple active reservations found for current time")
+
+        return active_reservations[0]
+
+    def _find_current_active_session(self, current_user_id: int) -> ChargingSessionEntity:
+        active_sessions = self.uow.charging_sessions.list_active_by_user_id(
+            current_user_id
+        )
+
+        if not active_sessions:
+            raise LookupError("No active charging session found")
+        if len(active_sessions) > 1:
+            raise ValueError("Multiple active charging sessions found")
+
+        return active_sessions[0]
+
+    def _normalize_time(self, value: time) -> time:
+        return value.replace(tzinfo=None) if value.tzinfo is not None else value
+
     def _is_reservation_time_active(self, reservation, current_datetime: datetime) -> bool:
+        current_time = self._normalize_time(current_datetime.time())
         return (
             reservation.date == current_datetime.date()
-            and reservation.start_time <= current_datetime.time()
-            and reservation.end_time >= current_datetime.time()
+            and self._normalize_time(reservation.start_time) <= current_time
+            and self._normalize_time(reservation.end_time) >= current_time
         )
 
     def _calculate_consumed_energy(
@@ -161,6 +304,8 @@ class ChargingSessionService:
         end_time: time,
         charging_power_kw: float,
     ) -> float:
+        start_time = self._normalize_time(start_time)
+        end_time = self._normalize_time(end_time)
         start_datetime = datetime.combine(date.today(), start_time)
         end_datetime = datetime.combine(date.today(), end_time)
         duration_hours = (end_datetime - start_datetime).total_seconds() / 3600

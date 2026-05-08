@@ -15,5 +15,14 @@ class AbstractNotificationRepository(AbstractRepository[NotificationEntity]):
         raise NotImplementedError
 
     @abstractmethod
+    def exists_by_user_and_title_and_message(
+        self,
+        user_id: int,
+        title: str,
+        message: str,
+    ) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
     def mark_as_read(self, notification_id: int) -> NotificationEntity | None:
         raise NotImplementedError

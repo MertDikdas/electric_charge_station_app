@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.user_service import UserService
-from app.core.dependencies import get_user_service, get_current_user, AuthenticatedUser
+from app.core.dependencies import get_user_service, get_current_user, AuthenticatedUser, get_admin_or_station_manager
 from app.domain.models.user import UserEntity
 from app.schemas.user import UserCreate, User, UserLogin, AuthResponse
 from app.schemas.vehicle import Vehicle
@@ -13,19 +13,6 @@ from app.schemas.charging_session import ChargingSession
 from app.core.security import hash_password
 
 router = APIRouter()
-
-def ensure_admin_role(
-    current_user: AuthenticatedUser,
-) -> None:
-    if current_user.role.lower() != "admin":
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-
-def ensure_authenticated_user(
-    user_id: int,
-    current_user: AuthenticatedUser,
-) -> None:
-    if current_user.role.lower() != "admin" and current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
 
 @router.post("/", response_model=AuthResponse, status_code=201)
 def create_user(
@@ -58,70 +45,52 @@ def login_user(
     return auth_response
 
 
-@router.get("/", response_model=List[User])
+@router.get("/all", response_model=List[User])
 def get_users(service: UserService = Depends(get_user_service),
-              current_user: AuthenticatedUser = Depends(get_current_user)):
-    ensure_admin_role(user_id=None, current_user=current_user)
+              current_user: AuthenticatedUser = Depends(get_admin_or_station_manager)):
     return service.get_all_users()
 
-
-@router.get("/{user_id}", response_model=User)
-def get_user(
-    user_id: int,
+@router.delete("/me", status_code=204)
+def delete_user(
     service: UserService = Depends(get_user_service),
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
-    user = service.get_user(user_id)
+    current_user_id = current_user.id
+    user = service.get_user(current_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    ensure_authenticated_user(user_id, current_user)
+    service.delete_user(current_user_id)
+
+@router.get("/me", response_model=User)
+def get_current_user_info(
+    service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    user = service.get_user(current_user.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     return user
-
-@router.get("/{user_id}/vehicles", response_model=List[Vehicle])
-def get_user_vehicles(
-    user_id: int,
-    service: UserService = Depends(get_user_service),
-    current_user: AuthenticatedUser = Depends(get_current_user)
-):
-    user = service.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    ensure_authenticated_user(user_id, current_user)
-    return service.get_user_vehicles(user_id)
-
-
-@router.get("/{user_id}/reservations", response_model=List[Reservation])
-def get_user_reservations(
-    user_id: int,
-    service: UserService = Depends(get_user_service),
-    current_user: AuthenticatedUser = Depends(get_current_user)
-):
-    user = service.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    ensure_authenticated_user(user_id, current_user)
-    return service.get_user_reservations(user_id)
-
-@router.get("/{user_id}/charging_sessions", response_model=List[ChargingSession])
-def get_user_charging_sessions(
-    user_id: int,
-    service: UserService = Depends(get_user_service),
-    current_user: AuthenticatedUser = Depends(get_current_user)
-):
-    user = service.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    ensure_authenticated_user(user_id, current_user)
-    return service.get_user_charging_sessions(user_id)
 
 @router.delete("/{user_id}", status_code=204)
 def delete_user(
     user_id: int,
     service: UserService = Depends(get_user_service),
-    current_user: AuthenticatedUser = Depends(get_current_user)
+    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager)
 ):
     user = service.get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    ensure_authenticated_user(user_id, current_user)
     service.delete_user(user_id)
+
+@router.patch("/add_balance/me", response_model=User)
+def add_balance(
+    amount: float,
+    service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    try:
+        return service.add_balance(current_user.id, amount)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

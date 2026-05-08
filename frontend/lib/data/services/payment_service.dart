@@ -3,7 +3,8 @@ import '../models/payment.dart';
 import 'json_helpers.dart';
 
 class PaymentService {
-  PaymentService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  PaymentService({ApiClient? apiClient})
+    : _apiClient = apiClient ?? ApiClient();
 
   final ApiClient _apiClient;
 
@@ -28,12 +29,6 @@ class PaymentService {
     );
   }
 
-  Future<Payment> getPaymentByTransactionId(String transactionId) async {
-    return Payment.fromJson(
-      parseObject(await _apiClient.get('/payments/transaction/$transactionId')),
-    );
-  }
-
   Future<Payment> getPaymentByChargingSession(int chargingSessionId) async {
     return Payment.fromJson(
       parseObject(
@@ -52,9 +47,7 @@ class PaymentService {
     int paymentId, {
     double? amount,
     String? status,
-    String? transactionId,
     String? paymentDate,
-    String? description,
   }) async {
     return Payment.fromJson(
       parseObject(
@@ -63,9 +56,7 @@ class PaymentService {
           body: {
             'amount': amount,
             'status': status,
-            'transaction_id': transactionId,
             'payment_date': paymentDate,
-            'description': description,
           },
         ),
       ),

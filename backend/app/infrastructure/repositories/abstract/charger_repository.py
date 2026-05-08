@@ -13,3 +13,7 @@ class AbstractChargerRepository(AbstractRepository[ChargerEntity]):
     @abstractmethod
     def list_by_status(self, status: str) -> List[ChargerEntity]:
         raise NotImplementedError
+
+    @abstractmethod
+    def get_by_id(self, charger_id:int) -> ChargerEntity:
+        raise NotImplementedError

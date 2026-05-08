@@ -10,6 +10,7 @@ class UserEntity(BaseEntity):
     email: str
     balance: float = 0.0
     password_hash: str = ""
+    role: str = "USER"
 
 
 User = UserEntity

@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.vehicle_service import VehicleService
-from app.core.dependencies import AuthenticatedUser, get_current_user, get_vehicle_service
+from app.core.dependencies import AuthenticatedUser, get_current_user, get_vehicle_service, get_admin_or_station_manager
 from app.domain.models.vehicle import VehicleEntity
 from app.schemas.charger import Charger
 from app.schemas.vehicle import VehicleCreate, Vehicle
@@ -34,15 +34,19 @@ def create_vehicle(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/", response_model=List[Vehicle])
+@router.get("/all", response_model=List[Vehicle])
 def get_vehicles(
+    service: VehicleService = Depends(get_vehicle_service),
+    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+):
+    return service.get_all_vehicles()
+
+@router.get("/my", response_model=List[Vehicle])
+def get_my_vehicles(
     service: VehicleService = Depends(get_vehicle_service),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
-    if current_user.role.lower() != "admin":
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-    return service.get_all_vehicles()
-
+    return service.get_user_vehicles(current_user.id)
 
 @router.get("/{vehicle_id}/compatible-chargers", response_model=List[Charger])
 def get_compatible_chargers(

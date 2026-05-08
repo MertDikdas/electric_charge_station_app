@@ -8,10 +8,17 @@ from app.core.dependencies import (
     AuthenticatedUser,
     get_admin_or_station_manager,
     get_charger_service,
+    get_only_station_manager,
     get_reservation_service,
+    get_station_staff,
 )
 from app.domain.models.charger import ChargerEntity
-from app.schemas.charger import ChargerCreate, Charger, ChargerStatusUpdate
+from app.schemas.charger import (
+    Charger,
+    ChargerCreate,
+    ChargerPriceUpdate,
+    ChargerStatusUpdate,
+)
 from app.schemas.reservation import Reservation
 
 router = APIRouter()
@@ -21,13 +28,13 @@ router = APIRouter()
 def create_charger(
     charger: ChargerCreate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    _current_user: AuthenticatedUser = Depends(get_only_station_manager),
 ):
     charger_entity = ChargerEntity(**charger.model_dump())
     return service.create_charger(charger_entity)
 
 
-@router.get("/", response_model=List[Charger])
+@router.get("/all", response_model=List[Charger])
 def get_chargers(service: ChargerService = Depends(get_charger_service)):
     return service.get_all_chargers()
 
@@ -48,7 +55,7 @@ def update_charger(
     charger_id: int,
     charger: ChargerCreate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    _current_user: AuthenticatedUser = Depends(get_only_station_manager),
 ):
     existing_charger = service.get_charger(charger_id)
     if not existing_charger:
@@ -78,7 +85,7 @@ def update_charger_status(
     charger_id: int,
     status_update: ChargerStatusUpdate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    _current_user: AuthenticatedUser = Depends(get_station_staff),
 ):
     try:
         charger = service.update_charger_status(charger_id, status_update.status)
@@ -87,6 +94,25 @@ def update_charger_status(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return charger
+
+
+@router.patch("/{charger_id}/price", response_model=Charger)
+def update_charger_price(
+    charger_id: int,
+    price_update: ChargerPriceUpdate,
+    service: ChargerService = Depends(get_charger_service),
+    _current_user: AuthenticatedUser = Depends(get_only_station_manager),
+):
+    try:
+        charger = service.update_charger_price(
+            charger_id=charger_id,
+            price_per_kwh=price_update.price_per_kwh,
+        )
+        if not charger:
+            raise HTTPException(status_code=404, detail="Charger not found")
+        return charger
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/{charger_id}/reservations", response_model=List[Reservation])

@@ -30,7 +30,7 @@ def create_coupon(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=List[Coupon])
+@router.get("/all", response_model=List[Coupon])
 def get_coupons(
     service: CouponService = Depends(get_coupon_service),
     current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),

@@ -54,3 +54,7 @@ class ChargerStatusUpdate(BaseModel):
         if isinstance(value, str):
             return value.upper()
         return value
+
+
+class ChargerPriceUpdate(BaseModel):
+    price_per_kwh: float = Field(..., ge=0)

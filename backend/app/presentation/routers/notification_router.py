@@ -19,7 +19,6 @@ router = APIRouter()
 def create_notification(
     notification: NotificationCreate,
     service: NotificationService = Depends(get_notification_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     notification_entity = NotificationEntity(**notification.model_dump())
     try:
@@ -30,7 +29,7 @@ def create_notification(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=List[Notification])
+@router.get("/my", response_model=List[Notification])
 def get_notifications(
     service: NotificationService = Depends(get_notification_service),
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -50,7 +49,7 @@ def get_all_notifications(
     return service.get_all_notifications()
 
 
-@router.get("/{notification_id}", response_model=Notification)
+@router.get("/my/{notification_id}", response_model=Notification)
 def get_notification(
     notification_id: int,
     service: NotificationService = Depends(get_notification_service),
@@ -64,7 +63,7 @@ def get_notification(
     return notification
 
 
-@router.patch("/{notification_id}/read", response_model=Notification)
+@router.patch("/my/{notification_id}/read", response_model=Notification)
 def mark_notification_as_read(
     notification_id: int,
     service: NotificationService = Depends(get_notification_service),
@@ -82,7 +81,7 @@ def mark_notification_as_read(
     return updated_notification
 
 
-@router.delete("/{notification_id}", status_code=204)
+@router.delete("/my/{notification_id}", status_code=204)
 def delete_notification(
     notification_id: int,
     service: NotificationService = Depends(get_notification_service),

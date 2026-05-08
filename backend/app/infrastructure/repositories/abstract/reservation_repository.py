@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from datetime import date, time
+from datetime import date, datetime, time
 from typing import List
 
 from app.domain.models.reservation import ReservationEntity
@@ -56,6 +56,14 @@ class AbstractReservationRepository(AbstractRepository[ReservationEntity]):
         self,
         user_id: int,
         after_date: date,
+    ) -> List[ReservationEntity]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_starting_between(
+        self,
+        start_datetime: datetime,
+        end_datetime: datetime,
     ) -> List[ReservationEntity]:
         raise NotImplementedError
 

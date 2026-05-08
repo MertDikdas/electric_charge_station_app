@@ -1,6 +1,8 @@
 from datetime import date, datetime, timedelta, time
 from typing import List
 
+from sqlalchemy import and_, or_
+
 from app.domain.models.reservation import ReservationEntity
 from app.infrastructure.database.tables import Reservation as ReservationModel
 from app.infrastructure.repositories.abstract.reservation_repository import (
@@ -134,11 +136,49 @@ class SqlAlchemyReservationRepository(
             .filter(
                 ReservationModel.user_id == user_id,
                 ReservationModel.date > after_date,
-                ReservationModel.status.in_(self.blocking_statuses),
             )
             .all()
         )
         return [self.to_entity(model) for model in models]
+
+    def list_starting_between(
+        self,
+        start_datetime: datetime,
+        end_datetime: datetime,
+    ) -> List[ReservationEntity]:
+        start_date = start_datetime.date()
+        end_date = end_datetime.date()
+        if start_date == end_date:
+            models = (
+                self.session.query(ReservationModel)
+                .filter(
+                    ReservationModel.status.in_(self.blocking_statuses),
+                    ReservationModel.date == start_date,
+                    ReservationModel.start_time >= start_datetime.time(),
+                    ReservationModel.start_time < end_datetime.time(),
+                )
+                .all()
+            )
+        else:
+            models = (
+                self.session.query(ReservationModel)
+                .filter(
+                    ReservationModel.status.in_(self.blocking_statuses),
+                    or_(
+                        and_(
+                            ReservationModel.date == start_date,
+                            ReservationModel.start_time >= start_datetime.time(),
+                        ),
+                        and_(
+                            ReservationModel.date == end_date,
+                            ReservationModel.start_time < end_datetime.time(),
+                        ),
+                    ),
+                )
+                .all()
+            )
+        return [self.to_entity(model) for model in models]
+
     def get_expired_or_cancelled_count_last_2_months(self, user_id: int) -> int:
         two_months_ago = datetime.utcnow().date() - timedelta(days=60)
         return (

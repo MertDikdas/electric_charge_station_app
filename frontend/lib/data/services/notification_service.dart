@@ -29,12 +29,10 @@ class NotificationService {
     );
   }
 
-  Future<List<AppNotification>> getNotifications({
-    bool? unreadOnly,
-  }) async {
+  Future<List<AppNotification>> getNotifications({bool? unreadOnly}) async {
     return parseList(
       await _apiClient.get(
-        '/notifications',
+        '/notifications/my',
         queryParameters: {'unread_only': unreadOnly?.toString()},
       ),
       AppNotification.fromJson,
@@ -50,19 +48,19 @@ class NotificationService {
 
   Future<AppNotification> getNotification(int notificationId) async {
     return AppNotification.fromJson(
-      parseObject(await _apiClient.get('/notifications/$notificationId')),
+      parseObject(await _apiClient.get('/notifications/my/$notificationId')),
     );
   }
 
   Future<AppNotification> markNotificationAsRead(int notificationId) async {
     return AppNotification.fromJson(
       parseObject(
-        await _apiClient.patch('/notifications/$notificationId/read'),
+        await _apiClient.patch('/notifications/my/$notificationId/read'),
       ),
     );
   }
 
   Future<void> deleteNotification(int notificationId) {
-    return _apiClient.delete('/notifications/$notificationId');
+    return _apiClient.delete('/notifications/my/$notificationId');
   }
 }

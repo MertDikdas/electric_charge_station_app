@@ -3,25 +3,29 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.application.services.station_service import StationService
-from app.core.dependencies import get_station_service, AuthenticatedUser, get_current_user
+from app.core.dependencies import (
+    AuthenticatedUser,
+    get_admin_or_station_manager,
+    get_only_station_manager,
+    get_station_service,
+    get_station_staff,
+    get_current_user,
+)
 from app.domain.models.station import StationEntity
 from app.schemas.charger import Charger
-from app.schemas.station import StationCreate, Station
+from app.schemas.station import StationCreate, Station, StationStatusUpdate
 from app.domain.rules.station_rules import validate_station_entity
+from typing import Dict, Any
 
 router = APIRouter()
 
-def ensure_admin_role(current_user: AuthenticatedUser) -> None:
-    if current_user.role.lower() != "admin":
-        raise HTTPException(status_code=403, detail="Not enough permissions")
 
 @router.post("/", response_model=Station, status_code=201)
 def create_station(
     station: StationCreate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_current_user),
+    current_user: AuthenticatedUser = Depends(get_only_station_manager),
 ):
-    ensure_admin_role(current_user)
     station_entity = StationEntity(**station.model_dump())
     try:
         validate_station_entity(station_entity)
@@ -38,11 +42,47 @@ def get_stations(service: StationService = Depends(get_station_service)):
 
 @router.get("/nearby", response_model=List[Station])
 def get_nearby_stations(
-    location: str = Query(..., min_length=1),
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+    km_radius: float = Query(5, gt=0),
     service: StationService = Depends(get_station_service),
 ):
-    return service.get_nearby_stations(location)
+    return service.get_nearby_stations(latitude, longitude, km_radius)
 
+@router.get("/nearby/area", response_model=List[Station])
+def get_nearby_stations_in_area(
+    north_latitude: float = Query(..., ge=-90, le=90),
+    south_latitude: float = Query(..., ge=-90, le=90),
+    east_longitude: float = Query(..., ge=-180, le=180),
+    west_longitude: float = Query(..., ge=-180, le=180),
+    radius: float = Query(..., gt=0),
+    service: StationService = Depends(get_station_service),
+):
+    return service.get_nearby_stations_in_area(north_latitude, south_latitude, east_longitude, west_longitude, radius)
+
+@router.get("/search-compatible-in-area", response_model=List[Dict[str, Any]])
+def get_nearby_compatible_stations(
+    north_latitude: float = Query(..., ge=-90, le=90),
+    south_latitude: float = Query(..., ge=-90, le=90),
+    east_longitude: float = Query(..., ge=-180, le=180),
+    west_longitude: float = Query(..., ge=-180, le=180),
+    vehicle_id: int = Query(..., gt=0),
+    service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    try:
+        return service.get_nearby_compatible_stations(
+            north_latitude=north_latitude,
+            south_latitude=south_latitude,
+            east_longitude=east_longitude,
+            west_longitude=west_longitude,
+            vehicle_id=vehicle_id,
+            current_user_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @router.get("/{station_id}/chargers", response_model=List[Charger])
 def get_station_chargers(
@@ -72,10 +112,9 @@ def update_station(
     station_id: int,
     station: StationCreate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_current_user),
+    current_user: AuthenticatedUser = Depends(get_only_station_manager),
 ):
     
-    ensure_admin_role(current_user)
     existing_station = service.get_station(station_id)
     if not existing_station:
         raise HTTPException(status_code=404, detail="Station not found")
@@ -88,13 +127,28 @@ def update_station(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.patch("/{station_id}/status", response_model=Station)
+def update_station_status(
+    station_id: int,
+    status_update: StationStatusUpdate,
+    service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_station_staff),
+):
+    try:
+        station = service.update_station_status(station_id, status_update.status)
+        if not station:
+            raise HTTPException(status_code=404, detail="Station not found")
+        return station
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.delete("/{station_id}", status_code=204)
 def delete_station(
     station_id: int,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_current_user),
+    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
-    ensure_admin_role(current_user)
     existing_station = service.get_station(station_id)
     if not existing_station:
         raise HTTPException(status_code=404, detail="Station not found")

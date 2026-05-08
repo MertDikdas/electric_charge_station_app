@@ -12,6 +12,14 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     balance = Column(Float, default=0.0)
+    role = Column(String, nullable=False, default="USER")
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('USER', 'ADMIN')",
+            name="check_user_role",
+        ),
+    )
 
     vehicles = relationship("Vehicle", back_populates="user")
     reservations = relationship("Reservation", back_populates="user")
@@ -19,6 +27,43 @@ class User(Base):
     coupons = relationship("Coupon", back_populates="user")
     payments = relationship("Payment", back_populates="user")
     sessions = relationship("UserSession", back_populates="user")
+    company_members = relationship("CompanyMember", back_populates="user")
+
+
+class Company(Base):
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    tax_number = Column(String, unique=True, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    stations = relationship("Station", back_populates="company")
+    members = relationship("CompanyMember", back_populates="company")
+
+
+class CompanyMember(Base):
+    __tablename__ = "company_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    role = Column(String, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "user_id", name="uq_company_member"),
+        CheckConstraint(
+            "role IN ('STATION_MANAGER', 'STATION_OPERATOR')",
+            name="check_company_member_role",
+        ),
+    )
+
+    company = relationship("Company", back_populates="members")
+    user = relationship("User", back_populates="company_members")
 
 
 class UserSession(Base):
@@ -60,16 +105,20 @@ class Station(Base):
     __tablename__ = "stations"
 
     id = Column(Integer, primary_key=True, index=True)
-    company = Column(String, nullable=False)
-    location = Column(String, nullable=False, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    longitude = Column(Float, nullable=False)
+    latitude = Column(Float, nullable=False)
     address = Column(String, nullable=False)
     status = Column(String, nullable=False, default="AVAILABLE")
 
 
     __table_args__ = (
         CheckConstraint("status IN ('AVAILABLE', 'OCCUPIED', 'OUT_OF_SERVICE', 'MAINTENANCE', 'CLOSED')", name="check_station_status"),
+        CheckConstraint("latitude >= -90 AND latitude <= 90", name="check_station_latitude_range"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180", name="check_station_longitude_range"),
     )
     chargers = relationship("Charger", back_populates="station")
+    company = relationship("Company", back_populates="stations")
 
 class Charger(Base):
     __tablename__ = "chargers"
@@ -189,19 +238,13 @@ class Payment(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     reservation_id = Column(Integer, ForeignKey("charging_sessions.reservation_id"), nullable=False)
     amount = Column(Float, nullable=False)
-    payment_method = Column(String, nullable=False)
     status = Column(String, nullable=False, default="PENDING")
-    transaction_id = Column(String, unique=True, nullable=True, index=True)
     payment_date = Column(DateTime, nullable=True)
-    description = Column(String, nullable=True)
     coupon_id = Column(Integer, ForeignKey("coupons.id"), nullable=True)
-    original_amount = Column(Float, nullable=True)
 
     __table_args__ = (
         CheckConstraint("amount > 0", name="check_payment_amount_positive"),
         CheckConstraint("status IN ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED')", name="check_payment_status"),
-        CheckConstraint("payment_method IN ('CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'MOBILE_PAYMENT', 'WALLET')", name="check_payment_method"),
-        CheckConstraint("original_amount IS NULL OR original_amount > 0", name="check_payment_original_amount_positive"),
     )
 
     user = relationship("User", back_populates="payments")

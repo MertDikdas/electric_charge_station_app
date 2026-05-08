@@ -31,12 +31,20 @@ class ApiClient {
     return _send('POST', path, body: body, authorized: authorized);
   }
 
-  Future<dynamic> put(String path, {Object? body}) {
-    return _send('PUT', path, body: body);
+  Future<dynamic> put(
+    String path, {
+    Object? body,
+    Map<String, String?> queryParameters = const {},
+  }) {
+    return _send('PUT', path, body: body, queryParameters: queryParameters);
   }
 
-  Future<dynamic> patch(String path, {Object? body}) {
-    return _send('PATCH', path, body: body);
+  Future<dynamic> patch(
+    String path, {
+    Object? body,
+    Map<String, String?> queryParameters = const {},
+  }) {
+    return _send('PATCH', path, body: body, queryParameters: queryParameters);
   }
 
   Future<void> delete(String path) async {

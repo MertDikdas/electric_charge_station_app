@@ -3,6 +3,10 @@ from typing import List, Optional
 
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.payment import PaymentEntity
+from app.domain.rules.coupon_rules import (
+    calculate_coupon_discount,
+    ensure_coupon_is_usable,
+)
 from app.domain.rules.payment_rules import PaymentRules
 
 
@@ -37,10 +41,6 @@ class PaymentService:
         with self.uow:
             return self.uow.payments.get(payment_id)
 
-    def get_payment_by_transaction_id(self, transaction_id: str) -> Optional[PaymentEntity]:
-        with self.uow:
-            return self.uow.payments.get_by_transaction_id(transaction_id)
-
     def get_user_payments(self, user_id: int) -> List[PaymentEntity]:
         with self.uow:
             if not self.uow.users.get(user_id):
@@ -52,11 +52,11 @@ class PaymentService:
             self.rules.validate_payment_status(status)
             return self.uow.payments.list_by_status(status)
 
-    def get_payment_for_reservation(self, reservation_id: int) -> Optional[PaymentEntity]:
+    def get_payment_for_charging_session(self, charging_session_id: int) -> Optional[PaymentEntity]:
         with self.uow:
-            if not self.uow.reservations.get(reservation_id):
-                raise LookupError("Reservation not found")
-            return self.uow.payments.get_by_reservation_id(reservation_id)
+            if not self.uow.charging_sessions.get(charging_session_id):
+                raise LookupError("Charging session not found")
+            return self.uow.payments.get_by_reservation_id(charging_session_id)
 
     def update_payment(self, payment: PaymentEntity) -> PaymentEntity:
         with self.uow:
@@ -70,29 +70,57 @@ class PaymentService:
             self.uow.commit()
             return updated_payment
 
-    def complete_payment(self, payment_id: int, transaction_id: str) -> PaymentEntity:
+    def complete_payment(self, payment_id: int) -> PaymentEntity:
         with self.uow:
             payment = self.uow.payments.get(payment_id)
             if not payment:
                 raise LookupError("Payment not found")
+            if payment.status == "COMPLETED":
+                return payment
+
+            user = self.uow.users.get(payment.user_id)
+            if not user:
+                raise LookupError("User not found")
+
+            payable_amount = self._calculate_payable_amount(payment)
+            if user.balance < payable_amount:
+                raise ValueError("Insufficient balance")
+
+            user.balance = round(user.balance - payable_amount, 2)
+            self.uow.users.update(user)
 
             payment.status = "COMPLETED"
-            payment.transaction_id = transaction_id
             payment.payment_date = datetime.now()
 
             updated_payment = self.uow.payments.update(payment)
             self.uow.commit()
             return updated_payment
 
-    def fail_payment(self, payment_id: int, reason: Optional[str] = None) -> PaymentEntity:
+    def _calculate_payable_amount(self, payment: PaymentEntity) -> float:
+        if payment.coupon_id is None:
+            return payment.amount
+
+        coupon = self.uow.coupons.get(payment.coupon_id)
+        if not coupon:
+            raise LookupError("Coupon not found")
+        if coupon.user_id != payment.user_id:
+            raise ValueError("Coupon does not belong to payment user")
+        if not ensure_coupon_is_usable(coupon, payment.amount):
+            raise ValueError("Coupon is not usable for this payment")
+
+        discount_amount = calculate_coupon_discount(coupon, payment.amount)
+        coupon.used_count += 1
+        self.uow.coupons.update(coupon)
+
+        return round(payment.amount - discount_amount, 2)
+
+    def fail_payment(self, payment_id: int) -> PaymentEntity:
         with self.uow:
             payment = self.uow.payments.get(payment_id)
             if not payment:
                 raise LookupError("Payment not found")
 
             payment.status = "FAILED"
-            if reason:
-                payment.description = reason
 
             updated_payment = self.uow.payments.update(payment)
             self.uow.commit()
@@ -119,4 +147,3 @@ class PaymentService:
             self.uow.payments.delete(payment)
             self.uow.commit()
             return True
-

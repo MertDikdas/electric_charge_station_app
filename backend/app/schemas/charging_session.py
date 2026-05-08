@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class ChargingSessionStartRequest(BaseModel):
-    reservation_id: int
+    reservation_id: Optional[int] = None
 
 
 class ChargingSessionFinishRequest(BaseModel):

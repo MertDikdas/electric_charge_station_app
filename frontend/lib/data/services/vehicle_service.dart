@@ -16,7 +16,11 @@ class VehicleService {
   }
 
   Future<List<Vehicle>> getVehicles() async {
-    return parseList(await _apiClient.get('/vehicles/'), Vehicle.fromJson);
+    return parseList(await _apiClient.get('/vehicles/all'), Vehicle.fromJson);
+  }
+
+  Future<List<Vehicle>> getMyVehicles() async {
+    return parseList(await _apiClient.get('/vehicles/my'), Vehicle.fromJson);
   }
 
   Future<Vehicle> getVehicle(int vehicleId) async {

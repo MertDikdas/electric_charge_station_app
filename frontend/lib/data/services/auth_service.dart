@@ -64,7 +64,13 @@ class AuthService {
     return user;
   }
 
-  Future<void> logout() => _tokenStorage.clear();
+  Future<void> logout() async {
+    try {
+      await _apiClient.post('/auth/logout');
+    } finally {
+      await _tokenStorage.clear();
+    }
+  }
 
   (String, String) _splitName(String fullName) {
     final parts = fullName.trim().split(RegExp(r'\s+'));
