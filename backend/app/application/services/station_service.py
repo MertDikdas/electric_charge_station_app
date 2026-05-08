@@ -26,9 +26,9 @@ class StationService:
         with self.uow:
             return self.uow.stations.list_nearby(latitude, longitude)
 
-    def get_nearby_stations_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float, radius: float) -> List[StationEntity]:
+    def get_nearby_stations_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float) -> List[StationEntity]:
         with self.uow:
-            return self.uow.stations.list_nearby_in_area(north_latitude, south_latitude, east_longitude, west_longitude, radius)
+            return self.uow.stations.list_nearby_in_area(north_latitude, south_latitude, east_longitude, west_longitude)
 
     def get_station_chargers(self, station_id: int) -> List[ChargerEntity]:
         with self.uow:
