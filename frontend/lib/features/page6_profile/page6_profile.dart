@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../data/api/token_storage.dart';
 import '../../data/models/user.dart';
@@ -112,13 +111,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     subtitle: const Text('Arac ekle / duzenle'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      if (user == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Lütfen giriş yapın')),
-                        );
-                        return;
-                      }
-
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const VehicleScreen(),
@@ -146,7 +138,6 @@ class VehicleScreen extends StatefulWidget {
 class _VehicleScreenState extends State<VehicleScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _modelController = TextEditingController();
   final _plateController = TextEditingController();
   final _connectorController = TextEditingController(text: 'Type 2');
   final _currentTypeController = TextEditingController(text: 'AC');
@@ -162,7 +153,6 @@ class _VehicleScreenState extends State<VehicleScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _modelController.dispose();
     _plateController.dispose();
     _connectorController.dispose();
     _currentTypeController.dispose();
@@ -178,13 +168,13 @@ class _VehicleScreenState extends State<VehicleScreen> {
   }
 
   Future<void> _addVehicle() async {
+    if (!_formKey.currentState!.validate()) return;
+
     final userId = await _tokenStorage.readUserId();
     if (userId == null || userId == 0) {
-      _showMessage('Lütfen giriş yapınız');
+      _showMessage('Arac eklemek icin giris yapmalisiniz');
       return;
     }
-
-    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isSaving = true;
@@ -194,8 +184,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
       await _vehicleService.createVehicle(
         VehicleInput(
           userId: userId,
-          model: '${_nameController.text.trim()} ${_modelController.text.trim()}'
-              .trim(),
+          model: _nameController.text.trim(),
           plate: _plateController.text.trim().toUpperCase(),
           maxChargingPower: double.parse(_maxPowerController.text.trim()),
           batteryCapacity: double.parse(_batteryCapacityController.text.trim()),
@@ -205,7 +194,6 @@ class _VehicleScreenState extends State<VehicleScreen> {
       );
 
       _nameController.clear();
-      _modelController.clear();
       _plateController.clear();
       _maxPowerController.clear();
       _batteryCapacityController.clear();
@@ -276,77 +264,38 @@ class _VehicleScreenState extends State<VehicleScreen> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: _vehicleInputDecoration(
-                      context,
+                    decoration: const InputDecoration(
                       labelText: 'Vehicle Name',
-                      prefixIcon: const Icon(Icons.directions_car),
-                    ),
-                    validator: _required,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _modelController,
-                    textInputAction: TextInputAction.next,
-                    decoration: _vehicleInputDecoration(
-                      context,
-                      labelText: 'Vehicle Model',
-                      prefixIcon: const Icon(Icons.ev_station_outlined),
+                      prefixIcon: Icon(Icons.directions_car),
                     ),
                     validator: _required,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _plateController,
-                    textCapitalization: TextCapitalization.characters,
-                    textInputAction: TextInputAction.next,
-                    decoration: _vehicleInputDecoration(
-                      context,
+                    decoration: const InputDecoration(
                       labelText: 'Plate Number',
-                      prefixIcon: const Icon(
-                        Icons.confirmation_number_outlined,
-                      ),
+                      prefixIcon: Icon(Icons.confirmation_number_outlined),
                     ),
                     validator: _required,
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _connectorController.text,
-                    decoration: _vehicleInputDecoration(
-                      context,
+                  TextFormField(
+                    controller: _connectorController,
+                    decoration: const InputDecoration(
                       labelText: 'Connector Type',
-                      prefixIcon: const Icon(Icons.power),
+                      prefixIcon: Icon(Icons.power),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'Type 2', child: Text('Type 2')),
-                      DropdownMenuItem(value: 'CCS', child: Text('CCS')),
-                      DropdownMenuItem(value: 'CHAdeMO', child: Text('CHAdeMO')),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _connectorController.text = value;
-                      });
-                    },
+                    validator: _required,
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _currentTypeController.text,
-                    decoration: _vehicleInputDecoration(
-                      context,
+                  TextFormField(
+                    controller: _currentTypeController,
+                    decoration: const InputDecoration(
                       labelText: 'Current Type',
-                      prefixIcon: const Icon(Icons.electrical_services_outlined),
+                      prefixIcon: Icon(Icons.electrical_services_outlined),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'AC', child: Text('AC')),
-                      DropdownMenuItem(value: 'DC', child: Text('DC')),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _currentTypeController.text = value;
-                      });
-                    },
+                    validator: _required,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -354,14 +303,9 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    textInputAction: TextInputAction.next,
-                    decoration: _vehicleInputDecoration(
-                      context,
+                    decoration: const InputDecoration(
                       labelText: 'Max Charging Power (kW)',
-                      prefixIcon: const Icon(Icons.bolt_outlined),
+                      prefixIcon: Icon(Icons.bolt_outlined),
                     ),
                     validator: _positiveNumber,
                   ),
@@ -371,16 +315,9 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    textInputAction: TextInputAction.done,
-                    decoration: _vehicleInputDecoration(
-                      context,
+                    decoration: const InputDecoration(
                       labelText: 'Battery Capacity (kWh)',
-                      prefixIcon: const Icon(
-                        Icons.battery_charging_full_outlined,
-                      ),
+                      prefixIcon: Icon(Icons.battery_charging_full_outlined),
                     ),
                     validator: _positiveNumber,
                   ),
@@ -446,38 +383,6 @@ class _VehicleScreenState extends State<VehicleScreen> {
       ),
     );
   }
-}
-
-InputDecoration _vehicleInputDecoration(
-  BuildContext context, {
-  required String labelText,
-  required Widget prefixIcon,
-}) {
-  final colorScheme = Theme.of(context).colorScheme;
-
-  return InputDecoration(
-    labelText: labelText,
-    filled: true,
-    fillColor: Colors.white.withValues(alpha: 0.78),
-    prefixIcon: prefixIcon,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.7)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: Color(0xFF25B7D3), width: 1.5),
-    ),
-    errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: colorScheme.error),
-    ),
-    focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: colorScheme.error, width: 1.5),
-    ),
-  );
 }
 
 class _MessageCard extends StatelessWidget {
