@@ -3,9 +3,12 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/charger.dart';
 import '../../data/models/station.dart';
-import '../../data/services/station_service.dart';
+import '../../data/repositories/station_repository.dart';
+import '../../data/services/location_service.dart';
 import '../page6_profile/page6_profile.dart';
 import '../page7_reservations/page7_rezervations_screen.dart';
+import 'map_camera_service.dart';
+import 'station_marker_builder.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -15,20 +18,29 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  static const CameraPosition _initialCameraPosition = CameraPosition(
+  static const CameraPosition _fallbackCameraPosition = CameraPosition(
     target: LatLng(38.4237, 27.1428),
     zoom: 14,
   );
 
-  final _stationService = StationService();
+  final _locationService = LocationService();
+  final _mapCameraService = MapCameraService();
+  final _markerBuilder = StationMarkerBuilder();
+  final _stationRepository = StationRepository();
+
   GoogleMapController? _mapController;
+  LatLng? _pendingCameraTarget;
+  CameraPosition _initialCameraPosition = _fallbackCameraPosition;
+  List<Station> _allStations = const [];
   Set<Marker> _markers = {};
-  bool _isLoadingStations = true;
+  bool _isLoading = true;
+  bool _isLocationPermissionGranted = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadStations();
+    _initializeMapPage();
   }
 
   @override
@@ -37,52 +49,134 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  Future<void> _loadStations() async {
+  Future<void> _initializeMapPage() async {
     setState(() {
-      _isLoadingStations = true;
+      _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
-      final stations = await _stationService.getStations();
-      final markers = stations
-          .where(
-            (station) => station.latitude != null && station.longitude != null,
-          )
-          .map(
-            (station) => Marker(
-              markerId: MarkerId('station-${station.id}'),
-              position: LatLng(station.latitude!, station.longitude!),
-              infoWindow: InfoWindow(
-                title: station.company.isEmpty
-                    ? 'Station #${station.id}'
-                    : station.company,
-                snippet: station.status,
-              ),
-              onTap: () => _showStationDetails(station),
-            ),
-          )
-          .toSet();
+      final locationResult = await _locationService.requestCurrentLocation();
+      final stations = await _stationRepository.fetchStations();
+
+      final position = locationResult.position;
+      final hasUserLocation = locationResult.isGranted && position != null;
+      final target = hasUserLocation
+          ? LatLng(position.latitude, position.longitude)
+          : _fallbackCameraPosition.target;
 
       if (!mounted) return;
       setState(() {
-        _markers = markers;
+        _allStations = stations;
+        _isLocationPermissionGranted = hasUserLocation;
+        _initialCameraPosition = CameraPosition(target: target, zoom: 14);
       });
+
+      if (!hasUserLocation) {
+        _showLocationPermissionSnackBar(locationResult.message);
+      }
+
+      await _moveCameraAndRefreshMarkers(target);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      setState(() {
+        _errorMessage = error.toString();
+      });
+      _showSnackBar(error.toString());
     } finally {
       if (mounted) {
         setState(() {
-          _isLoadingStations = false;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _moveCameraAndRefreshMarkers(LatLng target) async {
+    final controller = _mapController;
+    if (controller == null) {
+      _pendingCameraTarget = target;
+      _refreshMarkersForFallbackViewport(target);
+      return;
+    }
+
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(CameraPosition(target: target, zoom: 14)),
+    );
+    await _refreshVisibleMarkers();
+  }
+
+  Future<void> _refreshVisibleMarkers() async {
+    final controller = _mapController;
+    if (controller == null || _allStations.isEmpty) return;
+
+    final bounds = await _mapCameraService.getVisibleBounds(controller);
+    final visibleStations = _mapCameraService.filterInsideBounds<Station>(
+      items: _allStations,
+      bounds: bounds,
+      latitudeOf: (station) => station.latitude,
+      longitudeOf: (station) => station.longitude,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _markers = _markerBuilder.buildMarkers(
+        stations: visibleStations,
+        onMarkerTap: _showStationDetails,
+      );
+    });
+  }
+
+  void _refreshMarkersForFallbackViewport(LatLng center) {
+    final nearbyStations = _allStations.where((station) {
+      final latitude = station.latitude;
+      final longitude = station.longitude;
+      if (latitude == null || longitude == null) return false;
+
+      // A light initial filter keeps the first frame from rendering every station
+      // before Google Maps reports its exact visible bounds.
+      return (latitude - center.latitude).abs() <= 0.08 &&
+          (longitude - center.longitude).abs() <= 0.08;
+    });
+
+    setState(() {
+      _markers = _markerBuilder.buildMarkers(
+        stations: nearbyStations,
+        onMarkerTap: _showStationDetails,
+      );
+    });
+  }
+
+  Future<void> _reloadStations() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final stations = await _stationRepository.fetchStations();
+      if (!mounted) return;
+      setState(() {
+        _allStations = stations;
+      });
+      await _refreshVisibleMarkers();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+      });
+      _showSnackBar(error.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
         });
       }
     }
   }
 
   Future<void> _showStationDetails(Station station) async {
-    final chargersFuture = _stationService.getStationChargers(station.id);
+    final chargersFuture = _stationRepository.fetchStationChargers(station.id);
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -135,7 +229,13 @@ class _MapScreenState extends State<MapScreen> {
                                   title: Text(
                                     '${charger.connectorType} - ${charger.currentType}',
                                   ),
-                                  subtitle: Text(charger.status),
+                                  subtitle: Text(
+                                    [
+                                      charger.status,
+                                      '${charger.maxPower.toStringAsFixed(0)} kW',
+                                      _formatPrice(charger.pricePerKwh),
+                                    ].join(' | '),
+                                  ),
                                 ),
                               )
                               .toList(),
@@ -151,6 +251,23 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  String _formatPrice(double pricePerKwh) {
+    if (pricePerKwh <= 0) return 'Price unavailable';
+    return '${pricePerKwh.toStringAsFixed(2)} / kWh';
+  }
+
+  void _showLocationPermissionSnackBar(String? message) {
+    _showSnackBar(
+      message ?? 'Location permission is required for nearby stations.',
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -162,16 +279,24 @@ class _MapScreenState extends State<MapScreen> {
           GoogleMap(
             initialCameraPosition: _initialCameraPosition,
             markers: _markers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
+            myLocationEnabled: _isLocationPermissionGranted,
+            myLocationButtonEnabled: _isLocationPermissionGranted,
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
             compassEnabled: true,
             onMapCreated: (controller) {
               _mapController = controller;
+              final pendingTarget = _pendingCameraTarget;
+              if (pendingTarget != null) {
+                _pendingCameraTarget = null;
+                _moveCameraAndRefreshMarkers(pendingTarget);
+              } else {
+                _refreshVisibleMarkers();
+              }
             },
+            onCameraIdle: _refreshVisibleMarkers,
           ),
-          if (_isLoadingStations)
+          if (_isLoading)
             const SafeArea(
               child: Align(
                 alignment: Alignment.topCenter,
@@ -186,13 +311,33 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          if (_errorMessage != null && !_isLoading)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Material(
+                    color: colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: colorScheme.onErrorContainer),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: _StartChargingFab(
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,
-        onPressed: _loadStations,
+        onPressed: _reloadStations,
       ),
       bottomNavigationBar: _MapBottomAppBar(
         onReservationsPressed: () {
