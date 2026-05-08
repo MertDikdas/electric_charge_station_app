@@ -73,7 +73,7 @@ class StationService:
 
                 result.append({
                     "id": station.id,
-                    "company": station.company,
+                    "company_id": station.company_id,
                     "address": station.address,
                     "latitude": station.latitude,
                     "longitude": station.longitude,
