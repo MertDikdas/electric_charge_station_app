@@ -9,6 +9,9 @@ class StationMarkerBuilder {
     required ValueChanged<Station> onMarkerTap,
   }) {
     return stations
+        .where(
+          (station) => station.latitude != null && station.longitude != null,
+        )
         .map(
           (station) => Marker(
             markerId: MarkerId('station-${station.id}'),

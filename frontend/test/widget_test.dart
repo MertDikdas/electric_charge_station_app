@@ -5,10 +5,11 @@ void main() {
   testWidgets('shows login screen', (WidgetTester tester) async {
     await tester.pumpWidget(const ElectricChargeStationApp());
 
-    expect(find.text('Hos Geldin'), findsNothing);
-    expect(find.text('Hoş Geldin'), findsOneWidget);
-    expect(find.text('Telefon veya e-posta'), findsOneWidget);
-    expect(find.text('Giriş Yap'), findsOneWidget);
-    expect(find.text('Üye Ol'), findsOneWidget);
+    expect(find.text('Ho\u015f Geldin'), findsOneWidget);
+    expect(find.text('Gelece\u011fi \u015earj Et'), findsOneWidget);
+    expect(find.text('E-mail'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Sign Up'), findsOneWidget);
   });
 }
