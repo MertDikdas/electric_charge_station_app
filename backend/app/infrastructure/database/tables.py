@@ -105,8 +105,7 @@ class Station(Base):
     __tablename__ = "stations"
 
     id = Column(Integer, primary_key=True, index=True)
-    company_name = Column("company", String, nullable=False)
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     longitude = Column(Float, nullable=False)
     latitude = Column(Float, nullable=False)
     address = Column(String, nullable=False)
