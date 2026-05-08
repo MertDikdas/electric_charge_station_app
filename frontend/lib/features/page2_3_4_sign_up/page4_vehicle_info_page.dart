@@ -26,22 +26,26 @@ class VehicleInfoPage extends StatefulWidget {
 
 class _VehicleInfoPageState extends State<VehicleInfoPage> {
   final _formKey = GlobalKey<FormState>();
-  final _brandController = TextEditingController();
+  final _vehicleNameController = TextEditingController();
   final _modelController = TextEditingController();
   final _plateController = TextEditingController();
   final _chargingPowerController = TextEditingController();
+  final _batteryCapacityController = TextEditingController();
   final List<_VehicleInfo> _vehicles = [];
   final _authService = AuthService();
   final _vehicleService = VehicleService();
 
+  String _connectorType = 'Type 2';
+  String _currentType = 'AC';
   bool _isSubmitting = false;
 
   @override
   void dispose() {
-    _brandController.dispose();
+    _vehicleNameController.dispose();
     _modelController.dispose();
     _plateController.dispose();
     _chargingPowerController.dispose();
+    _batteryCapacityController.dispose();
     super.dispose();
   }
 
@@ -53,16 +57,22 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     setState(() {
       _vehicles.add(
         _VehicleInfo(
-          brand: _brandController.text.trim(),
+          name: _vehicleNameController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
+          connectorType: _connectorType,
+          currentType: _currentType,
           chargingPower: _chargingPowerController.text.trim(),
+          batteryCapacity: _batteryCapacityController.text.trim(),
         ),
       );
-      _brandController.clear();
+      _vehicleNameController.clear();
       _modelController.clear();
       _plateController.clear();
       _chargingPowerController.clear();
+      _batteryCapacityController.clear();
+      _connectorType = 'Type 2';
+      _currentType = 'AC';
       _formKey.currentState!.reset();
     });
 
@@ -76,10 +86,11 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
   }
 
   bool get _hasVehicleDraft {
-    return _brandController.text.trim().isNotEmpty ||
+    return _vehicleNameController.text.trim().isNotEmpty ||
         _modelController.text.trim().isNotEmpty ||
         _plateController.text.trim().isNotEmpty ||
-        _chargingPowerController.text.trim().isNotEmpty;
+        _chargingPowerController.text.trim().isNotEmpty ||
+        _batteryCapacityController.text.trim().isNotEmpty;
   }
 
   void _completeSignup() {
@@ -90,10 +101,13 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
       _vehicles.add(
         _VehicleInfo(
-          brand: _brandController.text.trim(),
+          name: _vehicleNameController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
+          connectorType: _connectorType,
+          currentType: _currentType,
           chargingPower: _chargingPowerController.text.trim(),
+          batteryCapacity: _batteryCapacityController.text.trim(),
         ),
       );
     }
@@ -127,12 +141,12 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           await _vehicleService.createVehicle(
             VehicleInput(
               userId: user.id,
-              model: '${vehicle.brand} ${vehicle.model}'.trim(),
+              model: '${vehicle.name} ${vehicle.model}'.trim(),
               plate: vehicle.licensePlate,
               maxChargingPower: double.parse(vehicle.chargingPower),
-              batteryCapacity: double.parse(vehicle.chargingPower),
-              connectorType: 'Type 2',
-              currentType: 'AC',
+              batteryCapacity: double.parse(vehicle.batteryCapacity),
+              connectorType: vehicle.connectorType,
+              currentType: vehicle.currentType,
             ),
           );
         }
@@ -230,11 +244,11 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                     ],
                     const SizedBox(height: 30),
                     TextFormField(
-                      controller: _brandController,
+                      controller: _vehicleNameController,
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
                         context,
-                        hintText: 'Car Brand',
+                        hintText: 'Vehicle Name',
                         prefixIcon: const Icon(Icons.directions_car_outlined),
                       ),
                       validator: (value) {
@@ -250,7 +264,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
                         context,
-                        hintText: 'Car Model',
+                        hintText: 'Vehicle Model',
                         prefixIcon: const Icon(Icons.ev_station_outlined),
                       ),
                       validator: (value) {
@@ -267,7 +281,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
                         context,
-                        hintText: 'License Plate',
+                        hintText: 'Plate Number',
                         prefixIcon: const Icon(Icons.pin_outlined),
                       ),
                       validator: (value) {
@@ -275,6 +289,53 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                           return 'Geçerli bir plaka girin';
                         }
                         return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      initialValue: _connectorType,
+                      decoration: _inputDecoration(
+                        context,
+                        hintText: 'Connector Type',
+                        prefixIcon: const Icon(Icons.power),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Type 2',
+                          child: Text('Type 2'),
+                        ),
+                        DropdownMenuItem(value: 'CCS', child: Text('CCS')),
+                        DropdownMenuItem(
+                          value: 'CHAdeMO',
+                          child: Text('CHAdeMO'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _connectorType = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      initialValue: _currentType,
+                      decoration: _inputDecoration(
+                        context,
+                        hintText: 'Current Type',
+                        prefixIcon: const Icon(
+                          Icons.electrical_services_outlined,
+                        ),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'AC', child: Text('AC')),
+                        DropdownMenuItem(value: 'DC', child: Text('DC')),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _currentType = value;
+                        });
                       },
                     ),
                     const SizedBox(height: 14),
@@ -289,13 +350,38 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                       textInputAction: TextInputAction.done,
                       decoration: _inputDecoration(
                         context,
-                        hintText: 'Charging Power (kW)',
+                        hintText: 'Max Charging Power (kW)',
                         prefixIcon: const Icon(Icons.bolt_outlined),
                       ),
                       validator: (value) {
                         final power = double.tryParse(value?.trim() ?? '');
                         if (power == null || power <= 0) {
                           return 'Geçerli bir kW değeri girin';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _batteryCapacityController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      textInputAction: TextInputAction.done,
+                      decoration: _inputDecoration(
+                        context,
+                        hintText: 'Battery Capacity (kWh)',
+                        prefixIcon: const Icon(
+                          Icons.battery_charging_full_outlined,
+                        ),
+                      ),
+                      validator: (value) {
+                        final capacity = double.tryParse(value?.trim() ?? '');
+                        if (capacity == null || capacity <= 0) {
+                          return 'Gecerli bir kWh degeri girin';
                         }
                         return null;
                       },
@@ -342,16 +428,22 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
 class _VehicleInfo {
   const _VehicleInfo({
-    required this.brand,
+    required this.name,
     required this.model,
     required this.licensePlate,
+    required this.connectorType,
+    required this.currentType,
     required this.chargingPower,
+    required this.batteryCapacity,
   });
 
-  final String brand;
+  final String name;
   final String model;
   final String licensePlate;
+  final String connectorType;
+  final String currentType;
   final String chargingPower;
+  final String batteryCapacity;
 }
 
 class _VehicleTile extends StatelessWidget {
@@ -378,10 +470,12 @@ class _VehicleTile extends StatelessWidget {
           child: const Icon(Icons.directions_car_outlined),
         ),
         title: Text(
-          '${vehicle.brand} ${vehicle.model}',
+          '${vehicle.name} ${vehicle.model}',
           style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
-        subtitle: Text('${vehicle.licensePlate} · ${vehicle.chargingPower} kW'),
+        subtitle: Text(
+          '${vehicle.licensePlate} - ${vehicle.connectorType} - ${vehicle.currentType} - ${vehicle.chargingPower} kW',
+        ),
         trailing: IconButton(
           tooltip: 'Remove vehicle',
           onPressed: onRemove,
@@ -400,27 +494,27 @@ InputDecoration _inputDecoration(
   final colorScheme = Theme.of(context).colorScheme;
 
   return InputDecoration(
-    hintText: hintText,
+    labelText: hintText,
     filled: true,
     fillColor: Colors.white.withValues(alpha: 0.78),
     prefixIcon: prefixIcon,
     contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(
         color: colorScheme.outline.withValues(alpha: 0.55),
       ),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(8),
       borderSide: const BorderSide(color: Color(0xFF25B7D3), width: 1.5),
     ),
     errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: colorScheme.error),
     ),
     focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: colorScheme.error, width: 1.5),
     ),
   );
