@@ -12,6 +12,22 @@ class StationRepository {
     return _stationService.getStations();
   }
 
+  Future<List<Station>> fetchNearbyStationsByAreaByVehicle({
+    required double northLatitude,
+    required double southLatitude,
+    required double eastLongitude,
+    required double westLongitude,
+    required int vehicleId,
+  }) {
+    return _stationService.getNearbyStationsByAreaByVehicle(
+      northLatitude: northLatitude,
+      southLatitude: southLatitude,
+      eastLongitude: eastLongitude,
+      westLongitude: westLongitude,
+      vehicleId: vehicleId,
+    );
+  }
+
   Future<List<Station>> fetchNearbyStationsByArea({
     required double northLatitude,
     required double southLatitude,

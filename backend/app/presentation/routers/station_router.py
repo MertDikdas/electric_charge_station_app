@@ -62,7 +62,7 @@ def get_nearby_stations_in_area(
 ):
     return service.get_nearby_stations_in_area(north_latitude, south_latitude, east_longitude, west_longitude)
 
-@router.get("/search-compatible-in-area", response_model=List[Dict[str, Any]])
+@router.get("/search-compatible-in-area", response_model=List[Station])
 def get_nearby_compatible_stations(
     north_latitude: float = Query(..., ge=-90, le=90),
     south_latitude: float = Query(..., ge=-90, le=90),

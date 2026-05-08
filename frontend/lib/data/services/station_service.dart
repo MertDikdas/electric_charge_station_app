@@ -39,6 +39,28 @@ class StationService {
     );
   }
 
+  Future<List<Station>> getNearbyStationsByAreaByVehicle({
+    required double northLatitude,
+    required double southLatitude,
+    required double eastLongitude,
+    required double westLongitude,
+    required int vehicleId,
+  }) async {
+    return parseList(
+      await _apiClient.get(
+        '/stations/search-compatible-in-area',
+        queryParameters: {
+          'north_latitude': northLatitude.toString(),
+          'south_latitude': southLatitude.toString(),
+          'east_longitude': eastLongitude.toString(),
+          'west_longitude': westLongitude.toString(),
+          'vehicle_id': vehicleId.toString(),
+        },
+      ),
+      Station.fromJson,
+    );
+  }
+
   Future<Station> getStation(int stationId) async {
     return Station.fromJson(
       parseObject(await _apiClient.get('/stations/$stationId')),

@@ -110,13 +110,23 @@ class _MapScreenState extends State<MapScreen> {
     if (controller == null) return;
 
     final bounds = await controller.getVisibleRegion();
-
-    final stations = await _stationRepository.fetchNearbyStationsByArea(
-      northLatitude: bounds.northeast.latitude,
-      southLatitude: bounds.southwest.latitude,
-      eastLongitude: bounds.northeast.longitude,
-      westLongitude: bounds.southwest.longitude,
-    );
+    final stations;
+    if (_selectedVehicle == null) {
+      stations = await _stationRepository.fetchNearbyStationsByArea(
+        northLatitude: bounds.northeast.latitude,
+        southLatitude: bounds.southwest.latitude,
+        eastLongitude: bounds.northeast.longitude,
+        westLongitude: bounds.southwest.longitude,
+      );
+    } else {
+      stations = await _stationRepository.fetchNearbyStationsByAreaByVehicle(
+        northLatitude: bounds.northeast.latitude,
+        southLatitude: bounds.southwest.latitude,
+        eastLongitude: bounds.northeast.longitude,
+        westLongitude: bounds.southwest.longitude,
+        vehicleId: _selectedVehicle!.id,
+      );
+    }
 
     if (!mounted) return;
 

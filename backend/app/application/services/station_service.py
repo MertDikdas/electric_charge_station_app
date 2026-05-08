@@ -69,21 +69,8 @@ class StationService:
                     for charger in compatible_chargers
                     if charger.status == "AVAILABLE"
                 )
-
-                result.append({
-                    "id": station.id,
-                    "company_id": station.company_id,
-                    "address": station.address,
-                    "latitude": station.latitude,
-                    "longitude": station.longitude,
-                    "availability": self._calculate_station_availability(
-                        compatible_chargers
-                    ),
-                    "compatible_available_charger_count": compatible_available_count,
-                    "compatible_total_charger_count": len(compatible_chargers),
-                    "connector_type": vehicle.connector_type,
-                    "current_type": vehicle.current_type,
-                })
+                if compatible_available_count>0:
+                    result.append(station)
 
             return result
         
