@@ -6,16 +6,23 @@ from app.application.services.station_service import StationService
 from app.core.dependencies import (
     AuthenticatedUser,
     get_admin_or_station_manager,
-    get_only_station_manager,
     get_station_service,
-    get_station_staff,
+    get_station_manager,
     get_current_user,
+    get_current_company_member,
+    get_station_operator,
+    get_admin,
+    ensure_same_company,
+    get_company_member,
+    CompanyMember,
 )
 from app.domain.models.station import StationEntity
 from app.schemas.charger import Charger
 from app.schemas.station import StationCreate, Station, StationStatusUpdate
 from app.domain.rules.station_rules import validate_station_entity
 from typing import Dict, Any
+
+
 
 router = APIRouter()
 
@@ -24,9 +31,10 @@ router = APIRouter()
 def create_station(
     station: StationCreate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_only_station_manager),
+    member: CompanyMember = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
 ):
-    station_entity = StationEntity(**station.model_dump())
+    station_entity = StationEntity(**station.model_dump(),company_id=member.company_id)
     try:
         validate_station_entity(station_entity)
         return service.create_station(station_entity)
@@ -112,7 +120,8 @@ def update_station(
     station_id: int,
     station: StationCreate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_only_station_manager),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
+    membership_check: AuthenticatedUser = Depends(ensure_same_company),    
 ):
     
     existing_station = service.get_station(station_id)
@@ -132,7 +141,8 @@ def update_station_status(
     station_id: int,
     status_update: StationStatusUpdate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_station_staff),
+    current_user: AuthenticatedUser = Depends(get_company_member),
+    membership_check: AuthenticatedUser = Depends(ensure_same_company),
 ):
     try:
         station = service.update_station_status(station_id, status_update.status)
@@ -147,7 +157,7 @@ def update_station_status(
 def delete_station(
     station_id: int,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
 ):
     existing_station = service.get_station(station_id)
     if not existing_station:
