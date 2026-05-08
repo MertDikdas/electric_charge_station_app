@@ -24,7 +24,7 @@ from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
     SqlAlchemyUserSessionRepository,
 )
 from app.infrastructure.repositories.sqlalchemy.user_repository import SqlAlchemyUserRepository
-from backend.app.schemas.company_member import CompanyMember
+from app.schemas.company_member import CompanyMember
 
 security = HTTPBearer(auto_error=False)
 

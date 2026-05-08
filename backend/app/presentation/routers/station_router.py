@@ -6,9 +6,12 @@ from app.application.services.station_service import StationService
 from app.core.dependencies import (
     AuthenticatedUser,
     get_admin_or_station_manager,
-    get_only_station_manager,
     get_station_service,
-    get_station_staff,
+    get_current_company_member,
+    get_admin,
+    get_station_manager,
+    get_station_operator,
+    get_company_member,
     get_current_user,
 )
 from app.domain.models.station import StationEntity
@@ -24,7 +27,7 @@ router = APIRouter()
 def create_station(
     station: StationCreate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_only_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     station_entity = StationEntity(**station.model_dump())
     try:
@@ -55,10 +58,9 @@ def get_nearby_stations_in_area(
     south_latitude: float = Query(..., ge=-90, le=90),
     east_longitude: float = Query(..., ge=-180, le=180),
     west_longitude: float = Query(..., ge=-180, le=180),
-    radius: float = Query(..., gt=0),
     service: StationService = Depends(get_station_service),
 ):
-    return service.get_nearby_stations_in_area(north_latitude, south_latitude, east_longitude, west_longitude, radius)
+    return service.get_nearby_stations_in_area(north_latitude, south_latitude, east_longitude, west_longitude)
 
 @router.get("/search-compatible-in-area", response_model=List[Dict[str, Any]])
 def get_nearby_compatible_stations(
@@ -112,7 +114,7 @@ def update_station(
     station_id: int,
     station: StationCreate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_only_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
 ):
     
     existing_station = service.get_station(station_id)
@@ -132,7 +134,7 @@ def update_station_status(
     station_id: int,
     status_update: StationStatusUpdate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_station_staff),
+    current_user: AuthenticatedUser = Depends(get_company_member),
 ):
     try:
         station = service.update_station_status(station_id, status_update.status)
