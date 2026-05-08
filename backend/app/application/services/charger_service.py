@@ -54,6 +54,24 @@ class ChargerService:
                 return updated_charger
             return None
 
+    def update_charger_price(
+        self,
+        charger_id: int,
+        price_per_kwh: float,
+    ) -> Optional[ChargerEntity]:
+        if price_per_kwh < 0:
+            raise ValueError("Charger price_per_kwh cannot be negative")
+
+        with self.uow:
+            charger = self.uow.chargers.get(charger_id)
+            if not charger:
+                return None
+
+            charger.price_per_kwh = price_per_kwh
+            updated_charger = self.uow.chargers.update(charger)
+            self.uow.commit()
+            return updated_charger
+
     def get_charger_availability(
         self, charger_id: int, start_date: date, end_date: date
     ) -> List[Dict[str, Any]]:

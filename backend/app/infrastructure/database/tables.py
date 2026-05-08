@@ -12,6 +12,14 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     balance = Column(Float, default=0.0)
+    role = Column(String, nullable=False, default="USER")
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('USER', 'ADMIN')",
+            name="check_user_role",
+        ),
+    )
 
     vehicles = relationship("Vehicle", back_populates="user")
     reservations = relationship("Reservation", back_populates="user")
@@ -19,6 +27,43 @@ class User(Base):
     coupons = relationship("Coupon", back_populates="user")
     payments = relationship("Payment", back_populates="user")
     sessions = relationship("UserSession", back_populates="user")
+    company_members = relationship("CompanyMember", back_populates="user")
+
+
+class Company(Base):
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    tax_number = Column(String, unique=True, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    stations = relationship("Station", back_populates="company")
+    members = relationship("CompanyMember", back_populates="company")
+
+
+class CompanyMember(Base):
+    __tablename__ = "company_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    role = Column(String, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "user_id", name="uq_company_member"),
+        CheckConstraint(
+            "role IN ('STATION_MANAGER', 'STATION_OPERATOR')",
+            name="check_company_member_role",
+        ),
+    )
+
+    company = relationship("Company", back_populates="members")
+    user = relationship("User", back_populates="company_members")
 
 
 class UserSession(Base):
@@ -60,7 +105,7 @@ class Station(Base):
     __tablename__ = "stations"
 
     id = Column(Integer, primary_key=True, index=True)
-    company = Column(String, nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     longitude = Column(Float, nullable=False)
     latitude = Column(Float, nullable=False)
     address = Column(String, nullable=False)
@@ -73,6 +118,7 @@ class Station(Base):
         CheckConstraint("longitude >= -180 AND longitude <= 180", name="check_station_longitude_range"),
     )
     chargers = relationship("Charger", back_populates="station")
+    company = relationship("Company", back_populates="stations")
 
 class Charger(Base):
     __tablename__ = "chargers"

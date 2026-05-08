@@ -161,8 +161,9 @@ POST /stations
 - Creates a charging station.
 - Request schema: `StationCreate`
   - `address: str`
-  - `company: str`
-  - `location: str`
+  - `latitude: float`
+  - `longitude: float`
+  - `company_id: int`
   - `status: str`
 - Response schema: `Station`
 - Status Code: 201

@@ -1,7 +1,8 @@
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.charger import ChargerEntity
 from app.domain.models.station import StationEntity
-from typing import List, Optional, Dict, Any 
+from app.domain.rules.station_rules import normalize_station_status, validate_station_status
+from typing import Any, Dict, List, Optional
 
 class StationService:
     def __init__(self, uow: AbstractUnitOfWork):
@@ -71,7 +72,7 @@ class StationService:
 
                 result.append({
                     "id": station.id,
-                    "company": station.company,
+                    "company_id": station.company_id,
                     "address": station.address,
                     "latitude": station.latitude,
                     "longitude": station.longitude,
@@ -103,6 +104,20 @@ class StationService:
                 self.uow.stations.update(station)
                 self.uow.commit()
                 return station
+
+    def update_station_status(self, station_id: int, status: str) -> Optional[StationEntity]:
+        with self.uow:
+            normalized_status = normalize_station_status(status)
+            validate_station_status(normalized_status)
+
+            station = self.uow.stations.get(station_id)
+            if not station:
+                return None
+
+            station.status = normalized_status
+            updated_station = self.uow.stations.update(station)
+            self.uow.commit()
+            return updated_station
 
     def delete_station(self, station_id: int) -> None:
         with self.uow:
