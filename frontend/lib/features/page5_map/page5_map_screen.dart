@@ -67,101 +67,8 @@ class _MapScreenState extends State<MapScreen> {
 
       if (!mounted) return;
       setState(() {
-        _allStations = stations;
-        _isLocationPermissionGranted = hasUserLocation;
-        _initialCameraPosition = CameraPosition(target: target, zoom: 14);
+        _markers = markers;
       });
-
-      if (!hasUserLocation) {
-        _showSnackBar(
-          locationResult.message ??
-              'Location permission is required for nearby stations.',
-        );
-      }
-
-      await _moveCameraAndRefreshMarkers(target);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.toString();
-      });
-      _showSnackBar(error.toString());
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _moveCameraAndRefreshMarkers(LatLng target) async {
-    final controller = _mapController;
-    if (controller == null) {
-      _pendingCameraTarget = target;
-      _refreshMarkersForFallbackViewport(target);
-      return;
-    }
-
-    await controller.animateCamera(
-      CameraUpdate.newCameraPosition(CameraPosition(target: target, zoom: 14)),
-    );
-    await _refreshVisibleMarkers();
-  }
-
-  Future<void> _refreshVisibleMarkers() async {
-    final controller = _mapController;
-    if (controller == null || _allStations.isEmpty) return;
-
-    final bounds = await _mapCameraService.getVisibleBounds(controller);
-    final visibleStations = _mapCameraService.filterInsideBounds<Station>(
-      items: _allStations,
-      bounds: bounds,
-      latitudeOf: (station) => station.latitude,
-      longitudeOf: (station) => station.longitude,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _markers = _markerBuilder.buildMarkers(
-        stations: visibleStations,
-        onMarkerTap: _showStationDetails,
-      );
-    });
-  }
-
-  void _refreshMarkersForFallbackViewport(LatLng center) {
-    final nearbyStations = _allStations.where((station) {
-      final latitude = station.latitude;
-      final longitude = station.longitude;
-      if (latitude == null || longitude == null) return false;
-
-      // Keeps the first frame light until Google Maps reports exact bounds.
-      return (latitude - center.latitude).abs() <= 0.08 &&
-          (longitude - center.longitude).abs() <= 0.08;
-    });
-
-    setState(() {
-      _markers = _markerBuilder.buildMarkers(
-        stations: nearbyStations,
-        onMarkerTap: _showStationDetails,
-      );
-    });
-  }
-
-  Future<void> _reloadStations() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final stations = await _stationRepository.fetchStations();
-      if (!mounted) return;
-      setState(() {
-        _allStations = stations;
-      });
-      await _refreshVisibleMarkers();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -250,17 +157,6 @@ class _MapScreenState extends State<MapScreen> {
           ),
         );
       },
-    );
-  }
-
-  String _formatPrice(double pricePerKwh) {
-    if (pricePerKwh <= 0) return 'Price unavailable';
-    return '${pricePerKwh.toStringAsFixed(2)} / kWh';
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
     );
   }
 

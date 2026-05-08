@@ -21,9 +21,7 @@ class StationMarkerBuilder {
               title: station.company.isEmpty
                   ? 'Station #${station.id}'
                   : station.company,
-              snippet: station.status.trim().isEmpty
-                  ? 'Unknown availability'
-                  : station.status,
+              snippet: _availabilityLabel(station.status),
             ),
             onTap: () => onMarkerTap(station),
           ),
@@ -44,6 +42,15 @@ class StationMarkerBuilder {
         normalized.contains('in_use')) {
       return BitmapDescriptor.hueOrange;
     }
+    if (normalized.contains('offline') ||
+        normalized.contains('inactive') ||
+        normalized.contains('out')) {
+      return BitmapDescriptor.hueRed;
+    }
     return BitmapDescriptor.hueRed;
+  }
+
+  String _availabilityLabel(String status) {
+    return status.trim().isEmpty ? 'Unknown availability' : status;
   }
 }
