@@ -44,7 +44,7 @@ class ChatbotService:
 
                     compatible_stations.append(
                         {
-                            "company": station.company,
+                            "company": station.company_id,
                             "address": station.address,
                             "latitude": station.latitude,
                             "longitude": station.longitude,
