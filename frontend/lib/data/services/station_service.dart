@@ -19,6 +19,26 @@ class StationService {
     return parseList(await _apiClient.get('/stations/'), Station.fromJson);
   }
 
+  Future<List<Station>> getNearbyStationsByArea({
+    required double northLatitude,
+    required double southLatitude,
+    required double eastLongitude,
+    required double westLongitude,
+  }) async {
+    return parseList(
+      await _apiClient.get(
+        '/stations/nearby/area',
+        queryParameters: {
+          'north_latitude': northLatitude.toString(),
+          'south_latitude': southLatitude.toString(),
+          'east_longitude': eastLongitude.toString(),
+          'west_longitude': westLongitude.toString(),
+        },
+      ),
+      Station.fromJson,
+    );
+  }
+
   Future<Station> getStation(int stationId) async {
     return Station.fromJson(
       parseObject(await _apiClient.get('/stations/$stationId')),

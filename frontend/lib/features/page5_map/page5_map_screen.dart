@@ -70,12 +70,9 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       final locationResult = await _locationService.requestCurrentLocation();
-      final stations = await _stationRepository.fetchStations();
       print("-----------------------------------------");
 
-      final position = locationResult.position;
-      print(position?.latitude);
-      print(position?.longitude);
+      final position = LatLng(38.4237, 27.1428);
       final hasUserLocation = locationResult.isGranted && position != null;
       final target = hasUserLocation
           ? LatLng(position.latitude, position.longitude)
@@ -83,7 +80,6 @@ class _MapScreenState extends State<MapScreen> {
 
       if (!mounted) return;
       setState(() {
-        _allStations = stations;
         _isLocationPermissionGranted = hasUserLocation;
         _initialCameraPosition = CameraPosition(target: target, zoom: 14);
       });
@@ -106,6 +102,31 @@ class _MapScreenState extends State<MapScreen> {
         });
       }
     }
+  }
+
+  Future<void> _loadNearbyStationsFromMapBounds() async {
+    final controller = _mapController;
+
+    if (controller == null) return;
+
+    final bounds = await controller.getVisibleRegion();
+
+    final stations = await _stationRepository.fetchNearbyStationsByArea(
+      northLatitude: bounds.northeast.latitude,
+      southLatitude: bounds.southwest.latitude,
+      eastLongitude: bounds.northeast.longitude,
+      westLongitude: bounds.southwest.longitude,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _allStations = stations;
+      _markers = _markerBuilder.buildMarkers(
+        stations: stations,
+        onMarkerTap: _showStationDetails,
+      );
+    });
   }
 
   Future<void> _moveCameraAndRefreshMarkers(LatLng target) async {
@@ -492,7 +513,7 @@ class _MapScreenState extends State<MapScreen> {
                 _refreshVisibleMarkers();
               }
             },
-            onCameraIdle: _refreshVisibleMarkers,
+            onCameraIdle: _loadNearbyStationsFromMapBounds,
           ),
           if (_isLoading)
             const SafeArea(
