@@ -16,6 +16,7 @@ from app.application.services.reservation_service import ReservationService
 from app.application.services.station_service import StationService
 from app.application.services.user_service import UserService
 from app.application.services.vehicle_service import VehicleService
+from app.application.services.chatbot_service import ChatbotService
 from app.core.security import ALGORITHM, SECRET_KEY
 from app.core.uow import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from app.infrastructure.database.database import get_db
@@ -77,6 +78,8 @@ def get_admin_or_station_manager(
     return current_user
 
 
+
+
 def get_uow(db: Session = Depends(get_db)) -> AbstractUnitOfWork:
     return SqlAlchemyUnitOfWork(db)
 
@@ -119,3 +122,6 @@ def get_coupon_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CouponServ
 
 def get_payment_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> PaymentService:
     return PaymentService(uow)
+
+def get_chatbot_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> ChatbotService:
+    return ChatbotService(uow)

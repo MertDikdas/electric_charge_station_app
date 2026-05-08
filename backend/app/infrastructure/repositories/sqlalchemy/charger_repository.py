@@ -51,3 +51,6 @@ class SqlAlchemyChargerRepository(
             .all()
         )
         return [self.to_entity(model) for model in models]
+    
+    def get_by_id(self, charger_id):
+        return self.session.query(ChargerModel).filter(ChargerModel.id==charger_id).first()

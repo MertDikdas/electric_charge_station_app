@@ -3,12 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.schemas.chatbot import ChatbotMessageRequest, ChatbotMessageResponse
 from app.application.services.chatbot_service import ChatbotService
 from app.core.dependencies import get_current_user, AuthenticatedUser
-
+from app.core.dependencies import get_chatbot_service
 router = APIRouter()
-
-
-def get_chatbot_service():
-    return ChatbotService()
 
 
 @router.post("/message", response_model=ChatbotMessageResponse)
@@ -18,14 +14,10 @@ def send_message_to_chatbot(
     service: ChatbotService = Depends(get_chatbot_service),
 ):
     try:
-        user_context = {
-            "user_id": current_user.id,
-            "role": current_user.role,
-        }
-
+        user_context = service.build_user_context(current_user.id)
         reply = service.ask(request.message, user_context)
 
         return ChatbotMessageResponse(reply=reply)
 
-    except Exception:
-        raise HTTPException(status_code=500, detail="Chatbot service unavailable")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
