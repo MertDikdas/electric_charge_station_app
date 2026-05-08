@@ -7,10 +7,16 @@ from app.application.services.reservation_service import ReservationService
 from app.core.dependencies import (
     AuthenticatedUser,
     get_admin_or_station_manager,
+    get_station_service,
+    get_station_manager,
+    get_current_user,
+    get_current_company_member,
+    get_station_operator,
+    get_admin,
+    ensure_same_company,
+    get_company_member,
     get_charger_service,
-    get_only_station_manager,
     get_reservation_service,
-    get_station_staff,
 )
 from app.domain.models.charger import ChargerEntity
 from app.schemas.charger import (
@@ -28,7 +34,7 @@ router = APIRouter()
 def create_charger(
     charger: ChargerCreate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_only_station_manager),
+    _current_user: AuthenticatedUser = Depends(get_station_manager),
 ):
     charger_entity = ChargerEntity(**charger.model_dump())
     return service.create_charger(charger_entity)
@@ -55,7 +61,7 @@ def update_charger(
     charger_id: int,
     charger: ChargerCreate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_only_station_manager),
+    _current_user: AuthenticatedUser = Depends(get_station_manager),
 ):
     existing_charger = service.get_charger(charger_id)
     if not existing_charger:
@@ -85,7 +91,7 @@ def update_charger_status(
     charger_id: int,
     status_update: ChargerStatusUpdate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_station_staff),
+    _current_user: AuthenticatedUser = Depends(get_company_member),
 ):
     try:
         charger = service.update_charger_status(charger_id, status_update.status)
@@ -101,7 +107,7 @@ def update_charger_price(
     charger_id: int,
     price_update: ChargerPriceUpdate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_only_station_manager),
+    _current_user: AuthenticatedUser = Depends(get_station_manager),
 ):
     try:
         charger = service.update_charger_price(
