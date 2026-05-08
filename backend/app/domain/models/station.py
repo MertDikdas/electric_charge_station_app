@@ -1,9 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 from app.domain.models.base import BaseEntity
 from app.domain.models.charger import ChargerEntity
-from typing import List
-from dataclasses import field
 
 @dataclass
 class StationEntity(BaseEntity):

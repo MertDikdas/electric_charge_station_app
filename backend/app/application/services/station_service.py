@@ -2,8 +2,7 @@ from app.core.uow import AbstractUnitOfWork
 from app.domain.models.charger import ChargerEntity
 from app.domain.models.station import StationEntity
 from app.domain.rules.station_rules import normalize_station_status, validate_station_status
-from typing import List, Optional
-from typing import List, Optional, Dict, Any 
+from typing import Any, Dict, List, Optional
 
 class StationService:
     def __init__(self, uow: AbstractUnitOfWork):
