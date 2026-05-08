@@ -4,14 +4,6 @@ from app.domain.models.station import StationEntity
 def normalize_station_status(status: str) -> str:
     return status.strip().upper()
 
-def validate_station_company(company: str) -> None:
-    if not company:
-        raise ValueError("Station company cannot be empty")
-    if len(company) > 100:
-        raise ValueError("Station company cannot exceed 100 characters")
-    if len(company) < 2:
-        raise ValueError("Station company must be at least 2 characters long")
-
 def validate_station_address(address: str) -> None:
     if not address:
         raise ValueError("Station address cannot be empty")
@@ -38,7 +30,6 @@ def validate_station_location(latitude: float, longitude: float) -> None:
 
 def validate_station_entity(station: StationEntity) -> None:
     station.status = normalize_station_status(station.status)
-    validate_station_company(station.company)
     validate_station_status(station.status)
     validate_station_address(station.address)
     validate_station_location(station.latitude, station.longitude)
