@@ -24,7 +24,7 @@ from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
     SqlAlchemyUserSessionRepository,
 )
 from app.infrastructure.repositories.sqlalchemy.user_repository import SqlAlchemyUserRepository
-from backend.app.schemas.company_member import CompanyMember
+from app.infrastructure.database.tables import CompanyMember, Station
 
 security = HTTPBearer(auto_error=False)
 
@@ -80,15 +80,14 @@ def get_current_user(
     return AuthenticatedUser(id=session.user_id, role=user.role or USER_ROLE)
 
 def get_current_company_member(
-    company_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CompanyMember:
     member = (
         db.query(CompanyMember)
         .filter(
-            CompanyMember.company_id == company_id,
             CompanyMember.user_id == current_user.id,
+            CompanyMember.is_active == True,
         )
         .first()
     )
@@ -157,6 +156,20 @@ def get_admin_or_station_manager(
 
     return current_user
 
+def ensure_same_company(
+    station_id: int,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    station = ( db.query(Station).filter(Station.id == station_id).first() )
+    if station is None:
+        raise HTTPException(status_code=404, detail="Station not found")
+    member = (
+        db.query(CompanyMember).filter(CompanyMember.company_id == station.company_id, CompanyMember.user_id == current_user.id).first())
+    if member is None:
+        raise HTTPException(status_code=403, detail="Company membership required")
+
+    
 
 
 def get_uow(db: Session = Depends(get_db)) -> AbstractUnitOfWork:
