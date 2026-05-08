@@ -115,9 +115,9 @@ class StationService:
                 return None
 
             station.status = normalized_status
-            updated_station = self.uow.stations.update(station)
+            self.uow.stations.update(station)
             self.uow.commit()
-            return updated_station
+            return station
 
     def delete_station(self, station_id: int) -> None:
         with self.uow:
