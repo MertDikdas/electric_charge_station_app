@@ -41,11 +41,11 @@ class LocationService {
     }
 
     final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
-
+    print("-----------------------------------------");
+    print(position.latitude);
+    print(position.longitude);
     return LocationResult(
       permissionResult: LocationPermissionResult.granted,
       position: position,

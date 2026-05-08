@@ -36,6 +36,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _isLoading = true;
   bool _isLocationPermissionGranted = false;
   String? _errorMessage;
+  bool _isRefreshingMarkers = false;
 
   @override
   void initState() {
@@ -58,8 +59,11 @@ class _MapScreenState extends State<MapScreen> {
     try {
       final locationResult = await _locationService.requestCurrentLocation();
       final stations = await _stationRepository.fetchStations();
+      print("-----------------------------------------");
 
       final position = locationResult.position;
+      print(position?.latitude);
+      print(position?.longitude);
       final hasUserLocation = locationResult.isGranted && position != null;
       final target = hasUserLocation
           ? LatLng(position.latitude, position.longitude)
@@ -67,8 +71,16 @@ class _MapScreenState extends State<MapScreen> {
 
       if (!mounted) return;
       setState(() {
-        _markers = markers;
+        _isLocationPermissionGranted = locationResult.isGranted;
+        _allStations = stations;
+        _initialCameraPosition = CameraPosition(target: target, zoom: 14);
+        _markers = _markerBuilder.buildMarkers(
+          stations: stations,
+          onMarkerTap: _showStationDetails,
+        );
       });
+
+      await _moveCameraAndRefreshMarkers(target);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -81,6 +93,60 @@ class _MapScreenState extends State<MapScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _reloadStations() => _initializeMapPage();
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _formatPrice(double value) => '${value.toStringAsFixed(2)} TL/kWh';
+
+  Future<void> _moveCameraAndRefreshMarkers(LatLng target) async {
+    final controller = _mapController;
+    if (controller == null) {
+      _pendingCameraTarget = target;
+      return;
+    }
+
+    await controller.animateCamera(CameraUpdate.newLatLng(target));
+  }
+
+  Future<void> _refreshVisibleMarkers() async {
+    if (_isRefreshingMarkers) return;
+
+    final controller = _mapController;
+    if (controller == null) return;
+
+    _isRefreshingMarkers = true;
+
+    try {
+      final bounds = await _mapCameraService.getVisibleBounds(controller);
+
+      final visibleStations = _mapCameraService.filterInsideBounds<Station>(
+        items: _allStations,
+        bounds: bounds,
+        latitudeOf: (station) => station.latitude,
+        longitudeOf: (station) => station.longitude,
+      );
+
+      final newMarkers = _markerBuilder.buildMarkers(
+        stations: visibleStations,
+        onMarkerTap: _showStationDetails,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _markers = newMarkers;
+      });
+    } finally {
+      _isRefreshingMarkers = false;
     }
   }
 
@@ -102,15 +168,13 @@ class _MapScreenState extends State<MapScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      station.company.isEmpty
-                          ? 'Station #${station.id}'
-                          : station.company,
+                      'Station #${station.id}',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 6),
                     Text(
                       station.address.isEmpty
-                          ? station.location
+                          ? '${station.latitude.toStringAsFixed(5)}, ${station.longitude.toStringAsFixed(5)}'
                           : station.address,
                     ),
                     const SizedBox(height: 16),
@@ -178,6 +242,7 @@ class _MapScreenState extends State<MapScreen> {
             compassEnabled: true,
             onMapCreated: (controller) {
               _mapController = controller;
+
               final pendingTarget = _pendingCameraTarget;
               if (pendingTarget != null) {
                 _pendingCameraTarget = null;

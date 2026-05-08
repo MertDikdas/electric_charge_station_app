@@ -9,18 +9,15 @@ class StationMarkerBuilder {
     required ValueChanged<Station> onMarkerTap,
   }) {
     return stations
-        .where((station) => station.latitude != null && station.longitude != null)
         .map(
           (station) => Marker(
             markerId: MarkerId('station-${station.id}'),
-            position: LatLng(station.latitude!, station.longitude!),
+            position: LatLng(station.latitude, station.longitude),
             icon: BitmapDescriptor.defaultMarkerWithHue(
               _markerHueForStatus(station.status),
             ),
             infoWindow: InfoWindow(
-              title: station.company.isEmpty
-                  ? 'Station #${station.id}'
-                  : station.company,
+              title: 'Station #${station.id}',
               snippet: _availabilityLabel(station.status),
             ),
             onTap: () => onMarkerTap(station),

@@ -37,11 +37,19 @@ class StationService {
     return _apiClient.delete('/stations/$stationId');
   }
 
-  Future<List<Station>> getNearbyStations(String location) async {
+  Future<List<Station>> getNearbyStations({
+    required double latitude,
+    required double longitude,
+    double kmRadius = 5,
+  }) async {
     return parseList(
       await _apiClient.get(
         '/stations/nearby',
-        queryParameters: {'location': location},
+        queryParameters: {
+          'latitude': latitude.toString(),
+          'longitude': longitude.toString(),
+          'km_radius': kmRadius.toString(),
+        },
       ),
       Station.fromJson,
     );
