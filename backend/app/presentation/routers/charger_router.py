@@ -6,7 +6,6 @@ from app.application.services.charger_service import ChargerService
 from app.application.services.reservation_service import ReservationService
 from app.core.dependencies import (
     AuthenticatedUser,
-    get_admin_or_station_manager,
     get_station_service,
     get_station_manager,
     get_current_user,

@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.application.services.station_service import StationService
 from app.core.dependencies import (
     AuthenticatedUser,
-    get_admin_or_station_manager,
     get_station_service,
     get_station_manager,
     get_current_user,

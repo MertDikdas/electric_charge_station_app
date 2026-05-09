@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.application.services.notification_service import NotificationService
 from app.core.dependencies import (
     AuthenticatedUser,
-    get_admin_or_station_manager,
+    get_admin,
     get_current_user,
     get_notification_service,
 )
@@ -44,7 +44,7 @@ def get_notifications(
 @router.get("/all", response_model=List[Notification])
 def get_all_notifications(
     service: NotificationService = Depends(get_notification_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_all_notifications()
 

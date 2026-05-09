@@ -141,31 +141,6 @@ def get_company_member(
         raise HTTPException(status_code=403, detail="Station staff role required")
     return current_user
 
-def get_admin_or_station_manager(
-    company_id: int,
-    current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> AuthenticatedUser:
-    if current_user.role == ADMIN_ROLE:
-        return current_user
-
-    member = (
-        db.query(CompanyMember)
-        .filter(
-            CompanyMember.company_id == company_id,
-            CompanyMember.user_id == current_user.id,
-        )
-        .first()
-    )
-
-    if member is None:
-        raise HTTPException(status_code=403, detail="Company membership required")
-
-    if member.role != STATION_MANAGER_ROLE:
-        raise HTTPException(status_code=403, detail="Admin or station manager role required")
-
-    return current_user
-
 def ensure_same_company(
     station_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),

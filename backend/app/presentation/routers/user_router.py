@@ -3,7 +3,8 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.user_service import UserService
-from app.core.dependencies import get_user_service, get_current_user, AuthenticatedUser, get_admin_or_station_manager
+from app.core.dependencies import get_user_service, get_current_user, AuthenticatedUser, get_admin
+
 from app.domain.models.user import UserEntity
 from app.schemas.user import UserCreate, User, UserLogin, AuthResponse
 from app.schemas.vehicle import Vehicle
@@ -47,7 +48,7 @@ def login_user(
 
 @router.get("/all", response_model=List[User])
 def get_users(service: UserService = Depends(get_user_service),
-              current_user: AuthenticatedUser = Depends(get_admin_or_station_manager)):
+              current_user: AuthenticatedUser = Depends(get_admin)):
     return service.get_all_users()
 
 @router.delete("/me", status_code=204)
@@ -75,7 +76,7 @@ def get_current_user_info(
 def delete_user(
     user_id: int,
     service: UserService = Depends(get_user_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager)
+    current_user: AuthenticatedUser = Depends(get_admin)
 ):
     user = service.get_user(user_id)
     if not user:
