@@ -115,6 +115,12 @@ class ReservationService:
         if charger.status != "AVAILABLE":
             raise ValueError("Charger is not available")
 
+        station = self.uow.stations.get(charger.station_id)
+        if not station:
+            raise LookupError("Station not found")
+        if station.status != "AVAILABLE":
+            raise ValueError("Station is not available")
+
         validate_vehicle_id(reservation, vehicle)
         validate_charger_id(reservation, charger)
         validate_compatibility(reservation, vehicle, charger)
