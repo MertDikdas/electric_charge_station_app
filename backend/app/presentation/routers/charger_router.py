@@ -17,6 +17,7 @@ from app.core.dependencies import (
     get_company_member,
     get_charger_service,
     get_reservation_service,
+    ensure_same_company_for_charger
 )
 from app.domain.models.charger import ChargerEntity
 from app.schemas.charger import (
@@ -24,19 +25,23 @@ from app.schemas.charger import (
     ChargerCreate,
     ChargerPriceUpdate,
     ChargerStatusUpdate,
+    ChagerCreateRequest,
 )
 from app.schemas.reservation import Reservation
+from app.infrastructure.database.tables import CompanyMember
 
 router = APIRouter()
 
 
 @router.post("/", response_model=Charger, status_code=201)
 def create_charger(
-    charger: ChargerCreate,
+    station_id: int,
+    charger: ChagerCreateRequest,
     service: ChargerService = Depends(get_charger_service),
     _current_user: AuthenticatedUser = Depends(get_station_manager),
+    membership_check: CompanyMember = Depends(ensure_same_company),
 ):
-    charger_entity = ChargerEntity(**charger.model_dump())
+    charger_entity = ChargerEntity(station_id=station_id, **charger.model_dump())
     return service.create_charger(charger_entity)
 
 
@@ -62,6 +67,7 @@ def update_charger(
     charger: ChargerCreate,
     service: ChargerService = Depends(get_charger_service),
     _current_user: AuthenticatedUser = Depends(get_station_manager),
+    membership_check: CompanyMember = Depends(ensure_same_company_for_charger),
 ):
     existing_charger = service.get_charger(charger_id)
     if not existing_charger:
@@ -78,7 +84,8 @@ def update_charger(
 def delete_charger(
     charger_id: int,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    _current_user: AuthenticatedUser = Depends(get_station_manager),
+    membership_check: CompanyMember = Depends(ensure_same_company_for_charger),
 ):
     charger = service.get_charger(charger_id)
     if not charger:
@@ -91,8 +98,7 @@ def update_charger_status(
     charger_id: int,
     status_update: ChargerStatusUpdate,
     service: ChargerService = Depends(get_charger_service),
-    _current_user: AuthenticatedUser = Depends(get_company_member),
-    _current_user: AuthenticatedUser = Depends(get_company_member),
+    membership_check: CompanyMember = Depends(ensure_same_company_for_charger),
 ):
     try:
         charger = service.update_charger_status(charger_id, status_update.status)
@@ -109,6 +115,7 @@ def update_charger_price(
     price_update: ChargerPriceUpdate,
     service: ChargerService = Depends(get_charger_service),
     _current_user: AuthenticatedUser = Depends(get_station_manager),
+    membership_check: CompanyMember = Depends(ensure_same_company_for_charger),
 ):
     try:
         charger = service.update_charger_price(
