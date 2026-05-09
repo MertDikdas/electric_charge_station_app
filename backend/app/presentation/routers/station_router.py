@@ -156,6 +156,7 @@ def delete_station(
     station_id: int,
     service: StationService = Depends(get_station_service),
     current_user: AuthenticatedUser = Depends(get_station_manager),
+    membership_check: AuthenticatedUser = Depends(ensure_same_company),
 ):
     existing_station = service.get_station(station_id)
     if not existing_station:

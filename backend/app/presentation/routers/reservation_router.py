@@ -33,7 +33,7 @@ def create_reservation(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/all", response_model=List[Reservation])
+@router.get("/admin/all", response_model=List[Reservation])
 def get_reservations(
     service: ReservationService = Depends(get_reservation_service),
     current_user: AuthenticatedUser = Depends(get_admin),

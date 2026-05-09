@@ -41,7 +41,7 @@ def get_notifications(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/all", response_model=List[Notification])
+@router.get("/admin/all", response_model=List[Notification])
 def get_all_notifications(
     service: NotificationService = Depends(get_notification_service),
     current_user: AuthenticatedUser = Depends(get_admin),
