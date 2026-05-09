@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/charger.dart';
@@ -35,7 +36,7 @@ class _MapScreenState extends State<MapScreen> {
   final _reservationService = ReservationService();
   final _stationRepository = StationRepository();
   final _vehicleService = VehicleService();
-
+  String? _mapStyle;
   GoogleMapController? _mapController;
   LatLng? _pendingCameraTarget;
   CameraPosition _initialCameraPosition = _fallbackCameraPosition;
@@ -52,6 +53,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _loadMapStyle();
     _initializeMapPage();
     _loadVehicles();
   }
@@ -60,6 +62,15 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     _mapController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMapStyle() async {
+    _mapStyle = await rootBundle.loadString('assets/map_styles/map.json');
+
+    final controller = _mapController;
+    if (controller != null && _mapStyle != null) {
+      await controller.setMapStyle(_mapStyle);
+    }
   }
 
   Future<void> _initializeMapPage() async {
@@ -110,7 +121,9 @@ class _MapScreenState extends State<MapScreen> {
     if (controller == null) return;
 
     final bounds = await controller.getVisibleRegion();
-    final stations;
+
+    final List<Station> stations;
+
     if (_selectedVehicle == null) {
       stations = await _stationRepository.fetchNearbyStationsByArea(
         northLatitude: bounds.northeast.latitude,
@@ -128,15 +141,17 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
+    final markers = await _markerBuilder.buildMarkers(
+      stations: stations,
+      selectedVehicle: _selectedVehicle,
+      onMarkerTap: _showStationDetails,
+    );
+
     if (!mounted) return;
 
     setState(() {
       _allStations = stations;
-      _markers = _markerBuilder.buildMarkers(
-        stations: stations,
-        selectedVehicle: _selectedVehicle,
-        onMarkerTap: _showStationDetails,
-      );
+      _markers = markers;
     });
   }
 
@@ -171,35 +186,49 @@ class _MapScreenState extends State<MapScreen> {
       latitudeOf: (station) => station.latitude,
       longitudeOf: (station) => station.longitude,
     );
+    Future<void> _updateMarkers() async {
+      final visibleStations = _mapCameraService.filterInsideBounds<Station>(
+        items: _allStations,
+        bounds: bounds,
+        latitudeOf: (station) => station.latitude,
+        longitudeOf: (station) => station.longitude,
+      );
 
-    if (!mounted) return;
-    setState(() {
-      _markers = _markerBuilder.buildMarkers(
+      final markers = await _markerBuilder.buildMarkers(
         stations: visibleStations,
         selectedVehicle: _selectedVehicle,
         onMarkerTap: _showStationDetails,
       );
-    });
+
+      if (!mounted) return;
+
+      setState(() {
+        _markers = markers;
+      });
+    }
   }
 
-  void _refreshMarkersForFallbackViewport(LatLng center) {
+  Future<void> _refreshMarkersForFallbackViewport(LatLng center) async {
     final nearbyStations = _allStations.where((station) {
       final latitude = station.latitude;
       final longitude = station.longitude;
+
       if (latitude == null || longitude == null) return false;
 
-      // A light initial filter keeps the first frame from rendering every station
-      // before Google Maps reports its exact visible bounds.
       return (latitude - center.latitude).abs() <= 0.08 &&
           (longitude - center.longitude).abs() <= 0.08;
     });
 
+    final markers = await _markerBuilder.buildMarkers(
+      stations: nearbyStations,
+      selectedVehicle: _selectedVehicle,
+      onMarkerTap: _showStationDetails,
+    );
+
+    if (!mounted) return;
+
     setState(() {
-      _markers = _markerBuilder.buildMarkers(
-        stations: nearbyStations,
-        selectedVehicle: _selectedVehicle,
-        onMarkerTap: _showStationDetails,
-      );
+      _markers = markers;
     });
   }
 
@@ -515,8 +544,12 @@ class _MapScreenState extends State<MapScreen> {
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
             compassEnabled: true,
-            onMapCreated: (controller) {
+            onMapCreated: (controller) async {
               _mapController = controller;
+
+              if (_mapStyle != null) {
+                await controller.setMapStyle(_mapStyle);
+              }
 
               final pendingTarget = _pendingCameraTarget;
               if (pendingTarget != null) {

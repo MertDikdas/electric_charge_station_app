@@ -5,11 +5,25 @@ import '../../data/models/station.dart';
 import '../../data/models/vehicle.dart';
 
 class StationMarkerBuilder {
-  Set<Marker> buildMarkers({
+  Future<Set<Marker>> buildMarkers({
     required Iterable<Station> stations,
     required ValueChanged<Station> onMarkerTap,
     Vehicle? selectedVehicle,
-  }) {
+  }) async {
+    final availableIcon = await BitmapDescriptor.asset(
+      const ImageConfiguration(size: Size(60, 60)),
+      'assets/markers/station_available.png',
+    );
+
+    final occupiedIcon = await BitmapDescriptor.asset(
+      const ImageConfiguration(size: Size(60, 60)),
+      'assets/markers/station_occupied.png',
+    );
+
+    final offlineIcon = await BitmapDescriptor.asset(
+      const ImageConfiguration(size: Size(60, 60)),
+      'assets/markers/station_offline.png',
+    );
     return stations
         .where(
           (station) => station.latitude != null && station.longitude != null,
@@ -18,11 +32,12 @@ class StationMarkerBuilder {
           (station) => Marker(
             markerId: MarkerId('station-${station.id}'),
             position: LatLng(station.latitude!, station.longitude!),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              _markerHueForStation(
-                station: station,
-                selectedVehicle: selectedVehicle,
-              ),
+            icon: _markerHueForStation(
+              station: station,
+              selectedVehicle: selectedVehicle,
+              availableIcon: availableIcon,
+              occupiedIcon: occupiedIcon,
+              offlineIcon: offlineIcon,
             ),
             infoWindow: InfoWindow(
               title: 'Station #${station.id}',
@@ -37,19 +52,22 @@ class StationMarkerBuilder {
         .toSet();
   }
 
-  double _markerHueForStation({
+  BitmapDescriptor _markerHueForStation({
     required Station station,
     Vehicle? selectedVehicle,
+    required BitmapDescriptor availableIcon,
+    required BitmapDescriptor occupiedIcon,
+    required BitmapDescriptor offlineIcon,
   }) {
     if (_isStationUnavailableButVisible(station.status)) {
       debugPrint(
         'Station ${station.id} marker orange: station ${station.status}',
       );
-      return BitmapDescriptor.hueOrange;
+      return offlineIcon;
     }
 
     if (!_isStationAvailable(station.status)) {
-      return BitmapDescriptor.hueRed;
+      return occupiedIcon;
     }
 
     final compatibleChargers = _compatibleChargers(
@@ -58,7 +76,7 @@ class StationMarkerBuilder {
     );
 
     if (compatibleChargers.isEmpty) {
-      return BitmapDescriptor.hueRed;
+      return occupiedIcon;
     }
 
     final allCompatibleChargersUnavailable = compatibleChargers.every(
@@ -69,16 +87,14 @@ class StationMarkerBuilder {
       debugPrint(
         'Station ${station.id} marker orange: all compatible chargers unavailable',
       );
-      return BitmapDescriptor.hueOrange;
+      return offlineIcon;
     }
 
     final hasAvailableCompatibleCharger = compatibleChargers.any(
       (charger) => _isChargerAvailable(charger),
     );
 
-    return hasAvailableCompatibleCharger
-        ? BitmapDescriptor.hueGreen
-        : BitmapDescriptor.hueRed;
+    return hasAvailableCompatibleCharger ? availableIcon : occupiedIcon;
   }
 
   String _availabilityLabel({
