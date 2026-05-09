@@ -41,6 +41,13 @@ class StationMarkerBuilder {
     required Station station,
     Vehicle? selectedVehicle,
   }) {
+    if (_isStationUnavailableButVisible(station.status)) {
+      debugPrint(
+        'Station ${station.id} marker orange: station ${station.status}',
+      );
+      return BitmapDescriptor.hueOrange;
+    }
+
     if (!_isStationAvailable(station.status)) {
       return BitmapDescriptor.hueRed;
     }
@@ -52,6 +59,17 @@ class StationMarkerBuilder {
 
     if (compatibleChargers.isEmpty) {
       return BitmapDescriptor.hueRed;
+    }
+
+    final allCompatibleChargersUnavailable = compatibleChargers.every(
+      (charger) => _isChargerUnavailableButVisible(charger.status),
+    );
+
+    if (allCompatibleChargersUnavailable) {
+      debugPrint(
+        'Station ${station.id} marker orange: all compatible chargers unavailable',
+      );
+      return BitmapDescriptor.hueOrange;
     }
 
     final hasAvailableCompatibleCharger = compatibleChargers.any(
@@ -67,8 +85,12 @@ class StationMarkerBuilder {
     required Station station,
     Vehicle? selectedVehicle,
   }) {
-    if (!_isStationAvailable(station.status)) {
+    if (_isStationUnavailableButVisible(station.status)) {
       return 'Station is ${station.status}';
+    }
+
+    if (!_isStationAvailable(station.status)) {
+      return 'Station is unavailable';
     }
 
     final compatibleChargers = _compatibleChargers(
@@ -80,6 +102,14 @@ class StationMarkerBuilder {
       return selectedVehicle == null
           ? 'No charger found'
           : 'No compatible charger';
+    }
+
+    final allCompatibleChargersUnavailable = compatibleChargers.every(
+      (charger) => _isChargerUnavailableButVisible(charger.status),
+    );
+
+    if (allCompatibleChargersUnavailable) {
+      return 'Compatible chargers are under maintenance';
     }
 
     final availableCount = compatibleChargers
@@ -112,15 +142,32 @@ class StationMarkerBuilder {
   }
 
   bool _isStationAvailable(String status) {
-    final normalized = status.toUpperCase();
+    final normalized = status.toUpperCase().trim();
 
     return normalized == 'AVAILABLE' ||
         normalized == 'ACTIVE' ||
         normalized == 'OPEN';
   }
 
+  bool _isStationUnavailableButVisible(String status) {
+    final normalized = status.toUpperCase().trim();
+
+    return normalized == 'MAINTENANCE' ||
+        normalized == 'CLOSED' ||
+        normalized == 'OUT_OF_SERVICE';
+  }
+
+  bool _isChargerUnavailableButVisible(String status) {
+    final normalized = status.toUpperCase().trim();
+
+    return normalized == 'MAINTENANCE' ||
+        normalized == 'OUT_OF_SERVICE' ||
+        normalized == 'INACTIVE' ||
+        normalized == 'OFFLINE';
+  }
+
   bool _isChargerAvailable(dynamic charger) {
-    final chargerStatus = charger.status.toString().toUpperCase();
+    final chargerStatus = charger.status.toString().toUpperCase().trim();
 
     final isStatusAvailable =
         chargerStatus == 'AVAILABLE' ||
