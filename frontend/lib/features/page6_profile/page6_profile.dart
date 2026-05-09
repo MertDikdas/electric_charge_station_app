@@ -20,7 +20,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _tokenStorage = TokenStorage();
   final _userService = UserService();
 
-  late final Future<AppUser?> _userFuture = _loadUser();
+  late Future<AppUser?> _userFuture = _loadUser();
 
   Future<AppUser?> _loadUser() async {
     final userId = await _tokenStorage.readUserId();
@@ -88,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Card(
                     child: ListTile(
                       leading: const Icon(Icons.mail_outline),
-                      title: const Text('E-posta'),
+                      title: const Text('E-Mail'),
                       subtitle: Text(user.mail.isEmpty ? '-' : user.mail),
                     ),
                   ),
@@ -98,8 +98,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       leading: const Icon(
                         Icons.account_balance_wallet_outlined,
                       ),
-                      title: const Text('Bakiye'),
+                      title: const Text('Balance'),
                       subtitle: Text(user.balance.toStringAsFixed(2)),
+                      trailing: const Icon(Icons.add),
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const AddBalanceScreen(),
+                          ),
+                        );
+
+                        if (!mounted) return;
+
+                        setState(() {
+                          _userFuture = _loadUser();
+                        });
+                      },
                     ),
                   ),
                 ],
@@ -299,6 +313,111 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class AddBalanceScreen extends StatefulWidget {
+  const AddBalanceScreen({super.key});
+
+  @override
+  State<AddBalanceScreen> createState() => _AddBalanceScreenState();
+}
+
+class _AddBalanceScreenState extends State<AddBalanceScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _userService = UserService();
+
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  String? _positiveAmount(String? value) {
+    final amount = double.tryParse((value ?? '').trim());
+
+    if (amount == null || amount <= 0) {
+      return 'Pozitif bir tutar girin';
+    }
+
+    return null;
+  }
+
+  Future<void> _addBalance() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final amount = double.parse(_amountController.text.trim());
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await _userService.addBalance(amount);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Amount added.')));
+
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const AppAppBar(title: 'Add amount.'),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Add amount.',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 16),
+            Form(
+              key: _formKey,
+              child: TextFormField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Tutar',
+                  prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                  suffixText: 'TL',
+                ),
+                validator: _positiveAmount,
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: _isSaving ? null : _addBalance,
+              icon: const Icon(Icons.add),
+              label: Text(_isSaving ? 'Adding...' : 'Add amount.'),
+            ),
+          ],
         ),
       ),
     );
