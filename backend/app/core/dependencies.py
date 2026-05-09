@@ -24,6 +24,9 @@ from app.infrastructure.repositories.sqlalchemy.user_session_repository import (
     SqlAlchemyUserSessionRepository,
 )
 from app.infrastructure.repositories.sqlalchemy.user_repository import SqlAlchemyUserRepository
+from app.schemas.company_member import CompanyMember
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from app.infrastructure.database.tables import CompanyMember, Station
 
 security = HTTPBearer(auto_error=False)
@@ -32,6 +35,13 @@ USER_ROLE = "USER"
 STATION_MANAGER_ROLE = "STATION_MANAGER"
 STATION_OPERATOR_ROLE = "STATION_OPERATOR"
 ADMIN_ROLE = "ADMIN"
+
+TURKEY_TZ = ZoneInfo("Europe/Istanbul")
+
+
+
+def now_in_turkey() -> datetime:
+    return datetime.now(TURKEY_TZ)
 
 
 @dataclass

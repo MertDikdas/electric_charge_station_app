@@ -43,6 +43,7 @@ class ChargerCreate(BaseModel):
 
 class Charger(ChargerCreate):
     id: int
+    is_reserved_now: bool = False
 
 
 class ChargerStatusUpdate(BaseModel):

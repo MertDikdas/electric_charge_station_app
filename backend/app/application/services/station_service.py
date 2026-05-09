@@ -3,6 +3,8 @@ from app.domain.models.charger import ChargerEntity
 from app.domain.models.station import StationEntity
 from app.domain.rules.station_rules import normalize_station_status, validate_station_status
 from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from app.core.time_utils import now_in_turkey
 
 class StationService:
     def __init__(self, uow: AbstractUnitOfWork):
@@ -26,9 +28,9 @@ class StationService:
         with self.uow:
             return self.uow.stations.list_nearby(latitude, longitude)
 
-    def get_nearby_stations_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float, radius: float) -> List[StationEntity]:
+    def get_nearby_stations_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float) -> List[StationEntity]:
         with self.uow:
-            return self.uow.stations.list_nearby_in_area(north_latitude, south_latitude, east_longitude, west_longitude, radius)
+            return self.uow.stations.list_nearby_in_area(north_latitude, south_latitude, east_longitude, west_longitude)
 
     def get_station_chargers(self, station_id: int) -> List[ChargerEntity]:
         with self.uow:
@@ -51,39 +53,30 @@ class StationService:
                 west_longitude=west_longitude,
             )
 
+            now = now_in_turkey()
             result = []
 
             for station in stations:
-                compatible_chargers = [
-                    charger
-                    for charger in station.chargers
-                    if charger.connector_type == vehicle.connector_type
-                    and charger.current_type == vehicle.current_type
-                ]
+                compatible_chargers = []
+
+                for charger in station.chargers:
+                    if (
+                        charger.connector_type == vehicle.connector_type
+                        and charger.current_type == vehicle.current_type
+                    ):
+                        is_reserved_now = self.uow.reservations.exists_active_for_charger(
+                            charger_id=charger.id,
+                            now=now,
+                        )
+
+                        charger.is_reserved_now = is_reserved_now
+                        compatible_chargers.append(charger)
 
                 if not compatible_chargers:
                     continue
 
-                compatible_available_count = sum(
-                    1
-                    for charger in compatible_chargers
-                    if charger.status == "AVAILABLE"
-                )
-
-                result.append({
-                    "id": station.id,
-                    "company_id": station.company_id,
-                    "address": station.address,
-                    "latitude": station.latitude,
-                    "longitude": station.longitude,
-                    "availability": self._calculate_station_availability(
-                        compatible_chargers
-                    ),
-                    "compatible_available_charger_count": compatible_available_count,
-                    "compatible_total_charger_count": len(compatible_chargers),
-                    "connector_type": vehicle.connector_type,
-                    "current_type": vehicle.current_type,
-                })
+                station.chargers = compatible_chargers
+                result.append(station)
 
             return result
         

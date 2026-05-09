@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta, time
 from typing import List
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 
 from app.domain.models.reservation import ReservationEntity
 from app.infrastructure.database.tables import Reservation as ReservationModel
@@ -190,3 +190,33 @@ class SqlAlchemyReservationRepository(
             )
             .count()
         )
+
+    def exists_active_for_charger(self, charger_id: int, now: datetime) -> bool:
+        today = now.date()
+        current_time = now.time().replace(tzinfo=None, microsecond=0)
+
+        active_reservation = (
+            self.session.query(ReservationModel)
+            .filter(
+                ReservationModel.charger_id == charger_id,
+                ReservationModel.date == today,
+                ReservationModel.start_time <= current_time,
+                ReservationModel.end_time >= current_time,
+                func.upper(ReservationModel.status).notin_([
+                    "CANCELLED",
+                    "COMPLETED",
+                    "FAILED",
+                ]),
+            )
+            .first()
+        )
+
+        print(
+            "CHECK RESERVATION:",
+            "charger_id=", charger_id,
+            "today=", today,
+            "time=", current_time,
+            "found=", active_reservation is not None,
+        )
+
+        return active_reservation is not None

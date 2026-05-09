@@ -7,6 +7,7 @@ class Charger {
     this.maxPower = 0,
     this.pricePerKwh = 0,
     required this.status,
+    required this.isReservedNow,
   });
 
   final int id;
@@ -16,6 +17,7 @@ class Charger {
   final double maxPower;
   final double pricePerKwh;
   final String status;
+  final bool isReservedNow;
 
   factory Charger.fromJson(Map<String, dynamic> json) {
     return Charger(
@@ -28,6 +30,7 @@ class Charger {
       maxPower: _asDouble(json['max_power'] ?? json['maxPower']),
       pricePerKwh: _asDouble(json['price_per_kwh'] ?? json['pricePerKwh']),
       status: (json['status'] ?? '').toString(),
+      isReservedNow: json['is_reserved_now'] ?? false,
     );
   }
 
@@ -39,6 +42,7 @@ class Charger {
       'max_power': maxPower,
       'price_per_kwh': pricePerKwh,
       'status': status,
+      'isReservedNow': isReservedNow,
     };
   }
 

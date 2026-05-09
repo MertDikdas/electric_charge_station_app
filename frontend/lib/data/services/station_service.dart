@@ -19,6 +19,48 @@ class StationService {
     return parseList(await _apiClient.get('/stations/'), Station.fromJson);
   }
 
+  Future<List<Station>> getNearbyStationsByArea({
+    required double northLatitude,
+    required double southLatitude,
+    required double eastLongitude,
+    required double westLongitude,
+  }) async {
+    return parseList(
+      await _apiClient.get(
+        '/stations/nearby/area',
+        queryParameters: {
+          'north_latitude': northLatitude.toString(),
+          'south_latitude': southLatitude.toString(),
+          'east_longitude': eastLongitude.toString(),
+          'west_longitude': westLongitude.toString(),
+        },
+      ),
+      Station.fromJson,
+    );
+  }
+
+  Future<List<Station>> getNearbyStationsByAreaByVehicle({
+    required double northLatitude,
+    required double southLatitude,
+    required double eastLongitude,
+    required double westLongitude,
+    required int vehicleId,
+  }) async {
+    return parseList(
+      await _apiClient.get(
+        '/stations/search-compatible-in-area',
+        queryParameters: {
+          'north_latitude': northLatitude.toString(),
+          'south_latitude': southLatitude.toString(),
+          'east_longitude': eastLongitude.toString(),
+          'west_longitude': westLongitude.toString(),
+          'vehicle_id': vehicleId.toString(),
+        },
+      ),
+      Station.fromJson,
+    );
+  }
+
   Future<Station> getStation(int stationId) async {
     return Station.fromJson(
       parseObject(await _apiClient.get('/stations/$stationId')),
@@ -37,11 +79,19 @@ class StationService {
     return _apiClient.delete('/stations/$stationId');
   }
 
-  Future<List<Station>> getNearbyStations(String location) async {
+  Future<List<Station>> getNearbyStations({
+    required double latitude,
+    required double longitude,
+    double kmRadius = 5,
+  }) async {
     return parseList(
       await _apiClient.get(
         '/stations/nearby',
-        queryParameters: {'location': location},
+        queryParameters: {
+          'latitude': latitude.toString(),
+          'longitude': longitude.toString(),
+          'km_radius': kmRadius.toString(),
+        },
       ),
       Station.fromJson,
     );

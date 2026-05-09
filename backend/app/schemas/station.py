@@ -1,6 +1,8 @@
-from typing import Literal
+from typing import Literal, List
 
 from pydantic import BaseModel, Field, field_validator
+
+from app.schemas.charger import Charger
 
 
 StationStatus = Literal[
@@ -11,14 +13,17 @@ StationStatus = Literal[
     "CLOSED",
 ]
 
+
 class StationCreate(BaseModel):
     address: str
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
     status: str = "AVAILABLE"
 
+
 class Station(StationCreate):
     id: int
+    chargers: List[Charger] = Field(default_factory=list)
 
 
 class StationStatusUpdate(BaseModel):
