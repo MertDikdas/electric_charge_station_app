@@ -4,6 +4,7 @@ from typing import List
 
 from app.domain.models.reservation import ReservationEntity
 from app.infrastructure.repositories.abstract.base import AbstractRepository
+from datetime import datetime, timezone
 
 
 class AbstractReservationRepository(AbstractRepository[ReservationEntity]):
@@ -69,4 +70,8 @@ class AbstractReservationRepository(AbstractRepository[ReservationEntity]):
 
     @abstractmethod
     def get_expired_or_cancelled_count_last_2_months(self, user_id: int) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
+    def exists_active_for_charger(self, charger_id: int, now: datetime) -> bool:
         raise NotImplementedError

@@ -134,6 +134,7 @@ class _MapScreenState extends State<MapScreen> {
       _allStations = stations;
       _markers = _markerBuilder.buildMarkers(
         stations: stations,
+        selectedVehicle: _selectedVehicle,
         onMarkerTap: _showStationDetails,
       );
     });
@@ -175,6 +176,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _markers = _markerBuilder.buildMarkers(
         stations: visibleStations,
+        selectedVehicle: _selectedVehicle,
         onMarkerTap: _showStationDetails,
       );
     });
@@ -195,6 +197,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _markers = _markerBuilder.buildMarkers(
         stations: nearbyStations,
+        selectedVehicle: _selectedVehicle,
         onMarkerTap: _showStationDetails,
       );
     });

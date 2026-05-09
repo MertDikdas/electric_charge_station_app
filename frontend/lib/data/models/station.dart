@@ -1,3 +1,5 @@
+import 'charger.dart';
+
 class Station {
   const Station({
     required this.id,
@@ -6,6 +8,7 @@ class Station {
     required this.latitude,
     required this.longitude,
     required this.status,
+    required this.chargers,
   });
 
   final int id;
@@ -14,6 +17,7 @@ class Station {
   final double latitude;
   final double longitude;
   final String status;
+  final List<Charger> chargers;
 
   factory Station.fromJson(Map<String, dynamic> json) {
     return Station(
@@ -23,6 +27,9 @@ class Station {
       latitude: _asDouble(json['latitude']),
       longitude: _asDouble(json['longitude']),
       status: (json['status'] ?? '').toString(),
+      chargers: (json['chargers'] as List<dynamic>? ?? [])
+          .map((item) => Charger.fromJson(item as Map<String, dynamic>))
+          .toList(),
     );
   }
 
