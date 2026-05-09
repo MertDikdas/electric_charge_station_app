@@ -6,6 +6,8 @@ import '../../data/models/vehicle.dart';
 import '../../data/services/user_service.dart';
 import '../../data/services/vehicle_service.dart';
 import '../../widgets/app_app_bar.dart';
+import '../../data/models/payment.dart';
+import '../../data/services/payment_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -119,6 +121,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                 ),
+                const SizedBox(height: 24),
+                Text('Payments', style: textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.payment_outlined),
+                    title: const Text('My payments'),
+                    subtitle: const Text(
+                      'Transaction History / Wallet Transactions',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const PaymentsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             );
           },
@@ -133,6 +155,154 @@ class VehicleScreen extends StatefulWidget {
 
   @override
   State<VehicleScreen> createState() => _VehicleScreenState();
+}
+
+class PaymentsScreen extends StatefulWidget {
+  const PaymentsScreen({super.key});
+
+  @override
+  State<PaymentsScreen> createState() => _PaymentsScreenState();
+}
+
+class _PaymentsScreenState extends State<PaymentsScreen> {
+  final _paymentService = PaymentService();
+
+  late Future<List<Payment>> _paymentsFuture = _loadPayments();
+  bool _isProcessing = false;
+
+  Future<List<Payment>> _loadPayments() {
+    return _paymentService.getMyPayments();
+  }
+
+  Future<void> _completePayment(int paymentId) async {
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      await _paymentService.completePayment(paymentId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _paymentsFuture = _loadPayments();
+      });
+
+      _showMessage('Payment Completed');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage(error.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _canPay(Payment payment) {
+    return payment.status.toUpperCase() == 'PENDING';
+  }
+
+  String _formatAmount(double amount) {
+    return '${amount.toStringAsFixed(2)} TL';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const AppAppBar(title: 'Payments'),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            setState(() {
+              _paymentsFuture = _loadPayments();
+            });
+            await _paymentsFuture;
+          },
+          child: FutureBuilder<List<Payment>>(
+            future: _paymentsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _MessageCard(
+                      icon: Icons.error_outline,
+                      title: 'Payments can\'t loaded!',
+                      subtitle: snapshot.error.toString(),
+                    ),
+                  ],
+                );
+              }
+
+              final payments = snapshot.data ?? [];
+
+              if (payments.isEmpty) {
+                return ListView(
+                  padding: EdgeInsets.all(16),
+                  children: [
+                    _MessageCard(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'There aren\'t any payments.',
+                      subtitle: 'You can see your payments here.',
+                    ),
+                  ],
+                );
+              }
+
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text(
+                    'Ödemelerim',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 16),
+                  ...payments.map((payment) {
+                    final canPay = _canPay(payment);
+
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.receipt_long_outlined),
+                        title: Text('${payment.amount.toStringAsFixed(2)} TL'),
+                        subtitle: Text(
+                          'Status: ${payment.status}\n'
+                          'Reservation ID: ${payment.reservationId}',
+                        ),
+                        isThreeLine: true,
+                        trailing: FilledButton(
+                          onPressed: canPay && !_isProcessing
+                              ? () => _completePayment(payment.id)
+                              : null,
+                          child: Text(
+                            _isProcessing && canPay
+                                ? 'Processing'
+                                : 'Make payment',
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _VehicleScreenState extends State<VehicleScreen> {
