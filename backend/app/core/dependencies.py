@@ -27,7 +27,7 @@ from app.infrastructure.repositories.sqlalchemy.user_repository import SqlAlchem
 from app.schemas.company_member import CompanyMember
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from app.infrastructure.database.tables import CompanyMember, Station
+from app.infrastructure.database.tables import Charger, CompanyMember, Station
 
 security = HTTPBearer(auto_error=False)
 
@@ -179,7 +179,22 @@ def ensure_same_company(
     if member is None:
         raise HTTPException(status_code=403, detail="Company membership required")
 
-    
+def ensure_same_company_for_charger(
+    charger_id: int,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CompanyMember:
+    charger = ( db.query(Charger).filter(Charger.id == charger_id).first() )
+    if charger is None:
+        raise HTTPException(status_code=404, detail="Charger not found")
+    station = ( db.query(Station).filter(Station.id == charger.station_id).first() )
+    if station is None:
+        raise HTTPException(status_code=404, detail="Station not found")
+    member = (
+        db.query(CompanyMember).filter(CompanyMember.company_id == station.company_id, CompanyMember.user_id == current_user.id).first())
+    if member is None:
+        raise HTTPException(status_code=403, detail="Company membership required")
+    return member
 
 
 def get_uow(db: Session = Depends(get_db)) -> AbstractUnitOfWork:
