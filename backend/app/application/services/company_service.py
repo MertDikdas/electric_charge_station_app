@@ -19,6 +19,9 @@ class CompanyService:
         
     def get_company(self, company_id: int) -> Optional[CompanyEntity]:
         with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
             return self.uow.companies.get(company_id)
         
     def get_all_companies(self) -> List[CompanyEntity]:

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.application.services.charger_service import ChargerService
 from app.application.services.charger_session_service import ChargingSessionService
+from app.application.services.company_member_service import CompanyMemberService
 from app.application.services.coupon_service import CouponService
 from app.application.services.notification_service import NotificationService
 from app.application.services.payment_service import PaymentService
@@ -221,3 +222,7 @@ def get_chatbot_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> ChatbotSe
 
 def get_company_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanyService:
     return CompanyService(uow)
+
+def get_company_member_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanyMemberService:
+    return CompanyMemberService(uow)
+
