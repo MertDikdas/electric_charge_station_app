@@ -89,6 +89,7 @@ def preview_coupon(
     try:
         return service.preview_discount(
             current_user.id,
+            request.payment_id,
             request.code,
             request.order_amount,
         )
@@ -107,6 +108,7 @@ def apply_coupon(
     try:
         return service.apply_coupon(
             current_user.id,
+            request.payment_id,
             request.code,
             request.order_amount,
         )
@@ -130,9 +132,12 @@ def delete_coupon(
 def get_coupon(
     coupon_id: int,
     service: CouponService = Depends(get_coupon_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
+
     coupon = service.get_coupon(coupon_id)
+    if coupon.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Don't have permission") 
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
     return coupon

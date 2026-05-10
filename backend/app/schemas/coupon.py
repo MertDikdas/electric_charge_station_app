@@ -23,6 +23,7 @@ class Coupon(CouponCreate):
 
 
 class CouponApplyRequest(BaseModel):
+    payment_id: int
     code: str
     order_amount: float
 

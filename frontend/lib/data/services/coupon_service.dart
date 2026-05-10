@@ -47,6 +47,7 @@ class CouponService {
   }
 
   Future<CouponApplyResult> previewCoupon({
+    required int paymentId,
     required String code,
     required double orderAmount,
   }) async {
@@ -54,13 +55,18 @@ class CouponService {
       parseObject(
         await _apiClient.post(
           '/coupons/preview',
-          body: {'code': code, 'order_amount': orderAmount},
+          body: {
+            'payment_id': paymentId,
+            'code': code,
+            'order_amount': orderAmount,
+          },
         ),
       ),
     );
   }
 
   Future<CouponApplyResult> applyCoupon({
+    required int paymentId,
     required String code,
     required double orderAmount,
   }) async {
@@ -68,7 +74,11 @@ class CouponService {
       parseObject(
         await _apiClient.post(
           '/coupons/apply',
-          body: {'code': code, 'order_amount': orderAmount},
+          body: {
+            'payment_id': paymentId,
+            'code': code,
+            'order_amount': orderAmount,
+          },
         ),
       ),
     );

@@ -117,7 +117,20 @@ def update_payment(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
+    
+@router.patch("/{payment_id}/remove-coupon", response_model=PaymentResponse)
+def remove_coupon(
+    payment_id: int,
+    service: PaymentService = Depends(get_payment_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),  
+):
+    try:
+        payment = service.remove_coupon(payment_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return payment
 
 @router.post("/{payment_id}/complete", response_model=PaymentResponse)
 def complete_payment(
@@ -167,3 +180,4 @@ def delete_payment(
 ):
     if not service.delete_payment(payment_id):
         raise HTTPException(status_code=404, detail="Payment not found")
+

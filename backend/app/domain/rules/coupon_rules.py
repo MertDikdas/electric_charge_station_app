@@ -49,8 +49,6 @@ def ensure_coupon_is_usable(
         return False
     if current_time < valid_from or current_time > valid_until:
         return False
-    if coupon.usage_limit is not None and coupon.used_count >= coupon.usage_limit:
-        return False
     return order_amount >= coupon.min_order_amount
 
 

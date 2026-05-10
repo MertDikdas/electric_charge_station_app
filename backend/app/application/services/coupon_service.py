@@ -67,17 +67,28 @@ class CouponService:
             self.uow.commit()
             return True
 
-    def preview_discount(self, user_id: int, code: str, order_amount: float) -> dict:
+    def preview_discount(self, user_id: int, payment_id: int, code: str, order_amount: float) -> dict:
         with self.uow:
-            coupon = self._get_usable_coupon(user_id, code, order_amount)
+            coupon = self.uow.coupons.get_by_user_and_code(
+            user_id,
+            normalize_coupon_code(code),)
             discount_amount = calculate_coupon_discount(coupon, order_amount)
             return self._build_discount_result(coupon, order_amount, discount_amount)
 
-    def apply_coupon(self, user_id: int, code: str, order_amount: float) -> dict:
+    def apply_coupon(self, user_id: int, payment_id: int, code: str, order_amount: float) -> dict:
         with self.uow:
+            payment = self.uow.payments.get(payment_id)
+            if not payment:
+                raise ValueError("Can't find a payment")
             coupon = self._get_usable_coupon(user_id, code, order_amount)
+            if not ensure_coupon_is_usable:
+                raise ValueError("Coupon is not usable for this order")
+            if payment.amount != order_amount:
+                raise ValueError("The amount different from payment amount.")
             discount_amount = calculate_coupon_discount(coupon, order_amount)
             coupon.used_count += 1
+            payment.coupon_id = coupon.id
+            self.uow.payments.update(payment)
             self.uow.coupons.update(coupon)
             self.uow.commit()
             return self._build_discount_result(coupon, order_amount, discount_amount)

@@ -109,7 +109,6 @@ class PaymentService:
             raise ValueError("Coupon is not usable for this payment")
 
         discount_amount = calculate_coupon_discount(coupon, payment.amount)
-        coupon.used_count += 1
         self.uow.coupons.update(coupon)
 
         return round(payment.amount - discount_amount, 2)
@@ -147,3 +146,17 @@ class PaymentService:
             self.uow.payments.delete(payment)
             self.uow.commit()
             return True
+
+    def remove_coupon(self, payment_id: int) -> PaymentEntity:
+        with self.uow:
+            payment = self.uow.payments.get(payment_id)
+            if not payment:
+                raise LookupError("Payment not found")
+            coupon = self.uow.coupons.get(payment.coupon_id)
+            payment.coupon_id = None
+            if coupon.used_count >0:
+                coupon.used_count -= coupon.used_count
+            payment = self.uow.payments.update(payment)
+            self.uow.coupons.update(coupon)
+            self.uow.commit()
+            return payment

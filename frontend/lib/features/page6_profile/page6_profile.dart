@@ -8,6 +8,8 @@ import '../../data/services/vehicle_service.dart';
 import '../../widgets/app_app_bar.dart';
 import '../../data/models/payment.dart';
 import '../../data/services/payment_service.dart';
+import '../../data/services/coupon_service.dart';
+import '../../data/models/coupon.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -180,12 +182,43 @@ class PaymentsScreen extends StatefulWidget {
 
 class _PaymentsScreenState extends State<PaymentsScreen> {
   final _paymentService = PaymentService();
-
+  final _couponService = CouponService();
+  final Map<int, CouponApplyResult> _appliedCoupons = {};
   late Future<List<Payment>> _paymentsFuture = _loadPayments();
   bool _isProcessing = false;
 
-  Future<List<Payment>> _loadPayments() {
-    return _paymentService.getMyPayments();
+  Future<List<Payment>> _loadPayments() async {
+    final payments = await _paymentService.getMyPayments();
+
+    final appliedCoupons = <int, CouponApplyResult>{};
+
+    for (final payment in payments) {
+      if (payment.couponId == null) continue;
+
+      try {
+        final coupon = await _couponService.getCoupon(payment.couponId!);
+
+        final preview = await _couponService.previewCoupon(
+          paymentId: payment.id,
+          code: coupon.code,
+          orderAmount: payment.amount,
+        );
+
+        appliedCoupons[payment.id] = preview;
+      } catch (_) {
+        // Kupon silindiyse veya preview hata verirse ödeme yine normal gösterilsin.
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _appliedCoupons
+          ..clear()
+          ..addAll(appliedCoupons);
+      });
+    }
+
+    return payments;
   }
 
   Future<void> _completePayment(int paymentId) async {
@@ -203,6 +236,115 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       });
 
       _showMessage('Payment Completed');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage(error.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _removeCoupon(Payment payment) async {
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      await _paymentService.removeCoupon(payment.id);
+
+      if (!mounted) return;
+
+      setState(() {
+        _appliedCoupons.remove(payment.id);
+        _paymentsFuture = _loadPayments();
+      });
+
+      _showMessage('Kupon kaldırıldı');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage(error.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showCouponDialog(Payment payment) async {
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) => const _CouponCodeDialog(),
+    );
+
+    if (code == null || code.isEmpty) return;
+
+    await _previewAndApplyCoupon(payment: payment, code: code);
+  }
+
+  Future<void> _previewAndApplyCoupon({
+    required Payment payment,
+    required String code,
+  }) async {
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      final preview = await _couponService.previewCoupon(
+        paymentId: payment.id,
+        code: code,
+        orderAmount: payment.amount,
+      );
+
+      if (!mounted) return;
+
+      final shouldApply = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Kupon Önizleme'),
+            content: Text(
+              'Kupon kodu: $code\n'
+              'İlk tutar: ${payment.amount.toStringAsFixed(2)} TL\n'
+              'İndirim: ${preview.discountAmount.toStringAsFixed(2)} TL\n'
+              'Yeni tutar: ${preview.finalAmount.toStringAsFixed(2)} TL',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Vazgeç'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Uygula'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (shouldApply != true) return;
+
+      final appliedCoupon = await _couponService.applyCoupon(
+        paymentId: payment.id,
+        code: code,
+        orderAmount: payment.amount,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _appliedCoupons[payment.id] = appliedCoupon;
+        _paymentsFuture = _loadPayments();
+      });
+
+      _showMessage('Kupon uygulandı');
     } catch (error) {
       if (!mounted) return;
       _showMessage(error.toString());
@@ -288,23 +430,111 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     final canPay = _canPay(payment);
 
                     return Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.receipt_long_outlined),
-                        title: Text('${payment.amount.toStringAsFixed(2)} TL'),
-                        subtitle: Text(
-                          'Status: ${payment.status}\n'
-                          'Reservation ID: ${payment.reservationId}',
-                        ),
-                        isThreeLine: true,
-                        trailing: FilledButton(
-                          onPressed: canPay && !_isProcessing
-                              ? () => _completePayment(payment.id)
-                              : null,
-                          child: Text(
-                            _isProcessing && canPay
-                                ? 'Processing'
-                                : 'Make payment',
-                          ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.receipt_long_outlined),
+                              title: Builder(
+                                builder: (context) {
+                                  final hasCoupon = payment.couponId != null;
+                                  final appliedCoupon = hasCoupon
+                                      ? _appliedCoupons[payment.id]
+                                      : null;
+
+                                  if (!hasCoupon || appliedCoupon == null) {
+                                    return Text(
+                                      '${payment.amount.toStringAsFixed(2)} TL',
+                                    );
+                                  }
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${appliedCoupon.finalAmount.toStringAsFixed(2)} TL',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      Text(
+                                        'Eski tutar: ${payment.amount.toStringAsFixed(2)} TL',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              decoration:
+                                                  TextDecoration.lineThrough,
+                                            ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              subtitle: Builder(
+                                builder: (context) {
+                                  final hasCoupon = payment.couponId != null;
+                                  final appliedCoupon = hasCoupon
+                                      ? _appliedCoupons[payment.id]
+                                      : null;
+
+                                  return Text(
+                                    'Status: ${payment.status}\n'
+                                    'Reservation ID: ${payment.reservationId}'
+                                    '${hasCoupon ? '\nCoupon ID: ${payment.couponId}' : ''}'
+                                    '${appliedCoupon == null ? '' : '\nDiscount: ${appliedCoupon.discountAmount.toStringAsFixed(2)} TL'}',
+                                  );
+                                },
+                              ),
+                              isThreeLine: true,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: !_isProcessing && canPay
+                                        ? () {
+                                            if (payment.couponId == null) {
+                                              _showCouponDialog(payment);
+                                            } else {
+                                              _removeCoupon(payment);
+                                            }
+                                          }
+                                        : null,
+                                    icon: Icon(
+                                      payment.couponId == null
+                                          ? Icons.confirmation_number_outlined
+                                          : Icons.remove_circle_outline,
+                                    ),
+                                    label: Text(
+                                      payment.couponId == null
+                                          ? 'Kupon Ekle'
+                                          : 'Kuponu Çıkart',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: FilledButton.icon(
+                                    onPressed: canPay && !_isProcessing
+                                        ? () => _completePayment(payment.id)
+                                        : null,
+                                    icon: const Icon(Icons.payment_outlined),
+                                    label: Text(
+                                      _isProcessing && canPay
+                                          ? 'Processing'
+                                          : 'Make payment',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -693,6 +923,57 @@ class _MessageCard extends StatelessWidget {
         title: Text(title),
         subtitle: Text(subtitle),
       ),
+    );
+  }
+}
+
+class _CouponCodeDialog extends StatefulWidget {
+  const _CouponCodeDialog();
+
+  @override
+  State<_CouponCodeDialog> createState() => _CouponCodeDialogState();
+}
+
+class _CouponCodeDialogState extends State<_CouponCodeDialog> {
+  final _codeController = TextEditingController();
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final code = _codeController.text.trim();
+
+    if (code.isEmpty) return;
+
+    FocusScope.of(context).unfocus();
+    Navigator.of(context).pop(code);
+  }
+
+  void _cancel() {
+    FocusScope.of(context).unfocus();
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Kupon Ekle'),
+      content: TextField(
+        controller: _codeController,
+        textCapitalization: TextCapitalization.characters,
+        decoration: const InputDecoration(
+          labelText: 'Kupon Kodu',
+          prefixIcon: Icon(Icons.confirmation_number_outlined),
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(onPressed: _cancel, child: const Text('İptal')),
+        FilledButton(onPressed: _submit, child: const Text('Devam')),
+      ],
     );
   }
 }

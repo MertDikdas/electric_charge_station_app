@@ -84,4 +84,10 @@ class PaymentService {
   Future<void> deletePayment(int paymentId) {
     return _apiClient.delete('/payments/$paymentId');
   }
+
+  Future<Payment> removeCoupon(int paymentId) async {
+    return Payment.fromJson(
+      parseObject(await _apiClient.patch('/payments/$paymentId/remove-coupon')),
+    );
+  }
 }
