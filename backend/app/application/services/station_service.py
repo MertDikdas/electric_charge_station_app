@@ -1,4 +1,5 @@
 from app.core.uow import AbstractUnitOfWork
+from app.domain.models.notification import NotificationEntity
 from app.domain.models.charger import ChargerEntity
 from app.domain.models.station import StationEntity
 from app.domain.rules.station_rules import normalize_station_status, validate_station_status
@@ -109,8 +110,43 @@ class StationService:
 
             station.status = normalized_status
             updated_station = self.uow.stations.update(station)
+            self._create_station_unavailable_notifications(updated_station)
             self.uow.commit()
             return updated_station
+
+    def _create_station_unavailable_notifications(self, station: StationEntity) -> None:
+        unavailable_statuses = {"CLOSED", "OUT_OF_SERVICE", "MAINTENANCE"}
+        if station.status not in unavailable_statuses:
+            return
+
+        chargers = self.uow.chargers.list_by_station(station.id)
+        charger_ids = [charger.id for charger in chargers if charger.id is not None]
+        reservations = self.uow.reservations.list_active_for_chargers(
+            charger_ids,
+            now_in_turkey(),
+        )
+
+        title = "Reserved station unavailable"
+        for reservation in reservations:
+            message = (
+                f"Your reserved station #{station.id} is temporarily unavailable. "
+                f"Reservation #{reservation.id} may be affected."
+            )
+            if self.uow.notifications.exists_by_user_and_title_and_message(
+                reservation.user_id,
+                title,
+                message,
+            ):
+                continue
+
+            self.uow.notifications.add(
+                NotificationEntity(
+                    user_id=reservation.user_id,
+                    title=title,
+                    message=message,
+                    notification_type="WARNING",
+                )
+            )
 
     def delete_station(self, station_id: int) -> None:
         with self.uow:

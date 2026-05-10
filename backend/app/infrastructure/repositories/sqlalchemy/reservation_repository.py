@@ -220,3 +220,31 @@ class SqlAlchemyReservationRepository(
         )
 
         return active_reservation is not None
+
+    def list_active_for_chargers(
+        self,
+        charger_ids: list[int],
+        now: datetime,
+    ) -> List[ReservationEntity]:
+        if not charger_ids:
+            return []
+
+        today = now.date()
+        current_time = now.time().replace(tzinfo=None, microsecond=0)
+
+        models = (
+            self.session.query(ReservationModel)
+            .filter(
+                ReservationModel.charger_id.in_(charger_ids),
+                ReservationModel.status.in_(self.blocking_statuses),
+                or_(
+                    ReservationModel.date > today,
+                    and_(
+                        ReservationModel.date == today,
+                        ReservationModel.end_time >= current_time,
+                    ),
+                ),
+            )
+            .all()
+        )
+        return [self.to_entity(model) for model in models]

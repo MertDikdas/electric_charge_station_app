@@ -15,6 +15,8 @@ import '../../data/services/reservation_service.dart';
 import '../../data/services/vehicle_service.dart';
 import '../page6_profile/page6_profile.dart';
 import '../page7_reservations/page7_rezervations_screen.dart';
+import '../notifications/in_app_notification_controller.dart';
+import '../notifications/notification_panel.dart';
 import 'map_camera_service.dart';
 import 'route_details.dart';
 import 'route_service.dart';
@@ -765,6 +767,25 @@ class _MapScreenState extends State<MapScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _openNotificationPanel() async {
+    final controller = InAppNotificationScope.of(context);
+    await controller.refresh(showNewNotifications: false);
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => InAppNotificationScope(
+        controller: controller,
+        child: const FractionallySizedBox(
+          heightFactor: 0.78,
+          child: NotificationPanel(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -859,6 +880,17 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _NotificationBellButton(
+                  onPressed: _openNotificationPanel,
+                ),
+              ),
+            ),
+          ),
           if (_isNavigationModeEnabled)
             SafeArea(
               child: Align(
@@ -953,6 +985,63 @@ class _MapScreenState extends State<MapScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _NotificationBellButton extends StatelessWidget {
+  const _NotificationBellButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = InAppNotificationScope.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final unreadCount = controller.unreadCount;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'notifications',
+              backgroundColor: colorScheme.surface,
+              foregroundColor: colorScheme.primary,
+              onPressed: onPressed,
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colorScheme.error,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colorScheme.surface, width: 2),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onError,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
