@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/charger.dart';
@@ -12,7 +15,12 @@ import '../../data/services/reservation_service.dart';
 import '../../data/services/vehicle_service.dart';
 import '../page6_profile/page6_profile.dart';
 import '../page7_reservations/page7_rezervations_screen.dart';
+import '../notifications/in_app_notification_controller.dart';
+import '../notifications/notification_panel.dart';
 import 'map_camera_service.dart';
+import 'route_details.dart';
+import 'route_service.dart';
+import 'station_details_bottom_sheet.dart';
 import 'station_marker_builder.dart';
 
 class MapScreen extends StatefulWidget {
@@ -34,21 +42,33 @@ class _MapScreenState extends State<MapScreen> {
   final _mapCameraService = MapCameraService();
   final _markerBuilder = StationMarkerBuilder();
   final _reservationService = ReservationService();
+  final _routeService = RouteService();
   final _stationRepository = StationRepository();
   final _vehicleService = VehicleService();
+  StreamSubscription<Position>? _positionSubscription;
   String? _mapStyle;
   GoogleMapController? _mapController;
   LatLng? _pendingCameraTarget;
   CameraPosition _initialCameraPosition = _fallbackCameraPosition;
+  LatLng? _currentUserLocation;
+  Marker? _userLocationMarker;
+  DateTime? _lastCameraFollowAt;
+  int? _selectedStationId;
+  RouteDetails? _activeRouteDetails;
+  int? _activeRouteStationId;
   List<Station> _allStations = const [];
   List<Vehicle> _vehicles = const [];
   Vehicle? _selectedVehicle;
-  Set<Marker> _markers = {};
+  Set<Marker> _stationMarkers = {};
+  Set<Polyline> _polylines = {};
   bool _isLoading = true;
   bool _isLoadingVehicles = false;
   bool _isLocationPermissionGranted = false;
+  bool _isRouteLoading = false;
+  bool _isNavigationModeEnabled = false;
   String? _errorMessage;
-  bool _isRefreshingMarkers = false;
+
+  Set<Marker> get _mapMarkers => {..._stationMarkers, ?_userLocationMarker};
 
   @override
   void initState() {
@@ -60,6 +80,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _positionSubscription?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
@@ -67,9 +88,8 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _loadMapStyle() async {
     _mapStyle = await rootBundle.loadString('assets/map_styles/map.json');
 
-    final controller = _mapController;
-    if (controller != null && _mapStyle != null) {
-      await controller.setMapStyle(_mapStyle);
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -81,9 +101,7 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       final locationResult = await _locationService.requestCurrentLocation();
-      print("-----------------------------------------");
-
-      final position = LatLng(38.4237, 27.1428);
+      final position = locationResult.position;
       final hasUserLocation = locationResult.isGranted && position != null;
       final target = hasUserLocation
           ? LatLng(position.latitude, position.longitude)
@@ -92,11 +110,17 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       setState(() {
         _isLocationPermissionGranted = hasUserLocation;
+        _currentUserLocation = hasUserLocation ? target : null;
         _initialCameraPosition = CameraPosition(target: target, zoom: 14);
+        if (position != null) {
+          _userLocationMarker = _buildUserMarker(position);
+        }
       });
 
       if (!hasUserLocation) {
         _showLocationPermissionSnackBar(locationResult.message);
+      } else {
+        await _startLiveLocationTracking();
       }
 
       await _moveCameraAndRefreshMarkers(target);
@@ -144,6 +168,7 @@ class _MapScreenState extends State<MapScreen> {
     final markers = await _markerBuilder.buildMarkers(
       stations: stations,
       selectedVehicle: _selectedVehicle,
+      selectedStationId: _selectedStationId,
       onMarkerTap: _showStationDetails,
     );
 
@@ -151,7 +176,7 @@ class _MapScreenState extends State<MapScreen> {
 
     setState(() {
       _allStations = stations;
-      _markers = markers;
+      _stationMarkers = markers;
     });
   }
 
@@ -186,34 +211,25 @@ class _MapScreenState extends State<MapScreen> {
       latitudeOf: (station) => station.latitude,
       longitudeOf: (station) => station.longitude,
     );
-    Future<void> _updateMarkers() async {
-      final visibleStations = _mapCameraService.filterInsideBounds<Station>(
-        items: _allStations,
-        bounds: bounds,
-        latitudeOf: (station) => station.latitude,
-        longitudeOf: (station) => station.longitude,
-      );
 
-      final markers = await _markerBuilder.buildMarkers(
-        stations: visibleStations,
-        selectedVehicle: _selectedVehicle,
-        onMarkerTap: _showStationDetails,
-      );
+    final markers = await _markerBuilder.buildMarkers(
+      stations: visibleStations,
+      selectedVehicle: _selectedVehicle,
+      selectedStationId: _selectedStationId,
+      onMarkerTap: _showStationDetails,
+    );
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      setState(() {
-        _markers = markers;
-      });
-    }
+    setState(() {
+      _stationMarkers = markers;
+    });
   }
 
   Future<void> _refreshMarkersForFallbackViewport(LatLng center) async {
     final nearbyStations = _allStations.where((station) {
       final latitude = station.latitude;
       final longitude = station.longitude;
-
-      if (latitude == null || longitude == null) return false;
 
       return (latitude - center.latitude).abs() <= 0.08 &&
           (longitude - center.longitude).abs() <= 0.08;
@@ -222,13 +238,14 @@ class _MapScreenState extends State<MapScreen> {
     final markers = await _markerBuilder.buildMarkers(
       stations: nearbyStations,
       selectedVehicle: _selectedVehicle,
+      selectedStationId: _selectedStationId,
       onMarkerTap: _showStationDetails,
     );
 
     if (!mounted) return;
 
     setState(() {
-      _markers = markers;
+      _stationMarkers = markers;
     });
   }
 
@@ -338,97 +355,319 @@ class _MapScreenState extends State<MapScreen> {
       _selectedVehicle = selected;
     });
     _showSnackBar('${selected.model} rezervasyon araci olarak secildi.');
+    await _refreshVisibleMarkers();
   }
 
   Future<void> _showStationDetails(Station station) async {
+    final bottomSheetColor = Theme.of(context).colorScheme.surface;
+
+    setState(() {
+      _selectedStationId = station.id;
+    });
+    await _refreshVisibleMarkers();
+
+    if (!mounted) return;
     final chargersFuture = _stationRepository.fetchStationChargers(station.id);
     await showModalBottomSheet<void>(
       context: context,
-      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: bottomSheetColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: FutureBuilder<List<Charger>>(
-              future: chargersFuture,
-              builder: (context, snapshot) {
-                final chargers = snapshot.data ?? [];
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Station #${station.id}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      station.address.isEmpty
-                          ? '${station.latitude.toStringAsFixed(5)}, ${station.longitude.toStringAsFixed(5)}'
-                          : station.address,
-                    ),
-                    const SizedBox(height: 12),
-                    _SelectedVehicleTile(
-                      vehicle: _selectedVehicle,
-                      onSelectPressed: () {
-                        Navigator.of(context).pop();
-                        _showVehiclePicker();
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    if (snapshot.connectionState == ConnectionState.waiting)
-                      const Center(child: CircularProgressIndicator())
-                    else if (snapshot.hasError)
-                      ListTile(
-                        leading: const Icon(Icons.error_outline),
-                        title: const Text('Charger listesi yuklenemedi'),
-                        subtitle: Text(snapshot.error.toString()),
-                      )
-                    else if (chargers.isEmpty)
-                      const ListTile(
-                        leading: Icon(Icons.ev_station),
-                        title: Text('Charger bulunamadi'),
-                      )
-                    else
-                      Flexible(
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: chargers
-                              .map(
-                                (charger) => ListTile(
-                                  leading: const Icon(Icons.ev_station),
-                                  title: Text(
-                                    '${charger.connectorType} - ${charger.currentType}',
-                                  ),
-                                  subtitle: Text(
-                                    [
-                                      charger.status,
-                                      '${charger.maxPower.toStringAsFixed(0)} kW',
-                                      _formatPrice(charger.pricePerKwh),
-                                    ].join(' | '),
-                                  ),
-                                  trailing: FilledButton(
-                                    onPressed: _canReserveCharger(charger)
-                                        ? () {
-                                            Navigator.of(context).pop();
-                                            _createReservation(charger);
-                                          }
-                                        : null,
-                                    child: const Text('Reserve'),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
+        return StationDetailsBottomSheet(
+          station: station,
+          chargersFuture: chargersFuture,
+          selectedVehicle: _selectedVehicle,
+          distanceText: _distanceFromUserText(station),
+          initialRouteDetails: _activeRouteStationId == station.id
+              ? _activeRouteDetails
+              : null,
+          onRoutePressed: () => _drawRouteToStation(station),
+          onReserveCharger: (charger) {
+            Navigator.of(context).pop();
+            _createReservation(charger);
+          },
+          onSelectVehiclePressed: () {
+            Navigator.of(context).pop();
+            _showVehiclePicker();
+          },
+          formatPrice: _formatPrice,
+          canReserveCharger: _canReserveCharger,
         );
       },
     );
+  }
+
+  Future<RouteDetails?> _drawRouteToStation(Station station) async {
+    if (_isRouteLoading) return _activeRouteDetails;
+
+    final controller = _mapController;
+    if (controller == null) {
+      _showSnackBar('Map is still loading. Please try again.');
+      return null;
+    }
+
+    setState(() {
+      _isRouteLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final origin = await _resolveRouteOrigin();
+      final destination = LatLng(station.latitude, station.longitude);
+      final details = await _routeService.fetchDrivingRoute(
+        origin: origin,
+        destination: destination,
+      );
+
+      if (!mounted) return null;
+
+      final routePoints = [origin, ...details.points, destination];
+      final routeDetails = RouteDetails(
+        points: routePoints,
+        distanceText: details.distanceText,
+        durationText: details.durationText,
+      );
+
+      setState(() {
+        _selectedStationId = station.id;
+        _activeRouteStationId = station.id;
+        _activeRouteDetails = routeDetails;
+        _isNavigationModeEnabled = true;
+        _polylines = {
+          Polyline(
+            polylineId: const PolylineId('active-route'),
+            points: routePoints,
+            color: Colors.blue,
+            width: 6,
+            startCap: Cap.roundCap,
+            endCap: Cap.roundCap,
+            jointType: JointType.round,
+          ),
+        };
+      });
+
+      await _fitCameraToRoute(routePoints);
+      await _refreshVisibleMarkers();
+      await _startLiveLocationTracking(followCamera: true);
+      return routeDetails;
+    } catch (error) {
+      if (!mounted) return null;
+      _showSnackBar('Route could not be created: $error');
+      return null;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRouteLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<LatLng> _resolveRouteOrigin() async {
+    final locationResult = await _locationService.requestCurrentLocation();
+    final position = locationResult.position;
+    if (locationResult.isGranted && position != null) {
+      final location = LatLng(position.latitude, position.longitude);
+      setState(() {
+        _isLocationPermissionGranted = true;
+        _currentUserLocation = location;
+      });
+      return location;
+    }
+
+    _showLocationPermissionSnackBar(locationResult.message);
+    return _currentUserLocation ?? _fallbackCameraPosition.target;
+  }
+
+  Future<void> _centerOnCurrentLocation() async {
+    final location = _currentUserLocation;
+    if (location == null) {
+      await _startLiveLocationTracking(followCamera: true);
+      return;
+    }
+
+    await _animateCameraToUser(location, zoom: 17, force: true);
+  }
+
+  Future<void> _toggleNavigationMode() async {
+    final enabled = !_isNavigationModeEnabled;
+    setState(() {
+      _isNavigationModeEnabled = enabled;
+    });
+
+    if (enabled) {
+      await _startLiveLocationTracking(followCamera: true);
+      final location = _currentUserLocation;
+      if (location != null) {
+        await _animateCameraToUser(location, zoom: 17, force: true);
+      }
+      return;
+    }
+
+    _showSnackBar('Navigation follow disabled.');
+  }
+
+  Future<void> _cancelNavigation() async {
+    setState(() {
+      _isNavigationModeEnabled = false;
+      _selectedStationId = null;
+      _activeRouteDetails = null;
+      _activeRouteStationId = null;
+      _polylines = {};
+      _lastCameraFollowAt = null;
+    });
+
+    await _refreshVisibleMarkers();
+    _showSnackBar('Navigation cancelled');
+  }
+
+  Future<void> _startLiveLocationTracking({bool followCamera = false}) async {
+    final locationResult = await _locationService.requestCurrentLocation();
+    final position = locationResult.position;
+
+    if (!locationResult.isGranted || position == null) {
+      if (!mounted) return;
+      setState(() {
+        _isLocationPermissionGranted = false;
+        _isNavigationModeEnabled = false;
+      });
+      _showLocationPermissionSnackBar(locationResult.message);
+      return;
+    }
+
+    _updateUserPosition(position, animateCamera: followCamera);
+
+    await _positionSubscription?.cancel();
+    _positionSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 6,
+          ),
+        ).listen(
+          (position) {
+            _updateUserPosition(
+              position,
+              animateCamera: _isNavigationModeEnabled,
+            );
+          },
+          onError: (Object error) {
+            if (!mounted) return;
+            setState(() {
+              _isNavigationModeEnabled = false;
+            });
+            _showSnackBar('Live location could not be updated: $error');
+          },
+        );
+  }
+
+  void _updateUserPosition(Position position, {required bool animateCamera}) {
+    if (!mounted) return;
+
+    final location = LatLng(position.latitude, position.longitude);
+    setState(() {
+      _isLocationPermissionGranted = true;
+      _currentUserLocation = location;
+      _userLocationMarker = _buildUserMarker(position);
+    });
+
+    if (animateCamera) {
+      _animateCameraToUser(location, bearing: position.heading);
+    }
+  }
+
+  Marker _buildUserMarker(Position position) {
+    final heading = position.heading.isFinite && position.heading >= 0
+        ? position.heading
+        : 0.0;
+
+    return Marker(
+      markerId: const MarkerId('live-user-location'),
+      position: LatLng(position.latitude, position.longitude),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      anchor: const Offset(0.5, 0.5),
+      flat: true,
+      rotation: heading,
+      zIndexInt: 10,
+      infoWindow: const InfoWindow(title: 'You'),
+    );
+  }
+
+  Future<void> _animateCameraToUser(
+    LatLng location, {
+    double? bearing,
+    double zoom = 17,
+    bool force = false,
+  }) async {
+    final controller = _mapController;
+    if (controller == null) return;
+
+    final now = DateTime.now();
+    final lastFollowAt = _lastCameraFollowAt;
+    if (!force &&
+        lastFollowAt != null &&
+        now.difference(lastFollowAt) < const Duration(milliseconds: 900)) {
+      return;
+    }
+    _lastCameraFollowAt = now;
+
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: location,
+          zoom: zoom,
+          tilt: _isNavigationModeEnabled ? 45 : 0,
+          bearing: bearing != null && bearing.isFinite && bearing >= 0
+              ? bearing
+              : 0,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _fitCameraToRoute(List<LatLng> routePoints) async {
+    final controller = _mapController;
+    if (controller == null || routePoints.isEmpty) return;
+
+    final bounds = _boundsForLatLngs(routePoints);
+    await controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 72));
+  }
+
+  LatLngBounds _boundsForLatLngs(List<LatLng> points) {
+    var minLat = points.first.latitude;
+    var maxLat = points.first.latitude;
+    var minLng = points.first.longitude;
+    var maxLng = points.first.longitude;
+
+    for (final point in points.skip(1)) {
+      minLat = point.latitude < minLat ? point.latitude : minLat;
+      maxLat = point.latitude > maxLat ? point.latitude : maxLat;
+      minLng = point.longitude < minLng ? point.longitude : minLng;
+      maxLng = point.longitude > maxLng ? point.longitude : maxLng;
+    }
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+  }
+
+  String _distanceFromUserText(Station station) {
+    final origin = _currentUserLocation;
+    if (origin == null) return 'Location needed';
+
+    final meters = Geolocator.distanceBetween(
+      origin.latitude,
+      origin.longitude,
+      station.latitude,
+      station.longitude,
+    );
+
+    if (meters < 1000) return '${meters.round()} m';
+    return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
   bool _canReserveCharger(Charger charger) {
@@ -528,6 +767,25 @@ class _MapScreenState extends State<MapScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _openNotificationPanel() async {
+    final controller = InAppNotificationScope.of(context);
+    await controller.refresh(showNewNotifications: false);
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => InAppNotificationScope(
+        controller: controller,
+        child: const FractionallySizedBox(
+          heightFactor: 0.78,
+          child: NotificationPanel(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -538,7 +796,9 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           GoogleMap(
             initialCameraPosition: _initialCameraPosition,
-            markers: _markers,
+            markers: _mapMarkers,
+            polylines: _polylines,
+            style: _mapStyle,
             myLocationEnabled: _isLocationPermissionGranted,
             myLocationButtonEnabled: _isLocationPermissionGranted,
             zoomControlsEnabled: false,
@@ -546,10 +806,6 @@ class _MapScreenState extends State<MapScreen> {
             compassEnabled: true,
             onMapCreated: (controller) async {
               _mapController = controller;
-
-              if (_mapStyle != null) {
-                await controller.setMapStyle(_mapStyle);
-              }
 
               final pendingTarget = _pendingCameraTarget;
               if (pendingTarget != null) {
@@ -596,6 +852,68 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          if (_isRouteLoading)
+            const SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 84),
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 10),
+                          Text('Creating route...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _NotificationBellButton(
+                  onPressed: _openNotificationPanel,
+                ),
+              ),
+            ),
+          ),
+          if (_isNavigationModeEnabled)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                  child: FilledButton.icon(
+                    onPressed: _cancelNavigation,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colorScheme.error,
+                      foregroundColor: colorScheme.onError,
+                      elevation: 8,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                    ),
+                    icon: const Icon(Icons.navigation_outlined),
+                    label: const Text('Cancel Navigation'),
+                  ),
+                ),
+              ),
+            ),
           SafeArea(
             child: Align(
               alignment: Alignment.topRight,
@@ -611,6 +929,42 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomRight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 122),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: 'navigation-toggle',
+                      backgroundColor: _isNavigationModeEnabled
+                          ? colorScheme.primary
+                          : colorScheme.surface,
+                      foregroundColor: _isNavigationModeEnabled
+                          ? colorScheme.onPrimary
+                          : colorScheme.primary,
+                      onPressed: _toggleNavigationMode,
+                      child: Icon(
+                        _isNavigationModeEnabled
+                            ? Icons.navigation
+                            : Icons.navigation_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FloatingActionButton.small(
+                      heroTag: 'current-location',
+                      backgroundColor: colorScheme.surface,
+                      foregroundColor: colorScheme.primary,
+                      onPressed: _centerOnCurrentLocation,
+                      child: const Icon(Icons.my_location),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -621,9 +975,17 @@ class _MapScreenState extends State<MapScreen> {
       ),
       bottomNavigationBar: _MapBottomAppBar(
         onReservationsPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const ReservationsScreen()),
-          );
+          Navigator.of(context)
+              .push<bool>(
+                MaterialPageRoute<bool>(
+                  builder: (_) => const ReservationsScreen(),
+                ),
+              )
+              .then((shouldRefreshStations) {
+                if (shouldRefreshStations == true && mounted) {
+                  _reloadStations();
+                }
+              });
         },
         onProfilePressed: () {
           Navigator.of(context).push(
@@ -635,54 +997,68 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
+class _NotificationBellButton extends StatelessWidget {
+  const _NotificationBellButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = InAppNotificationScope.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final unreadCount = controller.unreadCount;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'notifications',
+              backgroundColor: colorScheme.surface,
+              foregroundColor: colorScheme.primary,
+              onPressed: onPressed,
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colorScheme.error,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colorScheme.surface, width: 2),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onError,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _ReservationSlot {
   const _ReservationSlot({required this.start, required this.end});
 
   final DateTime start;
   final DateTime end;
-}
-
-class _SelectedVehicleTile extends StatelessWidget {
-  const _SelectedVehicleTile({
-    required this.vehicle,
-    required this.onSelectPressed,
-  });
-
-  final Vehicle? vehicle;
-  final VoidCallback onSelectPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final selectedVehicle = vehicle;
-
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
-      child: ListTile(
-        leading: const Icon(Icons.directions_car),
-        title: Text(
-          selectedVehicle == null
-              ? 'Arac secilmedi'
-              : selectedVehicle.model.isEmpty
-              ? selectedVehicle.plate
-              : selectedVehicle.model,
-        ),
-        subtitle: Text(
-          selectedVehicle == null
-              ? 'Rezervasyon icin bir arac secin.'
-              : [
-                  selectedVehicle.plate,
-                  selectedVehicle.connectorType,
-                  selectedVehicle.currentType,
-                ].where((value) => value.trim().isNotEmpty).join(' | '),
-        ),
-        trailing: TextButton(
-          onPressed: onSelectPressed,
-          child: const Text('Sec'),
-        ),
-      ),
-    );
-  }
 }
 
 class _VehiclePickerButton extends StatelessWidget {

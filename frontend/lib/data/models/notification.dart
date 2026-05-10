@@ -1,5 +1,5 @@
-class AppNotification {
-  const AppNotification({
+class NotificationModel {
+  const NotificationModel({
     required this.id,
     required this.userId,
     required this.title,
@@ -17,8 +17,10 @@ class AppNotification {
   final bool isRead;
   final String createdAt;
 
-  factory AppNotification.fromJson(Map<String, dynamic> json) {
-    return AppNotification(
+  DateTime? get timestamp => DateTime.tryParse(createdAt);
+
+  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    return NotificationModel(
       id: _asInt(json['id']),
       userId: _asInt(json['user_id'] ?? json['userId']),
       title: (json['title'] ?? '').toString(),
@@ -40,9 +42,23 @@ class AppNotification {
     };
   }
 
+  NotificationModel copyWith({bool? isRead}) {
+    return NotificationModel(
+      id: id,
+      userId: userId,
+      title: title,
+      message: message,
+      notificationType: notificationType,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt,
+    );
+  }
+
   static int _asInt(Object? value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 }
+
+typedef AppNotification = NotificationModel;

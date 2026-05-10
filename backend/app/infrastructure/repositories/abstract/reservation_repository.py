@@ -75,3 +75,11 @@ class AbstractReservationRepository(AbstractRepository[ReservationEntity]):
     @abstractmethod
     def exists_active_for_charger(self, charger_id: int, now: datetime) -> bool:
         raise NotImplementedError
+
+    @abstractmethod
+    def list_active_for_chargers(
+        self,
+        charger_ids: list[int],
+        now: datetime,
+    ) -> List[ReservationEntity]:
+        raise NotImplementedError
