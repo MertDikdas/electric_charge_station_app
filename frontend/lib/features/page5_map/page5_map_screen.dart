@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -41,24 +43,30 @@ class _MapScreenState extends State<MapScreen> {
   final _routeService = RouteService();
   final _stationRepository = StationRepository();
   final _vehicleService = VehicleService();
+  StreamSubscription<Position>? _positionSubscription;
   String? _mapStyle;
   GoogleMapController? _mapController;
   LatLng? _pendingCameraTarget;
   CameraPosition _initialCameraPosition = _fallbackCameraPosition;
   LatLng? _currentUserLocation;
+  Marker? _userLocationMarker;
+  DateTime? _lastCameraFollowAt;
   int? _selectedStationId;
   RouteDetails? _activeRouteDetails;
   int? _activeRouteStationId;
   List<Station> _allStations = const [];
   List<Vehicle> _vehicles = const [];
   Vehicle? _selectedVehicle;
-  Set<Marker> _markers = {};
+  Set<Marker> _stationMarkers = {};
   Set<Polyline> _polylines = {};
   bool _isLoading = true;
   bool _isLoadingVehicles = false;
   bool _isLocationPermissionGranted = false;
   bool _isRouteLoading = false;
+  bool _isNavigationModeEnabled = false;
   String? _errorMessage;
+
+  Set<Marker> get _mapMarkers => {..._stationMarkers, ?_userLocationMarker};
 
   @override
   void initState() {
@@ -70,6 +78,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _positionSubscription?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
@@ -101,10 +110,15 @@ class _MapScreenState extends State<MapScreen> {
         _isLocationPermissionGranted = hasUserLocation;
         _currentUserLocation = hasUserLocation ? target : null;
         _initialCameraPosition = CameraPosition(target: target, zoom: 14);
+        if (position != null) {
+          _userLocationMarker = _buildUserMarker(position);
+        }
       });
 
       if (!hasUserLocation) {
         _showLocationPermissionSnackBar(locationResult.message);
+      } else {
+        await _startLiveLocationTracking();
       }
 
       await _moveCameraAndRefreshMarkers(target);
@@ -160,7 +174,7 @@ class _MapScreenState extends State<MapScreen> {
 
     setState(() {
       _allStations = stations;
-      _markers = markers;
+      _stationMarkers = markers;
     });
   }
 
@@ -206,7 +220,7 @@ class _MapScreenState extends State<MapScreen> {
     if (!mounted) return;
 
     setState(() {
-      _markers = markers;
+      _stationMarkers = markers;
     });
   }
 
@@ -229,7 +243,7 @@ class _MapScreenState extends State<MapScreen> {
     if (!mounted) return;
 
     setState(() {
-      _markers = markers;
+      _stationMarkers = markers;
     });
   }
 
@@ -419,6 +433,7 @@ class _MapScreenState extends State<MapScreen> {
         _selectedStationId = station.id;
         _activeRouteStationId = station.id;
         _activeRouteDetails = routeDetails;
+        _isNavigationModeEnabled = true;
         _polylines = {
           Polyline(
             polylineId: const PolylineId('active-route'),
@@ -434,6 +449,7 @@ class _MapScreenState extends State<MapScreen> {
 
       await _fitCameraToRoute(routePoints);
       await _refreshVisibleMarkers();
+      await _startLiveLocationTracking(followCamera: true);
       return routeDetails;
     } catch (error) {
       if (!mounted) return null;
@@ -465,21 +481,149 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _centerOnCurrentLocation() async {
+    final location = _currentUserLocation;
+    if (location == null) {
+      await _startLiveLocationTracking(followCamera: true);
+      return;
+    }
+
+    await _animateCameraToUser(location, zoom: 17, force: true);
+  }
+
+  Future<void> _toggleNavigationMode() async {
+    final enabled = !_isNavigationModeEnabled;
+    setState(() {
+      _isNavigationModeEnabled = enabled;
+    });
+
+    if (enabled) {
+      await _startLiveLocationTracking(followCamera: true);
+      final location = _currentUserLocation;
+      if (location != null) {
+        await _animateCameraToUser(location, zoom: 17, force: true);
+      }
+      return;
+    }
+
+    _showSnackBar('Navigation follow disabled.');
+  }
+
+  Future<void> _cancelNavigation() async {
+    setState(() {
+      _isNavigationModeEnabled = false;
+      _selectedStationId = null;
+      _activeRouteDetails = null;
+      _activeRouteStationId = null;
+      _polylines = {};
+      _lastCameraFollowAt = null;
+    });
+
+    await _refreshVisibleMarkers();
+    _showSnackBar('Navigation cancelled');
+  }
+
+  Future<void> _startLiveLocationTracking({bool followCamera = false}) async {
     final locationResult = await _locationService.requestCurrentLocation();
     final position = locationResult.position;
+
     if (!locationResult.isGranted || position == null) {
+      if (!mounted) return;
+      setState(() {
+        _isLocationPermissionGranted = false;
+        _isNavigationModeEnabled = false;
+      });
       _showLocationPermissionSnackBar(locationResult.message);
       return;
     }
 
-    final location = LatLng(position.latitude, position.longitude);
+    _updateUserPosition(position, animateCamera: followCamera);
+
+    await _positionSubscription?.cancel();
+    _positionSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 6,
+          ),
+        ).listen(
+          (position) {
+            _updateUserPosition(
+              position,
+              animateCamera: _isNavigationModeEnabled,
+            );
+          },
+          onError: (Object error) {
+            if (!mounted) return;
+            setState(() {
+              _isNavigationModeEnabled = false;
+            });
+            _showSnackBar('Live location could not be updated: $error');
+          },
+        );
+  }
+
+  void _updateUserPosition(Position position, {required bool animateCamera}) {
     if (!mounted) return;
+
+    final location = LatLng(position.latitude, position.longitude);
     setState(() {
       _isLocationPermissionGranted = true;
       _currentUserLocation = location;
+      _userLocationMarker = _buildUserMarker(position);
     });
 
-    await _moveCameraAndRefreshMarkers(location);
+    if (animateCamera) {
+      _animateCameraToUser(location, bearing: position.heading);
+    }
+  }
+
+  Marker _buildUserMarker(Position position) {
+    final heading = position.heading.isFinite && position.heading >= 0
+        ? position.heading
+        : 0.0;
+
+    return Marker(
+      markerId: const MarkerId('live-user-location'),
+      position: LatLng(position.latitude, position.longitude),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      anchor: const Offset(0.5, 0.5),
+      flat: true,
+      rotation: heading,
+      zIndexInt: 10,
+      infoWindow: const InfoWindow(title: 'You'),
+    );
+  }
+
+  Future<void> _animateCameraToUser(
+    LatLng location, {
+    double? bearing,
+    double zoom = 17,
+    bool force = false,
+  }) async {
+    final controller = _mapController;
+    if (controller == null) return;
+
+    final now = DateTime.now();
+    final lastFollowAt = _lastCameraFollowAt;
+    if (!force &&
+        lastFollowAt != null &&
+        now.difference(lastFollowAt) < const Duration(milliseconds: 900)) {
+      return;
+    }
+    _lastCameraFollowAt = now;
+
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: location,
+          zoom: zoom,
+          tilt: _isNavigationModeEnabled ? 45 : 0,
+          bearing: bearing != null && bearing.isFinite && bearing >= 0
+              ? bearing
+              : 0,
+        ),
+      ),
+    );
   }
 
   Future<void> _fitCameraToRoute(List<LatLng> routePoints) async {
@@ -631,7 +775,7 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           GoogleMap(
             initialCameraPosition: _initialCameraPosition,
-            markers: _markers,
+            markers: _mapMarkers,
             polylines: _polylines,
             style: _mapStyle,
             myLocationEnabled: _isLocationPermissionGranted,
@@ -715,6 +859,29 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          if (_isNavigationModeEnabled)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                  child: FilledButton.icon(
+                    onPressed: _cancelNavigation,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colorScheme.error,
+                      foregroundColor: colorScheme.onError,
+                      elevation: 8,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                    ),
+                    icon: const Icon(Icons.navigation_outlined),
+                    label: const Text('Cancel Navigation'),
+                  ),
+                ),
+              ),
+            ),
           SafeArea(
             child: Align(
               alignment: Alignment.topRight,
@@ -735,12 +902,33 @@ class _MapScreenState extends State<MapScreen> {
               alignment: Alignment.bottomRight,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 122),
-                child: FloatingActionButton.small(
-                  heroTag: 'current-location',
-                  backgroundColor: colorScheme.surface,
-                  foregroundColor: colorScheme.primary,
-                  onPressed: _centerOnCurrentLocation,
-                  child: const Icon(Icons.my_location),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: 'navigation-toggle',
+                      backgroundColor: _isNavigationModeEnabled
+                          ? colorScheme.primary
+                          : colorScheme.surface,
+                      foregroundColor: _isNavigationModeEnabled
+                          ? colorScheme.onPrimary
+                          : colorScheme.primary,
+                      onPressed: _toggleNavigationMode,
+                      child: Icon(
+                        _isNavigationModeEnabled
+                            ? Icons.navigation
+                            : Icons.navigation_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FloatingActionButton.small(
+                      heroTag: 'current-location',
+                      backgroundColor: colorScheme.surface,
+                      foregroundColor: colorScheme.primary,
+                      onPressed: _centerOnCurrentLocation,
+                      child: const Icon(Icons.my_location),
+                    ),
+                  ],
                 ),
               ),
             ),
