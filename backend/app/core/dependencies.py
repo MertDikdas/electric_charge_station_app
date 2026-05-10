@@ -28,6 +28,7 @@ from app.schemas.company_member import CompanyMember
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from app.infrastructure.database.tables import Charger, CompanyMember, Station
+from app.application.services.company_service import CompanyService
 
 security = HTTPBearer(auto_error=False)
 
@@ -217,3 +218,6 @@ def get_payment_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> PaymentSe
 
 def get_chatbot_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> ChatbotService:
     return ChatbotService(uow)
+
+def get_company_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanyService:
+    return CompanyService(uow)
