@@ -975,9 +975,17 @@ class _MapScreenState extends State<MapScreen> {
       ),
       bottomNavigationBar: _MapBottomAppBar(
         onReservationsPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const ReservationsScreen()),
-          );
+          Navigator.of(context)
+              .push<bool>(
+                MaterialPageRoute<bool>(
+                  builder: (_) => const ReservationsScreen(),
+                ),
+              )
+              .then((shouldRefreshStations) {
+                if (shouldRefreshStations == true && mounted) {
+                  _reloadStations();
+                }
+              });
         },
         onProfilePressed: () {
           Navigator.of(context).push(

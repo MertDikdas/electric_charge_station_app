@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../data/api/token_storage.dart';
+import '../../data/models/charger.dart';
 import '../../data/models/reservation.dart';
+import '../../data/services/charger_service.dart';
+import '../../data/services/reservation_service.dart';
 import '../../data/services/user_service.dart';
 import '../../widgets/app_app_bar.dart';
 
@@ -15,10 +18,21 @@ class ReservationsScreen extends StatefulWidget {
 class _ReservationsScreenState extends State<ReservationsScreen> {
   final _tokenStorage = TokenStorage();
   final _userService = UserService();
+  final _reservationService = ReservationService();
+  final _chargerService = ChargerService();
+  final Map<int, Future<Charger>> _chargerFutures = {};
+  final Set<int> _cancellingReservationIds = {};
+  List<Reservation> _reservations = const [];
   var _selectedReservationView = _ReservationView.upcoming;
+  bool _isLoading = true;
+  bool _didCancelReservation = false;
+  String? _errorMessage;
 
-  late final Future<List<Reservation>> _reservationsFuture =
-      _loadReservations();
+  @override
+  void initState() {
+    super.initState();
+    _refreshReservations();
+  }
 
   Future<List<Reservation>> _loadReservations() async {
     final userId = await _tokenStorage.readUserId();
@@ -26,81 +40,214 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     return _userService.getUserReservations(userId);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const AppAppBar(title: 'Rezervasyonlarim'),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _CreateReservationPanel(
-              onMapPressed: () {
-                Navigator.of(context).pop();
-              },
+  Future<void> _refreshReservations() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final reservations = await _loadReservations();
+      if (!mounted) return;
+      setState(() {
+        _reservations = reservations;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _confirmCancelReservation(Reservation reservation) async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Cancel Reservation'),
+          content: const Text(
+            'Are you sure you want to cancel this reservation?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Keep Reservation'),
             ),
-            const SizedBox(height: 16),
-            FutureBuilder<List<Reservation>>(
-              future: _reservationsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return _MessageCard(
-                    icon: Icons.error_outline,
-                    title: 'Rezervasyonlar yuklenemedi',
-                    subtitle: snapshot.error.toString(),
-                  );
-                }
-
-                final reservations = snapshot.data ?? [];
-                final upcomingCount = reservations
-                    .where((reservation) => _isUpcoming(reservation))
-                    .length;
-                final pastCount = reservations.length - upcomingCount;
-                final visibleReservations = _filteredReservations(reservations);
-
-                return Column(
-                  children: [
-                    _ReservationViewSwitch(
-                      selectedView: _selectedReservationView,
-                      upcomingCount: upcomingCount,
-                      pastCount: pastCount,
-                      onChanged: (view) {
-                        setState(() {
-                          _selectedReservationView = view;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    if (visibleReservations.isEmpty)
-                      const _MessageCard(
-                        icon: Icons.receipt_long,
-                        title: 'Rezervasyon bulunamadi',
-                        subtitle: 'Bu bolumde gosterilecek rezervasyon yok.',
-                      )
-                    else
-                      ...visibleReservations.map(
-                        (reservation) => _ReservationCard(
-                          reservation: reservation,
-                          startsAt: _reservationStartsAt(reservation),
-                          isPast: !_isUpcoming(reservation),
-                        ),
-                      ),
-                  ],
-                );
-              },
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              child: const Text('Confirm Cancel'),
             ),
           ],
+        );
+      },
+    );
+
+    if (shouldCancel == true) {
+      await _cancelReservation(reservation);
+    }
+  }
+
+  Future<void> _cancelReservation(Reservation reservation) async {
+    setState(() {
+      _cancellingReservationIds.add(reservation.id);
+    });
+
+    try {
+      await _reservationService.updateReservationStatus(
+        reservation.id,
+        'CANCELLED',
+      );
+      if (!mounted) return;
+      _didCancelReservation = true;
+      _showSnackBar('Reservation cancelled successfully.');
+      await _refreshReservations();
+    } catch (error) {
+      if (!mounted) return;
+      _showSnackBar(_friendlyCancelError(error));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _cancellingReservationIds.remove(reservation.id);
+        });
+      }
+    }
+  }
+
+  String _friendlyCancelError(Object error) {
+    final message = error.toString();
+    if (message.toLowerCase().contains('not found')) {
+      return 'Reservation could not be found.';
+    }
+    if (message.toLowerCase().contains('cancel')) {
+      return 'Reservation is already cancelled or cannot be cancelled.';
+    }
+    return 'Reservation could not be cancelled. Please try again.';
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.of(context).pop(_didCancelReservation);
+      },
+      child: Scaffold(
+        appBar: const AppAppBar(title: 'Rezervasyonlarim'),
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _refreshReservations,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _CreateReservationPanel(
+                  onMapPressed: () {
+                    Navigator.of(context).pop(_didCancelReservation);
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildReservationContent(),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildReservationContent() {
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final errorMessage = _errorMessage;
+    if (errorMessage != null) {
+      return _MessageCard(
+        icon: Icons.error_outline,
+        title: 'Rezervasyonlar yuklenemedi',
+        subtitle: errorMessage,
+      );
+    }
+
+    final upcomingCount = _reservations
+        .where((reservation) => _isUpcoming(reservation))
+        .length;
+    final pastCount = _reservations.length - upcomingCount;
+    final visibleReservations = _filteredReservations(_reservations);
+
+    return Column(
+      children: [
+        _ReservationViewSwitch(
+          selectedView: _selectedReservationView,
+          upcomingCount: upcomingCount,
+          pastCount: pastCount,
+          onChanged: (view) {
+            setState(() {
+              _selectedReservationView = view;
+            });
+          },
+        ),
+        const SizedBox(height: 14),
+        if (visibleReservations.isEmpty)
+          const _MessageCard(
+            icon: Icons.receipt_long,
+            title: 'Rezervasyon bulunamadi',
+            subtitle: 'Bu bolumde gosterilecek rezervasyon yok.',
+          )
+        else
+          ...visibleReservations.map(
+            (reservation) => _ReservationCard(
+              reservation: reservation,
+              chargerFuture: _chargerFutureFor(reservation.chargerId),
+              startsAt: _reservationStartsAt(reservation),
+              isPast: !_isUpcoming(reservation),
+              isCancelling: _cancellingReservationIds.contains(reservation.id),
+              canCancel: _canCancelReservation(reservation),
+              onCancelPressed: () => _confirmCancelReservation(reservation),
+            ),
+          ),
+      ],
     );
   }
 
   bool _isUpcoming(Reservation reservation) {
     final endsAt = _reservationEndsAt(reservation);
     return endsAt == null || !endsAt.isBefore(DateTime.now());
+  }
+
+  bool _canCancelReservation(Reservation reservation) {
+    final status = reservation.status.toUpperCase().trim();
+    return _isUpcoming(reservation) &&
+        (status == 'ACTIVE' || status == 'PENDING' || status == 'CONFIRMED');
+  }
+
+  Future<Charger> _chargerFutureFor(int chargerId) {
+    return _chargerFutures.putIfAbsent(
+      chargerId,
+      () => _chargerService.getCharger(chargerId),
+    );
   }
 
   List<Reservation> _filteredReservations(List<Reservation> reservations) {
@@ -272,25 +419,38 @@ class _ReservationSwitchItem extends StatelessWidget {
 class _ReservationCard extends StatelessWidget {
   const _ReservationCard({
     required this.reservation,
+    required this.chargerFuture,
     required this.startsAt,
     required this.isPast,
+    required this.isCancelling,
+    required this.canCancel,
+    required this.onCancelPressed,
   });
 
   final Reservation reservation;
+  final Future<Charger> chargerFuture;
   final DateTime? startsAt;
   final bool isPast;
+  final bool isCancelling;
+  final bool canCancel;
+  final VoidCallback onCancelPressed;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final accentColor = isPast ? colorScheme.outline : colorScheme.primary;
+    final isCancelled = reservation.status.toUpperCase().trim() == 'CANCELLED';
+    final accentColor = isCancelled || isPast
+        ? colorScheme.outline
+        : colorScheme.primary;
     final statusText = reservation.status.isEmpty
         ? 'PENDING'
         : reservation.status.toUpperCase();
 
     return Card(
       elevation: 0,
-      color: colorScheme.surfaceContainerLow,
+      color: isCancelled
+          ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.55)
+          : colorScheme.surfaceContainerLow,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
@@ -298,35 +458,67 @@ class _ReservationCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.ev_station, color: accentColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
+        child: FutureBuilder<Charger>(
+          future: chargerFuture,
+          builder: (context, snapshot) {
+            final charger = snapshot.data;
+
+            return Opacity(
+              opacity: isCancelled ? 0.68 : 1,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.ev_station, color: accentColor),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          'Charger #${reservation.chargerId}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w900),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              charger == null
+                                  ? 'Station loading'
+                                  : 'Station #${charger.stationId}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              charger == null
+                                  ? 'Charger #${reservation.chargerId}'
+                                  : [
+                                          'Charger #${reservation.chargerId}',
+                                          charger.connectorType,
+                                          charger.currentType,
+                                        ]
+                                        .where((value) => value.isNotEmpty)
+                                        .join(' | '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
-                      _StatusBadge(text: statusText, isPast: isPast),
+                      _StatusBadge(
+                        text: statusText,
+                        isPast: isPast || isCancelled,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -346,12 +538,41 @@ class _ReservationCard extends StatelessWidget {
                         icon: Icons.directions_car_outlined,
                         text: 'Vehicle #${reservation.vehicleId}',
                       ),
+                      if (charger != null)
+                        _InfoPill(
+                          icon: Icons.power,
+                          text: '${charger.maxPower.toStringAsFixed(0)} kW',
+                        ),
                     ],
                   ),
+                  if (canCancel) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: isCancelling ? null : onCancelPressed,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colorScheme.error,
+                          side: BorderSide(color: colorScheme.error),
+                        ),
+                        icon: isCancelling
+                            ? const SizedBox.square(
+                                dimension: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.cancel_outlined),
+                        label: Text(
+                          isCancelling ? 'Cancelling...' : 'Cancel Reservation',
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
