@@ -9,6 +9,7 @@ class StationMarkerBuilder {
     required Iterable<Station> stations,
     required ValueChanged<Station> onMarkerTap,
     Vehicle? selectedVehicle,
+    int? selectedStationId,
   }) async {
     final availableIcon = await BitmapDescriptor.asset(
       const ImageConfiguration(size: Size(60, 60)),
@@ -25,20 +26,21 @@ class StationMarkerBuilder {
       'assets/markers/station_offline.png',
     );
     return stations
-        .where(
-          (station) => station.latitude != null && station.longitude != null,
-        )
         .map(
           (station) => Marker(
             markerId: MarkerId('station-${station.id}'),
-            position: LatLng(station.latitude!, station.longitude!),
-            icon: _markerHueForStation(
-              station: station,
-              selectedVehicle: selectedVehicle,
-              availableIcon: availableIcon,
-              occupiedIcon: occupiedIcon,
-              offlineIcon: offlineIcon,
-            ),
+            position: LatLng(station.latitude, station.longitude),
+            icon: selectedStationId == station.id
+                ? BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueAzure,
+                  )
+                : _markerHueForStation(
+                    station: station,
+                    selectedVehicle: selectedVehicle,
+                    availableIcon: availableIcon,
+                    occupiedIcon: occupiedIcon,
+                    offlineIcon: offlineIcon,
+                  ),
             infoWindow: InfoWindow(
               title: 'Station #${station.id}',
               snippet: _availabilityLabel(
@@ -46,6 +48,7 @@ class StationMarkerBuilder {
                 selectedVehicle: selectedVehicle,
               ),
             ),
+            zIndexInt: selectedStationId == station.id ? 2 : 0,
             onTap: () => onMarkerTap(station),
           ),
         )
@@ -145,7 +148,7 @@ class StationMarkerBuilder {
     required Station station,
     Vehicle? selectedVehicle,
   }) {
-    final chargers = station.chargers ?? [];
+    final chargers = station.chargers;
 
     if (selectedVehicle == null) {
       return chargers;

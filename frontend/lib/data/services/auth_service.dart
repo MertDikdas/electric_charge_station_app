@@ -33,6 +33,7 @@ class AuthService {
     await _tokenStorage.saveSession(
       token: response['access_token']?.toString(),
       userId: user.id,
+      role: user.role,
     );
     return user;
   }
@@ -60,6 +61,7 @@ class AuthService {
     await _tokenStorage.saveSession(
       token: json['access_token']?.toString(),
       userId: user.id,
+      role: user.role,
     );
     return user;
   }

@@ -5,6 +5,7 @@ class AppUser {
     required this.surname,
     required this.mail,
     required this.balance,
+    this.role = 'USER',
   });
 
   final int id;
@@ -12,6 +13,7 @@ class AppUser {
   final String surname;
   final String mail;
   final double balance;
+  final String role;
 
   String get fullName =>
       [name, surname].where((part) => part.isNotEmpty).join(' ');
@@ -23,6 +25,7 @@ class AppUser {
       surname: (json['surname'] ?? '').toString(),
       mail: (json['mail'] ?? json['email'] ?? '').toString(),
       balance: _asDouble(json['balance']),
+      role: (json['role'] ?? 'USER').toString(),
     );
   }
 

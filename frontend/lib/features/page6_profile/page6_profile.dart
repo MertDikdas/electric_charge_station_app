@@ -290,7 +290,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     return Card(
                       child: ListTile(
                         leading: const Icon(Icons.receipt_long_outlined),
-                        title: Text('${payment.amount.toStringAsFixed(2)} TL'),
+                        title: Text(_formatAmount(payment.amount)),
                         subtitle: Text(
                           'Status: ${payment.status}\n'
                           'Reservation ID: ${payment.reservationId}',

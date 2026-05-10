@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/charger.dart';
@@ -13,6 +14,9 @@ import '../../data/services/vehicle_service.dart';
 import '../page6_profile/page6_profile.dart';
 import '../page7_reservations/page7_rezervations_screen.dart';
 import 'map_camera_service.dart';
+import 'route_details.dart';
+import 'route_service.dart';
+import 'station_details_bottom_sheet.dart';
 import 'station_marker_builder.dart';
 
 class MapScreen extends StatefulWidget {
@@ -34,21 +38,27 @@ class _MapScreenState extends State<MapScreen> {
   final _mapCameraService = MapCameraService();
   final _markerBuilder = StationMarkerBuilder();
   final _reservationService = ReservationService();
+  final _routeService = RouteService();
   final _stationRepository = StationRepository();
   final _vehicleService = VehicleService();
   String? _mapStyle;
   GoogleMapController? _mapController;
   LatLng? _pendingCameraTarget;
   CameraPosition _initialCameraPosition = _fallbackCameraPosition;
+  LatLng? _currentUserLocation;
+  int? _selectedStationId;
+  RouteDetails? _activeRouteDetails;
+  int? _activeRouteStationId;
   List<Station> _allStations = const [];
   List<Vehicle> _vehicles = const [];
   Vehicle? _selectedVehicle;
   Set<Marker> _markers = {};
+  Set<Polyline> _polylines = {};
   bool _isLoading = true;
   bool _isLoadingVehicles = false;
   bool _isLocationPermissionGranted = false;
+  bool _isRouteLoading = false;
   String? _errorMessage;
-  bool _isRefreshingMarkers = false;
 
   @override
   void initState() {
@@ -67,9 +77,8 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _loadMapStyle() async {
     _mapStyle = await rootBundle.loadString('assets/map_styles/map.json');
 
-    final controller = _mapController;
-    if (controller != null && _mapStyle != null) {
-      await controller.setMapStyle(_mapStyle);
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -81,9 +90,7 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       final locationResult = await _locationService.requestCurrentLocation();
-      print("-----------------------------------------");
-
-      final position = LatLng(38.4237, 27.1428);
+      final position = locationResult.position;
       final hasUserLocation = locationResult.isGranted && position != null;
       final target = hasUserLocation
           ? LatLng(position.latitude, position.longitude)
@@ -92,6 +99,7 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       setState(() {
         _isLocationPermissionGranted = hasUserLocation;
+        _currentUserLocation = hasUserLocation ? target : null;
         _initialCameraPosition = CameraPosition(target: target, zoom: 14);
       });
 
@@ -144,6 +152,7 @@ class _MapScreenState extends State<MapScreen> {
     final markers = await _markerBuilder.buildMarkers(
       stations: stations,
       selectedVehicle: _selectedVehicle,
+      selectedStationId: _selectedStationId,
       onMarkerTap: _showStationDetails,
     );
 
@@ -186,34 +195,25 @@ class _MapScreenState extends State<MapScreen> {
       latitudeOf: (station) => station.latitude,
       longitudeOf: (station) => station.longitude,
     );
-    Future<void> _updateMarkers() async {
-      final visibleStations = _mapCameraService.filterInsideBounds<Station>(
-        items: _allStations,
-        bounds: bounds,
-        latitudeOf: (station) => station.latitude,
-        longitudeOf: (station) => station.longitude,
-      );
 
-      final markers = await _markerBuilder.buildMarkers(
-        stations: visibleStations,
-        selectedVehicle: _selectedVehicle,
-        onMarkerTap: _showStationDetails,
-      );
+    final markers = await _markerBuilder.buildMarkers(
+      stations: visibleStations,
+      selectedVehicle: _selectedVehicle,
+      selectedStationId: _selectedStationId,
+      onMarkerTap: _showStationDetails,
+    );
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      setState(() {
-        _markers = markers;
-      });
-    }
+    setState(() {
+      _markers = markers;
+    });
   }
 
   Future<void> _refreshMarkersForFallbackViewport(LatLng center) async {
     final nearbyStations = _allStations.where((station) {
       final latitude = station.latitude;
       final longitude = station.longitude;
-
-      if (latitude == null || longitude == null) return false;
 
       return (latitude - center.latitude).abs() <= 0.08 &&
           (longitude - center.longitude).abs() <= 0.08;
@@ -222,6 +222,7 @@ class _MapScreenState extends State<MapScreen> {
     final markers = await _markerBuilder.buildMarkers(
       stations: nearbyStations,
       selectedVehicle: _selectedVehicle,
+      selectedStationId: _selectedStationId,
       onMarkerTap: _showStationDetails,
     );
 
@@ -338,97 +339,189 @@ class _MapScreenState extends State<MapScreen> {
       _selectedVehicle = selected;
     });
     _showSnackBar('${selected.model} rezervasyon araci olarak secildi.');
+    await _refreshVisibleMarkers();
   }
 
   Future<void> _showStationDetails(Station station) async {
+    final bottomSheetColor = Theme.of(context).colorScheme.surface;
+
+    setState(() {
+      _selectedStationId = station.id;
+    });
+    await _refreshVisibleMarkers();
+
+    if (!mounted) return;
     final chargersFuture = _stationRepository.fetchStationChargers(station.id);
     await showModalBottomSheet<void>(
       context: context,
-      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: bottomSheetColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: FutureBuilder<List<Charger>>(
-              future: chargersFuture,
-              builder: (context, snapshot) {
-                final chargers = snapshot.data ?? [];
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Station #${station.id}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      station.address.isEmpty
-                          ? '${station.latitude.toStringAsFixed(5)}, ${station.longitude.toStringAsFixed(5)}'
-                          : station.address,
-                    ),
-                    const SizedBox(height: 12),
-                    _SelectedVehicleTile(
-                      vehicle: _selectedVehicle,
-                      onSelectPressed: () {
-                        Navigator.of(context).pop();
-                        _showVehiclePicker();
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    if (snapshot.connectionState == ConnectionState.waiting)
-                      const Center(child: CircularProgressIndicator())
-                    else if (snapshot.hasError)
-                      ListTile(
-                        leading: const Icon(Icons.error_outline),
-                        title: const Text('Charger listesi yuklenemedi'),
-                        subtitle: Text(snapshot.error.toString()),
-                      )
-                    else if (chargers.isEmpty)
-                      const ListTile(
-                        leading: Icon(Icons.ev_station),
-                        title: Text('Charger bulunamadi'),
-                      )
-                    else
-                      Flexible(
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: chargers
-                              .map(
-                                (charger) => ListTile(
-                                  leading: const Icon(Icons.ev_station),
-                                  title: Text(
-                                    '${charger.connectorType} - ${charger.currentType}',
-                                  ),
-                                  subtitle: Text(
-                                    [
-                                      charger.status,
-                                      '${charger.maxPower.toStringAsFixed(0)} kW',
-                                      _formatPrice(charger.pricePerKwh),
-                                    ].join(' | '),
-                                  ),
-                                  trailing: FilledButton(
-                                    onPressed: _canReserveCharger(charger)
-                                        ? () {
-                                            Navigator.of(context).pop();
-                                            _createReservation(charger);
-                                          }
-                                        : null,
-                                    child: const Text('Reserve'),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
+        return StationDetailsBottomSheet(
+          station: station,
+          chargersFuture: chargersFuture,
+          selectedVehicle: _selectedVehicle,
+          distanceText: _distanceFromUserText(station),
+          initialRouteDetails: _activeRouteStationId == station.id
+              ? _activeRouteDetails
+              : null,
+          onRoutePressed: () => _drawRouteToStation(station),
+          onReserveCharger: (charger) {
+            Navigator.of(context).pop();
+            _createReservation(charger);
+          },
+          onSelectVehiclePressed: () {
+            Navigator.of(context).pop();
+            _showVehiclePicker();
+          },
+          formatPrice: _formatPrice,
+          canReserveCharger: _canReserveCharger,
         );
       },
     );
+  }
+
+  Future<RouteDetails?> _drawRouteToStation(Station station) async {
+    if (_isRouteLoading) return _activeRouteDetails;
+
+    final controller = _mapController;
+    if (controller == null) {
+      _showSnackBar('Map is still loading. Please try again.');
+      return null;
+    }
+
+    setState(() {
+      _isRouteLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final origin = await _resolveRouteOrigin();
+      final destination = LatLng(station.latitude, station.longitude);
+      final details = await _routeService.fetchDrivingRoute(
+        origin: origin,
+        destination: destination,
+      );
+
+      if (!mounted) return null;
+
+      final routePoints = [origin, ...details.points, destination];
+      final routeDetails = RouteDetails(
+        points: routePoints,
+        distanceText: details.distanceText,
+        durationText: details.durationText,
+      );
+
+      setState(() {
+        _selectedStationId = station.id;
+        _activeRouteStationId = station.id;
+        _activeRouteDetails = routeDetails;
+        _polylines = {
+          Polyline(
+            polylineId: const PolylineId('active-route'),
+            points: routePoints,
+            color: Colors.blue,
+            width: 6,
+            startCap: Cap.roundCap,
+            endCap: Cap.roundCap,
+            jointType: JointType.round,
+          ),
+        };
+      });
+
+      await _fitCameraToRoute(routePoints);
+      await _refreshVisibleMarkers();
+      return routeDetails;
+    } catch (error) {
+      if (!mounted) return null;
+      _showSnackBar('Route could not be created: $error');
+      return null;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRouteLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<LatLng> _resolveRouteOrigin() async {
+    final locationResult = await _locationService.requestCurrentLocation();
+    final position = locationResult.position;
+    if (locationResult.isGranted && position != null) {
+      final location = LatLng(position.latitude, position.longitude);
+      setState(() {
+        _isLocationPermissionGranted = true;
+        _currentUserLocation = location;
+      });
+      return location;
+    }
+
+    _showLocationPermissionSnackBar(locationResult.message);
+    return _currentUserLocation ?? _fallbackCameraPosition.target;
+  }
+
+  Future<void> _centerOnCurrentLocation() async {
+    final locationResult = await _locationService.requestCurrentLocation();
+    final position = locationResult.position;
+    if (!locationResult.isGranted || position == null) {
+      _showLocationPermissionSnackBar(locationResult.message);
+      return;
+    }
+
+    final location = LatLng(position.latitude, position.longitude);
+    if (!mounted) return;
+    setState(() {
+      _isLocationPermissionGranted = true;
+      _currentUserLocation = location;
+    });
+
+    await _moveCameraAndRefreshMarkers(location);
+  }
+
+  Future<void> _fitCameraToRoute(List<LatLng> routePoints) async {
+    final controller = _mapController;
+    if (controller == null || routePoints.isEmpty) return;
+
+    final bounds = _boundsForLatLngs(routePoints);
+    await controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 72));
+  }
+
+  LatLngBounds _boundsForLatLngs(List<LatLng> points) {
+    var minLat = points.first.latitude;
+    var maxLat = points.first.latitude;
+    var minLng = points.first.longitude;
+    var maxLng = points.first.longitude;
+
+    for (final point in points.skip(1)) {
+      minLat = point.latitude < minLat ? point.latitude : minLat;
+      maxLat = point.latitude > maxLat ? point.latitude : maxLat;
+      minLng = point.longitude < minLng ? point.longitude : minLng;
+      maxLng = point.longitude > maxLng ? point.longitude : maxLng;
+    }
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+  }
+
+  String _distanceFromUserText(Station station) {
+    final origin = _currentUserLocation;
+    if (origin == null) return 'Location needed';
+
+    final meters = Geolocator.distanceBetween(
+      origin.latitude,
+      origin.longitude,
+      station.latitude,
+      station.longitude,
+    );
+
+    if (meters < 1000) return '${meters.round()} m';
+    return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
   bool _canReserveCharger(Charger charger) {
@@ -539,6 +632,8 @@ class _MapScreenState extends State<MapScreen> {
           GoogleMap(
             initialCameraPosition: _initialCameraPosition,
             markers: _markers,
+            polylines: _polylines,
+            style: _mapStyle,
             myLocationEnabled: _isLocationPermissionGranted,
             myLocationButtonEnabled: _isLocationPermissionGranted,
             zoomControlsEnabled: false,
@@ -546,10 +641,6 @@ class _MapScreenState extends State<MapScreen> {
             compassEnabled: true,
             onMapCreated: (controller) async {
               _mapController = controller;
-
-              if (_mapStyle != null) {
-                await controller.setMapStyle(_mapStyle);
-              }
 
               final pendingTarget = _pendingCameraTarget;
               if (pendingTarget != null) {
@@ -596,6 +687,34 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          if (_isRouteLoading)
+            const SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 84),
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 10),
+                          Text('Creating route...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           SafeArea(
             child: Align(
               alignment: Alignment.topRight,
@@ -607,6 +726,21 @@ class _MapScreenState extends State<MapScreen> {
                   isLoading: _isLoadingVehicles,
                   selectedVehicle: _selectedVehicle,
                   onPressed: _showVehiclePicker,
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomRight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 122),
+                child: FloatingActionButton.small(
+                  heroTag: 'current-location',
+                  backgroundColor: colorScheme.surface,
+                  foregroundColor: colorScheme.primary,
+                  onPressed: _centerOnCurrentLocation,
+                  child: const Icon(Icons.my_location),
                 ),
               ),
             ),
@@ -640,49 +774,6 @@ class _ReservationSlot {
 
   final DateTime start;
   final DateTime end;
-}
-
-class _SelectedVehicleTile extends StatelessWidget {
-  const _SelectedVehicleTile({
-    required this.vehicle,
-    required this.onSelectPressed,
-  });
-
-  final Vehicle? vehicle;
-  final VoidCallback onSelectPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final selectedVehicle = vehicle;
-
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
-      child: ListTile(
-        leading: const Icon(Icons.directions_car),
-        title: Text(
-          selectedVehicle == null
-              ? 'Arac secilmedi'
-              : selectedVehicle.model.isEmpty
-              ? selectedVehicle.plate
-              : selectedVehicle.model,
-        ),
-        subtitle: Text(
-          selectedVehicle == null
-              ? 'Rezervasyon icin bir arac secin.'
-              : [
-                  selectedVehicle.plate,
-                  selectedVehicle.connectorType,
-                  selectedVehicle.currentType,
-                ].where((value) => value.trim().isNotEmpty).join(' | '),
-        ),
-        trailing: TextButton(
-          onPressed: onSelectPressed,
-          child: const Text('Sec'),
-        ),
-      ),
-    );
-  }
 }
 
 class _VehiclePickerButton extends StatelessWidget {
