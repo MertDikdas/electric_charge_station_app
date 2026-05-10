@@ -9,10 +9,12 @@ import '../../data/models/charger.dart';
 import '../../data/models/reservation.dart';
 import '../../data/models/station.dart';
 import '../../data/models/vehicle.dart';
+import '../../data/models/charging_session.dart';
 import '../../data/repositories/station_repository.dart';
 import '../../data/services/location_service.dart';
 import '../../data/services/reservation_service.dart';
 import '../../data/services/vehicle_service.dart';
+import '../../data/services/charging_session_service.dart';
 import '../page6_profile/page6_profile.dart';
 import '../page7_reservations/page7_rezervations_screen.dart';
 import '../notifications/in_app_notification_controller.dart';
@@ -37,7 +39,7 @@ class _MapScreenState extends State<MapScreen> {
     target: LatLng(38.4237, 27.1428),
     zoom: 14,
   );
-
+  final _chargingSessionService = ChargingSessionService();
   final _locationService = LocationService();
   final _mapCameraService = MapCameraService();
   final _markerBuilder = StationMarkerBuilder();
@@ -45,6 +47,7 @@ class _MapScreenState extends State<MapScreen> {
   final _routeService = RouteService();
   final _stationRepository = StationRepository();
   final _vehicleService = VehicleService();
+
   StreamSubscription<Position>? _positionSubscription;
   String? _mapStyle;
   GoogleMapController? _mapController;
@@ -67,6 +70,9 @@ class _MapScreenState extends State<MapScreen> {
   bool _isRouteLoading = false;
   bool _isNavigationModeEnabled = false;
   String? _errorMessage;
+  ChargingSession? _activeChargingSession;
+  bool _isSessionLoading = false;
+  List<ChargingSession> _sessionHistory = const [];
 
   Set<Marker> get _mapMarkers => {..._stationMarkers, ?_userLocationMarker};
 
@@ -76,6 +82,8 @@ class _MapScreenState extends State<MapScreen> {
     _loadMapStyle();
     _initializeMapPage();
     _loadVehicles();
+    _loadActiveChargingSession();
+    _loadSessionHistory();
   }
 
   @override
@@ -83,6 +91,62 @@ class _MapScreenState extends State<MapScreen> {
     _positionSubscription?.cancel();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSessionHistory() async {
+    try {
+      final sessions = await _chargingSessionService.getSessions();
+
+      if (!mounted) return;
+
+      setState(() {
+        _sessionHistory = sessions;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      _showSnackBar('Session history yuklenemedi: $error');
+    }
+  }
+
+  Future<void> _showSessionHistorySheet() async {
+    await _loadSessionHistory();
+
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: _SessionHistorySheetContent(sessions: _sessionHistory),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _loadActiveChargingSession() async {
+    try {
+      final session = await _chargingSessionService.getActiveSession();
+
+      if (!mounted) return;
+
+      setState(() {
+        _activeChargingSession = session;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _activeChargingSession = null;
+      });
+    }
   }
 
   Future<void> _loadMapStyle() async {
@@ -786,6 +850,53 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Future<void> _toggleChargingSession() async {
+    if (_isSessionLoading) return;
+
+    setState(() {
+      _isSessionLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      if (_activeChargingSession == null) {
+        final session = await _chargingSessionService.startSession();
+
+        if (!mounted) return;
+        setState(() {
+          _activeChargingSession = session;
+        });
+
+        _showSnackBar('Charging session started.');
+        await _loadSessionHistory();
+      } else {
+        await _chargingSessionService.finishSession(
+          sessionId: _activeChargingSession!.id,
+        );
+
+        if (!mounted) return;
+        setState(() {
+          _activeChargingSession = null;
+        });
+
+        _showSnackBar('Charging session finished.');
+        await _loadSessionHistory();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+      });
+      _showSnackBar(error.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSessionLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -965,13 +1076,27 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 122),
+                child: _SessionHistoryChip(
+                  sessionCount: _sessionHistory.length,
+                  onPressed: _showSessionHistorySheet,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: _StartChargingFab(
         backgroundColor: _mapActionButtonColor,
         foregroundColor: Colors.white,
-        onPressed: _reloadStations,
+        isLoading: _isSessionLoading,
+        isSessionActive: _activeChargingSession != null,
+        onPressed: _toggleChargingSession,
       ),
       bottomNavigationBar: _MapBottomAppBar(
         onReservationsPressed: () {
@@ -1198,38 +1323,184 @@ class _StartChargingFab extends StatelessWidget {
   const _StartChargingFab({
     required this.backgroundColor,
     required this.foregroundColor,
+    required this.isLoading,
+    required this.isSessionActive,
     required this.onPressed,
   });
 
   final Color backgroundColor;
   final Color foregroundColor;
+  final bool isLoading;
+  final bool isSessionActive;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.only(bottom: 6),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.large(
-            onPressed: onPressed,
-            backgroundColor: backgroundColor,
-            foregroundColor: foregroundColor,
-            elevation: 10,
-            child: const Icon(Icons.refresh, size: 30),
+      minimum: const EdgeInsets.only(bottom: 12),
+      child: FloatingActionButton.extended(
+        heroTag: 'charging-session',
+        onPressed: isLoading ? null : onPressed,
+        backgroundColor: isSessionActive ? Colors.red : backgroundColor,
+        foregroundColor: foregroundColor,
+        elevation: 10,
+        icon: isLoading
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                isSessionActive ? Icons.stop_rounded : Icons.play_arrow_rounded,
+              ),
+        label: Text(
+          isSessionActive ? 'Finish Session' : 'Start Session',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionHistoryChip extends StatelessWidget {
+  const _SessionHistoryChip({
+    required this.sessionCount,
+    required this.onPressed,
+  });
+
+  final int sessionCount;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colorScheme.surface,
+      elevation: 8,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: colorScheme.outlineVariant),
           ),
-          const SizedBox(height: 6),
+          child: Icon(Icons.history, size: 18, color: colorScheme.primary),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniSessionHistoryItem extends StatelessWidget {
+  const _MiniSessionHistoryItem({required this.session});
+
+  final ChargingSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Icon(Icons.ev_station, size: 18, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Session #${session.id}',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
           Text(
-            'Refresh',
-            style: textTheme.labelMedium?.copyWith(
-              color: backgroundColor,
+            session.endTime ?? session.status.toUpperCase(),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionHistoryTile extends StatelessWidget {
+  const _SessionHistoryTile({required this.session});
+
+  final ChargingSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      color: colorScheme.surfaceContainerLow,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      child: ListTile(
+        leading: Icon(Icons.ev_station, color: colorScheme.primary),
+        title: Text(
+          'Session #${session.id}',
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        subtitle: Text(
+          [
+            'Start: ${session.startTime ?? '-'}',
+            'End: ${session.endTime ?? '-'}',
+            if (session.totalCost != null)
+              'Cost: ${session.totalCost!.toStringAsFixed(2)} TL',
+          ].join('\n'),
+        ),
+        isThreeLine: true,
+      ),
+    );
+  }
+}
+
+class _SessionHistorySheetContent extends StatelessWidget {
+  const _SessionHistorySheetContent({required this.sessions});
+
+  final List<ChargingSession> sessions;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 360,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Session History',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
+          if (sessions.isEmpty)
+            const Expanded(
+              child: Center(child: Text('No completed sessions yet.')),
+            )
+          else
+            Expanded(
+              child: ListView.separated(
+                itemCount: sessions.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  return _SessionHistoryTile(session: sessions[index]);
+                },
+              ),
+            ),
         ],
       ),
     );

@@ -72,6 +72,9 @@ class CouponService:
             coupon = self.uow.coupons.get_by_user_and_code(
             user_id,
             normalize_coupon_code(code),)
+            payment = self.uow.payments.get(payment_id)
+            if coupon.used_count >= coupon.usage_limit and payment.coupon_id!=coupon.id:
+                raise ValueError("Coupon reached the usage limit.")
             discount_amount = calculate_coupon_discount(coupon, order_amount)
             return self._build_discount_result(coupon, order_amount, discount_amount)
 

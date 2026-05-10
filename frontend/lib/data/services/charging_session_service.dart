@@ -8,25 +8,24 @@ class ChargingSessionService {
 
   final ApiClient _apiClient;
 
-  Future<ChargingSession> startSession({required int reservationId}) async {
+  Future<ChargingSession> startSession() async {
     return ChargingSession.fromJson(
-      parseObject(
-        await _apiClient.post(
-          '/charging-sessions/start',
-          body: {'reservation_id': reservationId},
-        ),
-      ),
+      parseObject(await _apiClient.post('/charging-sessions/start', body: {})),
     );
   }
 
-  Future<ChargingSession> finishSession({
-    required int sessionId,
-    String? endTime,
-  }) async {
+  Future<ChargingSession> finishSession({required int sessionId}) async {
+    final now = DateTime.now();
+
+    final endTime =
+        '${now.hour.toString().padLeft(2, '0')}:'
+        '${now.minute.toString().padLeft(2, '0')}:'
+        '${now.second.toString().padLeft(2, '0')}';
+
     return ChargingSession.fromJson(
       parseObject(
         await _apiClient.patch(
-          '/charging-sessions/$sessionId/finish',
+          '/charging-sessions/finish',
           body: {'end_time': endTime},
         ),
       ),
@@ -47,11 +46,24 @@ class ChargingSessionService {
     );
   }
 
-  Future<List<ChargingSession>> getActiveSessions() async {
-    return parseList(
-      await _apiClient.get('/charging-sessions/my/active'),
-      ChargingSession.fromJson,
-    );
+  Future<ChargingSession?> getActiveSession() async {
+    try {
+      final response = await _apiClient.get('/charging-sessions/active');
+
+      if (response == null) return null;
+
+      return ChargingSession.fromJson(parseObject(response));
+    } catch (error) {
+      final message = error.toString();
+
+      if (message.contains('404') ||
+          message.contains('No active') ||
+          message.contains('not found')) {
+        return null;
+      }
+
+      rethrow;
+    }
   }
 
   Future<ChargingSession> getSession(int sessionId) async {
