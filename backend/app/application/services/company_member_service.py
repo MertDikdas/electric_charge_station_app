@@ -1,19 +1,25 @@
 from app.domain.models.company_member import CompanyMemberEntity
+from app.domain.rules.company_member_rules import (
+    validate_company_member_entity,
+    validate_company_member_role,
+    validate_company_member_status,
+)
 from app.core.uow import AbstractUnitOfWork
 
-ALLOWED_ROLES = {"STATION_MANAGER", "STATION_OPERATOR"}
 
 class CompanyMemberService:
     def __init__(self, uow: AbstractUnitOfWork):
         self.uow = uow
 
     def add_member(self, company_member: CompanyMemberEntity) -> CompanyMemberEntity:
+        validate_company_member_entity(company_member)
+
         with self.uow:
             company = self.uow.companies.get(company_member.company_id)
             if not company:
                 raise ValueError("Company not found")
-            if not company.is_active:
-                raise ValueError("Cannot add member to an inactive company")
+            if not company.is_active and company_member.is_active:
+                raise ValueError("Cannot add active member to inactive company")
             user = self.uow.users.get(company_member.user_id)
             if not user:
                 raise ValueError("User not found")  
@@ -24,11 +30,18 @@ class CompanyMemberService:
             self.uow.commit()
             return new_member
         
-    def update_member_status(self, member_id: int, is_active: bool,) -> CompanyMemberEntity:
+    def update_member_status(self, member_id: int, is_active: bool) -> CompanyMemberEntity:
+        validate_company_member_status(is_active)
+
         with self.uow:
             member = self.uow.company_members.get(member_id)
             if not member:
                 raise ValueError("Company member not found")
+            company = self.uow.companies.get(member.company_id)
+            if not company:
+                raise ValueError("Company not found")
+            if is_active and not company.is_active:
+                raise ValueError("Cannot activate member of inactive company")
             member.is_active = is_active
             updated_member = self.uow.company_members.update(member)
             self.uow.commit()
@@ -53,16 +66,13 @@ class CompanyMemberService:
             return member
     
     def update_member_role(self, member_id: int, new_role: str) -> CompanyMemberEntity:
+        normalized_role = validate_company_member_role(new_role)
+
         with self.uow:
             member = self.uow.company_members.get(member_id)
             if not member:
                 raise ValueError("Company member not found")
-            if not new_role:
-                raise ValueError("Role is required")
-            new_role = new_role.upper()
-            if new_role not in ALLOWED_ROLES:
-                raise ValueError("Invalid role")
-            member.role = new_role
+            member.role = normalized_role
             updated_member = self.uow.company_members.update(member)
             self.uow.commit()
             return updated_member

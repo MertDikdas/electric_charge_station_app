@@ -3,7 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.application.services.company_member_service import CompanyMemberService
 from app.core.dependencies import AuthenticatedUser, get_admin, get_company_member_service
 from app.domain.models.company_member import CompanyMemberEntity
-from app.schemas.company_member import CompanyMember, CompanyMemberCreate, CompanyMemberRoleUpdate, CompanyMemberStatusUpdate, CompanyMemberUpdate
+from app.schemas.company_member import (
+    CompanyMember,
+    CompanyMemberCreate,
+    CompanyMemberRoleUpdate,
+    CompanyMemberStatusUpdate,
+)
 
 router = APIRouter()
 
