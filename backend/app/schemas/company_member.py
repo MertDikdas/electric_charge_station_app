@@ -18,6 +18,11 @@ class CompanyMemberUpdate(BaseModel):
     role: Optional[CompanyMemberRole] = None
     is_active: Optional[bool] = None
 
+class CompanyMemberRoleUpdate(BaseModel):
+    role: CompanyMemberRole
+
+class CompanyMemberStatusUpdate(BaseModel):
+    is_active: bool
 
 class CompanyMember(BaseModel):
     id: int

@@ -24,6 +24,9 @@ class CompanyUpdate(BaseModel):
     address: Optional[str] = None
     is_active: Optional[bool] = None
 
+class CompanyActivate(BaseModel):
+    is_active: bool
+
 class Company(BaseModel):
     id: int
     name: str
