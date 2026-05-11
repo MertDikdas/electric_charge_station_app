@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../data/api/token_storage.dart';
 import '../../data/models/user.dart';
@@ -44,10 +45,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppAppBar(
         title: 'Profile',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
+          TextButton.icon(
             onPressed: _logout,
-            tooltip: 'Logout',
+            icon: const Icon(Icons.logout),
+            label: const Text('Log out'),
           ),
         ],
       ),
@@ -657,6 +658,7 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
 class _VehicleScreenState extends State<VehicleScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _modelController = TextEditingController();
   final _plateController = TextEditingController();
   final _connectorController = TextEditingController(text: 'Type 2');
   final _currentTypeController = TextEditingController(text: 'AC');
@@ -672,6 +674,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _modelController.dispose();
     _plateController.dispose();
     _connectorController.dispose();
     _currentTypeController.dispose();
@@ -703,16 +706,19 @@ class _VehicleScreenState extends State<VehicleScreen> {
       await _vehicleService.createVehicle(
         VehicleInput(
           userId: userId,
-          model: _nameController.text.trim(),
+          model:
+              '${_nameController.text.trim()} ${_modelController.text.trim()}'
+                  .trim(),
           plate: _plateController.text.trim().toUpperCase(),
           maxChargingPower: double.parse(_maxPowerController.text.trim()),
           batteryCapacity: double.parse(_batteryCapacityController.text.trim()),
-          connectorType: _connectorController.text.trim(),
-          currentType: _currentTypeController.text.trim(),
+          connectorType: _normalizeConnectorType(_connectorController.text),
+          currentType: _currentTypeController.text.trim().toUpperCase(),
         ),
       );
 
       _nameController.clear();
+      _modelController.clear();
       _plateController.clear();
       _maxPowerController.clear();
       _batteryCapacityController.clear();
@@ -764,6 +770,10 @@ class _VehicleScreenState extends State<VehicleScreen> {
     return null;
   }
 
+  String _normalizeConnectorType(String value) {
+    return value.trim().toUpperCase().replaceAll(' ', '_');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -783,7 +793,8 @@ class _VehicleScreenState extends State<VehicleScreen> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
+                    decoration: _vehicleInputDecoration(
+                      context,
                       labelText: 'Vehicle Name',
                       prefixIcon: Icon(Icons.directions_car),
                     ),
@@ -791,8 +802,20 @@ class _VehicleScreenState extends State<VehicleScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    controller: _modelController,
+                    decoration: _vehicleInputDecoration(
+                      context,
+                      labelText: 'Vehicle Model',
+                      prefixIcon: const Icon(Icons.ev_station_outlined),
+                    ),
+                    validator: _required,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
                     controller: _plateController,
-                    decoration: const InputDecoration(
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: _vehicleInputDecoration(
+                      context,
                       labelText: 'Plate Number',
                       prefixIcon: Icon(Icons.confirmation_number_outlined),
                     ),
@@ -801,7 +824,8 @@ class _VehicleScreenState extends State<VehicleScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _connectorController,
-                    decoration: const InputDecoration(
+                    decoration: _vehicleInputDecoration(
+                      context,
                       labelText: 'Connector Type',
                       prefixIcon: Icon(Icons.power),
                     ),
@@ -810,7 +834,9 @@ class _VehicleScreenState extends State<VehicleScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _currentTypeController,
-                    decoration: const InputDecoration(
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: _vehicleInputDecoration(
+                      context,
                       labelText: 'Current Type',
                       prefixIcon: Icon(Icons.electrical_services_outlined),
                     ),
@@ -822,7 +848,11 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    decoration: _vehicleInputDecoration(
+                      context,
                       labelText: 'Max Charging Power (kW)',
                       prefixIcon: Icon(Icons.bolt_outlined),
                     ),
@@ -834,7 +864,11 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    decoration: _vehicleInputDecoration(
+                      context,
                       labelText: 'Battery Capacity (kWh)',
                       prefixIcon: Icon(Icons.battery_charging_full_outlined),
                     ),
@@ -848,6 +882,12 @@ class _VehicleScreenState extends State<VehicleScreen> {
               onPressed: _isSaving ? null : _addVehicle,
               icon: const Icon(Icons.add),
               label: Text(_isSaving ? 'Saving...' : 'Add Vehicle'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(40),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             Text('My Vehicles', style: Theme.of(context).textTheme.titleMedium),
@@ -925,6 +965,38 @@ class _MessageCard extends StatelessWidget {
       ),
     );
   }
+}
+
+InputDecoration _vehicleInputDecoration(
+  BuildContext context, {
+  required String labelText,
+  required Widget prefixIcon,
+}) {
+  final colorScheme = Theme.of(context).colorScheme;
+
+  return InputDecoration(
+    labelText: labelText,
+    filled: true,
+    fillColor: colorScheme.surface,
+    prefixIcon: prefixIcon,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.8)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: colorScheme.error),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: colorScheme.error, width: 1.4),
+    ),
+  );
 }
 
 class _CouponCodeDialog extends StatefulWidget {

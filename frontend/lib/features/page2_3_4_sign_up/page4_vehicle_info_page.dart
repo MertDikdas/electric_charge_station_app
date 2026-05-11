@@ -26,10 +26,13 @@ class VehicleInfoPage extends StatefulWidget {
 
 class _VehicleInfoPageState extends State<VehicleInfoPage> {
   final _formKey = GlobalKey<FormState>();
-  final _brandController = TextEditingController();
+  final _nameController = TextEditingController();
   final _modelController = TextEditingController();
   final _plateController = TextEditingController();
-  final _chargingPowerController = TextEditingController();
+  final _connectorController = TextEditingController(text: 'Type 2');
+  final _currentTypeController = TextEditingController(text: 'AC');
+  final _maxPowerController = TextEditingController();
+  final _batteryCapacityController = TextEditingController();
   final List<_VehicleInfo> _vehicles = [];
   final _authService = AuthService();
   final _vehicleService = VehicleService();
@@ -38,31 +41,36 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
   @override
   void dispose() {
-    _brandController.dispose();
+    _nameController.dispose();
     _modelController.dispose();
     _plateController.dispose();
-    _chargingPowerController.dispose();
+    _connectorController.dispose();
+    _currentTypeController.dispose();
+    _maxPowerController.dispose();
+    _batteryCapacityController.dispose();
     super.dispose();
   }
 
   void _addVehicle() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _vehicles.add(
         _VehicleInfo(
-          brand: _brandController.text.trim(),
+          name: _nameController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
-          chargingPower: _chargingPowerController.text.trim(),
+          connectorType: _connectorController.text.trim(),
+          currentType: _currentTypeController.text.trim(),
+          maxChargingPower: _maxPowerController.text.trim(),
+          batteryCapacity: _batteryCapacityController.text.trim(),
         ),
       );
-      _brandController.clear();
+      _nameController.clear();
       _modelController.clear();
       _plateController.clear();
-      _chargingPowerController.clear();
+      _maxPowerController.clear();
+      _batteryCapacityController.clear();
       _formKey.currentState!.reset();
     });
 
@@ -76,24 +84,26 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
   }
 
   bool get _hasVehicleDraft {
-    return _brandController.text.trim().isNotEmpty ||
+    return _nameController.text.trim().isNotEmpty ||
         _modelController.text.trim().isNotEmpty ||
         _plateController.text.trim().isNotEmpty ||
-        _chargingPowerController.text.trim().isNotEmpty;
+        _maxPowerController.text.trim().isNotEmpty ||
+        _batteryCapacityController.text.trim().isNotEmpty;
   }
 
   void _completeSignup() {
     if (_hasVehicleDraft) {
-      if (!_formKey.currentState!.validate()) {
-        return;
-      }
+      if (!_formKey.currentState!.validate()) return;
 
       _vehicles.add(
         _VehicleInfo(
-          brand: _brandController.text.trim(),
+          name: _nameController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
-          chargingPower: _chargingPowerController.text.trim(),
+          connectorType: _connectorController.text.trim(),
+          currentType: _currentTypeController.text.trim(),
+          maxChargingPower: _maxPowerController.text.trim(),
+          batteryCapacity: _batteryCapacityController.text.trim(),
         ),
       );
     }
@@ -101,7 +111,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     if (_vehicles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Araç ekleyin veya Skip for Now ile devam edin'),
+          content: Text('Arac ekleyin veya Skip for Now ile devam edin'),
         ),
       );
       return;
@@ -127,12 +137,12 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           await _vehicleService.createVehicle(
             VehicleInput(
               userId: user.id,
-              model: '${vehicle.brand} ${vehicle.model}'.trim(),
+              model: '${vehicle.name} ${vehicle.model}'.trim(),
               plate: vehicle.licensePlate,
-              maxChargingPower: double.parse(vehicle.chargingPower),
-              batteryCapacity: double.parse(vehicle.chargingPower),
-              connectorType: 'Type 2',
-              currentType: 'AC',
+              maxChargingPower: double.parse(vehicle.maxChargingPower),
+              batteryCapacity: double.parse(vehicle.batteryCapacity),
+              connectorType: _normalizeConnectorType(vehicle.connectorType),
+              currentType: vehicle.currentType.trim().toUpperCase(),
             ),
           );
         }
@@ -167,171 +177,184 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     }
   }
 
+  String? _required(String? value) {
+    if ((value ?? '').trim().isEmpty) return 'Bu alan gerekli';
+    return null;
+  }
+
+  String? _positiveNumber(String? value) {
+    final parsed = double.tryParse((value ?? '').trim());
+    if (parsed == null || parsed <= 0) return 'Pozitif sayi girin';
+    return null;
+  }
+
+  String _normalizeConnectorType(String value) {
+    return value.trim().toUpperCase().replaceAll(' ', '_');
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      appBar: AppBar(title: const Text('Vehicle')),
       resizeToAvoidBottomInset: true,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF7FFFB), Color(0xFFEFF8F8)],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight:
-                    MediaQuery.sizeOf(context).height -
-                    MediaQuery.paddingOf(context).vertical -
-                    48,
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _SignupLogo(size: 116),
-                    const SizedBox(height: 22),
-                    Text(
-                      'Vehicle Info',
-                      textAlign: TextAlign.center,
-                      style: textTheme.headlineSmall?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'İsterseniz birden fazla araç ekleyin veya bu adımı atlayın.',
-                      textAlign: TextAlign.center,
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (_vehicles.isNotEmpty) ...[
-                      const SizedBox(height: 22),
-                      ..._vehicles.indexed.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _VehicleTile(
-                            vehicle: entry.$2,
-                            onRemove: () => _removeVehicle(entry.$1),
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 30),
-                    TextFormField(
-                      controller: _brandController,
-                      textInputAction: TextInputAction.next,
-                      decoration: _inputDecoration(
-                        context,
-                        hintText: 'Car Brand',
-                        prefixIcon: const Icon(Icons.directions_car_outlined),
-                      ),
-                      validator: (value) {
-                        if ((value?.trim() ?? '').isEmpty) {
-                          return 'Araç markası gerekli';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _modelController,
-                      textInputAction: TextInputAction.next,
-                      decoration: _inputDecoration(
-                        context,
-                        hintText: 'Car Model',
-                        prefixIcon: const Icon(Icons.ev_station_outlined),
-                      ),
-                      validator: (value) {
-                        if ((value?.trim() ?? '').isEmpty) {
-                          return 'Araç modeli gerekli';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _plateController,
-                      textCapitalization: TextCapitalization.characters,
-                      textInputAction: TextInputAction.next,
-                      decoration: _inputDecoration(
-                        context,
-                        hintText: 'License Plate',
-                        prefixIcon: const Icon(Icons.pin_outlined),
-                      ),
-                      validator: (value) {
-                        if ((value?.trim() ?? '').length < 5) {
-                          return 'Geçerli bir plaka girin';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _chargingPowerController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                      ],
-                      textInputAction: TextInputAction.done,
-                      decoration: _inputDecoration(
-                        context,
-                        hintText: 'Charging Power (kW)',
-                        prefixIcon: const Icon(Icons.bolt_outlined),
-                      ),
-                      validator: (value) {
-                        final power = double.tryParse(value?.trim() ?? '');
-                        if (power == null || power <= 0) {
-                          return 'Geçerli bir kW değeri girin';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    OutlinedButton.icon(
-                      onPressed: _addVehicle,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Vehicle'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        foregroundColor: const Color(0xFF18305F),
-                        side: const BorderSide(color: Color(0xFF25B7D3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _GradientButton(
-                      label: 'Complete Signup',
-                      onPressed: _isSubmitting ? null : _completeSignup,
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () =>
-                          _finishSignup(skippedVehicleInfo: _vehicles.isEmpty),
-                      child: Text(
-                        _vehicles.isEmpty
-                            ? 'Skip for Now'
-                            : 'Continue with ${_vehicles.length} Vehicle${_vehicles.length == 1 ? '' : 's'}',
-                      ),
-                    ),
-                  ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Add Vehicle', style: textTheme.headlineSmall),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _nameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    context,
+                    labelText: 'Vehicle Name',
+                    prefixIcon: const Icon(Icons.directions_car),
+                  ),
+                  validator: _required,
                 ),
-              ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _modelController,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    context,
+                    labelText: 'Vehicle Model',
+                    prefixIcon: const Icon(Icons.ev_station_outlined),
+                  ),
+                  validator: _required,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _plateController,
+                  textCapitalization: TextCapitalization.characters,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    context,
+                    labelText: 'Plate Number',
+                    prefixIcon: const Icon(Icons.confirmation_number_outlined),
+                  ),
+                  validator: (value) {
+                    if ((value?.trim() ?? '').length < 5) {
+                      return 'Gecerli bir plaka girin';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _connectorController,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    context,
+                    labelText: 'Connector Type',
+                    prefixIcon: const Icon(Icons.power),
+                  ),
+                  validator: _required,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _currentTypeController,
+                  textCapitalization: TextCapitalization.characters,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    context,
+                    labelText: 'Current Type',
+                    prefixIcon: const Icon(Icons.electrical_services_outlined),
+                  ),
+                  validator: _required,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _maxPowerController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    context,
+                    labelText: 'Max Charging Power (kW)',
+                    prefixIcon: const Icon(Icons.bolt_outlined),
+                  ),
+                  validator: _positiveNumber,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _batteryCapacityController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  textInputAction: TextInputAction.done,
+                  decoration: _inputDecoration(
+                    context,
+                    labelText: 'Battery Capacity (kWh)',
+                    prefixIcon: const Icon(
+                      Icons.battery_charging_full_outlined,
+                    ),
+                  ),
+                  validator: _positiveNumber,
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: _isSubmitting ? null : _addVehicle,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Vehicle'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text('My Vehicles', style: textTheme.titleMedium),
+                const SizedBox(height: 8),
+                if (_vehicles.isEmpty)
+                  const _MessageCard(
+                    icon: Icons.directions_car_filled,
+                    title: 'No vehicle added yet',
+                    subtitle: 'Your vehicles will appear here.',
+                  )
+                else
+                  ..._vehicles.indexed.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _VehicleTile(
+                        vehicle: entry.$2,
+                        onRemove: () => _removeVehicle(entry.$1),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _isSubmitting ? null : _completeSignup,
+                  child: Text(_isSubmitting ? 'Saving...' : 'Complete Signup'),
+                ),
+                TextButton(
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => _finishSignup(
+                          skippedVehicleInfo: _vehicles.isEmpty,
+                        ),
+                  child: Text(
+                    _vehicles.isEmpty
+                        ? 'Skip for Now'
+                        : 'Continue with ${_vehicles.length} Vehicle${_vehicles.length == 1 ? '' : 's'}',
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -342,16 +365,22 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
 class _VehicleInfo {
   const _VehicleInfo({
-    required this.brand,
+    required this.name,
     required this.model,
     required this.licensePlate,
-    required this.chargingPower,
+    required this.connectorType,
+    required this.currentType,
+    required this.maxChargingPower,
+    required this.batteryCapacity,
   });
 
-  final String brand;
+  final String name;
   final String model;
   final String licensePlate;
-  final String chargingPower;
+  final String connectorType;
+  final String currentType;
+  final String maxChargingPower;
+  final String batteryCapacity;
 }
 
 class _VehicleTile extends StatelessWidget {
@@ -362,26 +391,13 @@ class _VehicleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.28)),
-      ),
+    return Card(
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xFF39C1D6).withValues(alpha: 0.16),
-          foregroundColor: const Color(0xFF18305F),
-          child: const Icon(Icons.directions_car_outlined),
+        leading: const Icon(Icons.directions_car_filled),
+        title: Text('${vehicle.name} ${vehicle.model}'.trim()),
+        subtitle: Text(
+          '${vehicle.licensePlate} - ${vehicle.connectorType} - ${vehicle.maxChargingPower} kW',
         ),
-        title: Text(
-          '${vehicle.brand} ${vehicle.model}',
-          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text('${vehicle.licensePlate} · ${vehicle.chargingPower} kW'),
         trailing: IconButton(
           tooltip: 'Remove vehicle',
           onPressed: onRemove,
@@ -392,96 +408,57 @@ class _VehicleTile extends StatelessWidget {
   }
 }
 
+class _MessageCard extends StatelessWidget {
+  const _MessageCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(subtitle),
+      ),
+    );
+  }
+}
+
 InputDecoration _inputDecoration(
   BuildContext context, {
-  required String hintText,
-  Widget? prefixIcon,
+  required String labelText,
+  required Widget prefixIcon,
 }) {
   final colorScheme = Theme.of(context).colorScheme;
 
   return InputDecoration(
-    hintText: hintText,
+    labelText: labelText,
     filled: true,
-    fillColor: Colors.white.withValues(alpha: 0.78),
+    fillColor: colorScheme.surface,
     prefixIcon: prefixIcon,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(
-        color: colorScheme.outline.withValues(alpha: 0.55),
-      ),
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.8)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Color(0xFF25B7D3), width: 1.5),
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
     ),
     errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: colorScheme.error),
     ),
     focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: colorScheme.error, width: 1.5),
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: colorScheme.error, width: 1.4),
     ),
   );
-}
-
-class _SignupLogo extends StatelessWidget {
-  const _SignupLogo({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Image.asset(
-        'assets/images/logo.png',
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-      ),
-    );
-  }
-}
-
-class _GradientButton extends StatelessWidget {
-  const _GradientButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF39C1D6), Color(0xFF1E9FBC)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E9FBC).withValues(alpha: 0.22),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: FilledButton(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(56),
-          backgroundColor: Colors.transparent,
-          foregroundColor: const Color(0xFF18305F),
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          textStyle: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        child: Text(label),
-      ),
-    );
-  }
 }

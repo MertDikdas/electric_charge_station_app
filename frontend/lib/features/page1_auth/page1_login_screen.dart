@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/main_navigation_shell.dart';
 import '../../data/services/auth_service.dart';
+import '../page2_3_4_sign_up/page3_signup_user_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _rememberMe = false;
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -32,7 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _openSignupFlow() {
-    Navigator.of(context).pushNamed('/signup-phone');
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const SignupUserPage()));
   }
 
   Future<void> _login() async {
@@ -48,7 +52,11 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await _authService.login(identifier: identifier, password: password);
+      await _authService.login(
+        identifier: identifier,
+        password: password,
+        rememberMe: _rememberMe,
+      );
       if (!mounted) return;
       _continueToApp();
     } catch (error) {
@@ -122,11 +130,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  keyboardType: TextInputType.visiblePassword,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
                     hintText: 'Password',
-                    prefixIcon: Icon(Icons.lock_outline),
-                    suffixIcon: Icon(Icons.visibility_outlined),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      tooltip: _obscurePassword
+                          ? 'Şifreyi göster'
+                          : 'Şifreyi gizle',
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -141,10 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     Expanded(
-                      child: Text(
-                        'Beni Hat\u0131rla(deneme)',
-                        style: textTheme.bodyMedium,
-                      ),
+                      child: Text('Remember me', style: textTheme.bodyMedium),
                     ),
                     TextButton(
                       onPressed: () {},
