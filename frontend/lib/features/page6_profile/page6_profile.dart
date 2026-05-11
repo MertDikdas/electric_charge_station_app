@@ -10,6 +10,7 @@ import '../../data/models/payment.dart';
 import '../../data/services/payment_service.dart';
 import '../../data/services/coupon_service.dart';
 import '../../data/models/coupon.dart';
+import 'chatbot_sheet.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -153,6 +154,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         MaterialPageRoute<void>(
                           builder: (_) => const PaymentsScreen(),
                         ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text('Support', style: textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.support_agent_outlined),
+                    title: const Text('Customer Support'),
+                    subtitle: const Text('Chat with EV Assistant'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                        ),
+                        builder: (_) => const ChatbotSheet(),
                       );
                     },
                   ),
