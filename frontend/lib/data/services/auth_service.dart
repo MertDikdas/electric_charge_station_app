@@ -15,6 +15,7 @@ class AuthService {
   Future<AppUser?> login({
     required String identifier,
     required String password,
+    bool rememberMe = false,
   }) async {
     final normalized = identifier.trim();
     if (normalized.isEmpty) {
@@ -34,6 +35,7 @@ class AuthService {
       token: response['access_token']?.toString(),
       userId: user.id,
       role: user.role,
+      rememberMe: rememberMe,
     );
     return user;
   }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'page4_vehicle_info_page.dart';
 
 class SignupUserPage extends StatefulWidget {
-  const SignupUserPage({super.key, required this.phoneNumber});
+  const SignupUserPage({super.key, String phoneNumber = ''})
+    : initialPhoneNumber = phoneNumber;
 
-  final String phoneNumber;
+  final String initialPhoneNumber;
 
   @override
   State<SignupUserPage> createState() => _SignupUserPageState();
@@ -13,6 +15,7 @@ class SignupUserPage extends StatefulWidget {
 
 class _SignupUserPageState extends State<SignupUserPage> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _phoneController;
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -22,7 +25,16 @@ class _SignupUserPageState extends State<SignupUserPage> {
   bool _obscureConfirmPassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _phoneController = TextEditingController(
+      text: widget.initialPhoneNumber.replaceFirst(RegExp(r'^\+90'), ''),
+    );
+  }
+
+  @override
   void dispose() {
+    _phoneController.dispose();
     _fullNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -38,7 +50,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => VehicleInfoPage(
-          phoneNumber: widget.phoneNumber,
+          phoneNumber: '+90${_phoneController.text.trim()}',
           fullName: _fullNameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
@@ -80,12 +92,12 @@ class _SignupUserPageState extends State<SignupUserPage> {
                   children: [
                     Align(
                       alignment: Alignment.centerRight,
-                      child: IconButton(
-                        tooltip: 'Kapat',
+                      child: TextButton.icon(
                         onPressed: () => Navigator.of(context).maybePop(),
-                        icon: Icon(
-                          Icons.close,
-                          color: colorScheme.onSurfaceVariant,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Log out'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -109,7 +121,36 @@ class _SignupUserPageState extends State<SignupUserPage> {
                     ),
                     const SizedBox(height: 26),
                     TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                      decoration: _inputDecoration(
+                        context,
+                        hintText: 'Telefon Numarası',
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                      ),
+                      validator: (value) {
+                        final phone = value?.trim() ?? '';
+                        if (phone.isEmpty) {
+                          return 'Telefon numarası gerekli';
+                        }
+                        if (phone.length != 10) {
+                          return 'Telefon numarası 10 haneli olmalı';
+                        }
+                        if (!phone.startsWith('5')) {
+                          return 'Telefon numarası 5 ile başlamalı';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
                       controller: _fullNameController,
+                      keyboardType: TextInputType.name,
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
                         context,
@@ -147,6 +188,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _passwordController,
+                      keyboardType: TextInputType.visiblePassword,
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
@@ -177,6 +219,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _confirmPasswordController,
+                      keyboardType: TextInputType.visiblePassword,
                       obscureText: _obscureConfirmPassword,
                       textInputAction: TextInputAction.done,
                       decoration: _inputDecoration(
@@ -235,7 +278,9 @@ InputDecoration _inputDecoration(
     contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.55)),
+      borderSide: BorderSide(
+        color: colorScheme.outline.withValues(alpha: 0.55),
+      ),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -299,10 +344,12 @@ class _GradientButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           foregroundColor: const Color(0xFF18305F),
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
+          textStyle: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         child: Text(label),
       ),
