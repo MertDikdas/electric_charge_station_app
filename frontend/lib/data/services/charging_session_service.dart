@@ -1,5 +1,6 @@
 import '../api/api_client.dart';
 import '../models/charging_session.dart';
+import '../api/api_exception.dart';
 import 'json_helpers.dart';
 
 class ChargingSessionService {
@@ -12,6 +13,17 @@ class ChargingSessionService {
     return ChargingSession.fromJson(
       parseObject(await _apiClient.post('/charging-sessions/start', body: {})),
     );
+  }
+
+  Future<ChargingSessionProgress?> fetchActiveProgress() async {
+    try {
+      return ChargingSessionProgress.fromJson(
+        parseObject(await _apiClient.get('/charging-sessions/active/progress')),
+      );
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
+    }
   }
 
   Future<ChargingSession> finishSession({required int sessionId}) async {
@@ -48,21 +60,21 @@ class ChargingSessionService {
 
   Future<ChargingSession?> getActiveSession() async {
     try {
-      final response = await _apiClient.get('/charging-sessions/active');
+      final progress = await fetchActiveProgress();
 
-      if (response == null) return null;
+      if (progress == null) return null;
 
-      return ChargingSession.fromJson(parseObject(response));
+      return ChargingSession(
+        id: progress.sessionId,
+        reservationId: progress.reservationId,
+        startTime: '',
+        endTime: '',
+        consumedEnergy: progress.estimatedEnergyKwh,
+        totalCost: progress.estimatedCost,
+        status: progress.status,
+      );
     } catch (error) {
-      final message = error.toString();
-
-      if (message.contains('404') ||
-          message.contains('No active') ||
-          message.contains('not found')) {
-        return null;
-      }
-
-      rethrow;
+      return null;
     }
   }
 

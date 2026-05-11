@@ -73,6 +73,7 @@ class _MapScreenState extends State<MapScreen> {
   ChargingSession? _activeChargingSession;
   bool _isSessionLoading = false;
   List<ChargingSession> _sessionHistory = const [];
+  ChargingSessionProgress? _activeProgress;
 
   Set<Marker> get _mapMarkers => {..._stationMarkers, ?_userLocationMarker};
 
@@ -132,21 +133,44 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadActiveChargingSession() async {
+    print('ACTIVE SESSION LOAD STARTED');
+
     try {
       final session = await _chargingSessionService.getActiveSession();
+
+      print('ACTIVE SESSION RESULT: $session');
 
       if (!mounted) return;
 
       setState(() {
         _activeChargingSession = session;
       });
+
+      await _loadActiveProgress();
     } catch (error) {
+      print('ACTIVE SESSION ERROR: $error');
+
       if (!mounted) return;
 
       setState(() {
         _activeChargingSession = null;
+        _activeProgress = null;
       });
     }
+  }
+
+  Future<void> _loadActiveProgress() async {
+    debugPrint('ACTIVE PROGRESS LOAD STARTED');
+
+    final progress = await _chargingSessionService.fetchActiveProgress();
+
+    debugPrint('ACTIVE PROGRESS RESULT: $progress');
+
+    if (!mounted) return;
+
+    setState(() {
+      _activeProgress = progress;
+    });
   }
 
   Future<void> _loadMapStyle() async {
@@ -867,6 +891,7 @@ class _MapScreenState extends State<MapScreen> {
           _activeChargingSession = session;
         });
 
+        await _loadActiveProgress();
         _showSnackBar('Charging session started.');
         await _loadSessionHistory();
       } else {
@@ -877,6 +902,7 @@ class _MapScreenState extends State<MapScreen> {
         if (!mounted) return;
         setState(() {
           _activeChargingSession = null;
+          _activeProgress = null;
         });
 
         _showSnackBar('Charging session finished.');
@@ -1076,6 +1102,16 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          if (_activeProgress != null)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  child: _ActiveChargingCard(progress: _activeProgress!),
+                ),
+              ),
+            ),
           SafeArea(
             child: Align(
               alignment: Alignment.bottomLeft,
@@ -1117,6 +1153,63 @@ class _MapScreenState extends State<MapScreen> {
             MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
           );
         },
+      ),
+    );
+  }
+}
+
+class ActiveChargingCard extends StatelessWidget {
+  const ActiveChargingCard({super.key, required this.progress});
+
+  final ChargingSessionProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 8,
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.bolt, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Charging in progress',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: progress.progressPercent / 100,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${progress.estimatedEnergyKwh.toStringAsFixed(2)} kWh doldu',
+              style: const TextStyle(fontSize: 14),
+            ),
+            Text(
+              'Tahmini ücret: ₺${progress.estimatedCost.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 14),
+            ),
+            Text(
+              'Geçen süre: ${progress.elapsedMinutes} dk',
+              style: const TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1502,6 +1595,74 @@ class _SessionHistorySheetContent extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _ActiveChargingCard extends StatelessWidget {
+  const _ActiveChargingCard({required this.progress});
+
+  final ChargingSessionProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final progressValue = (progress.progressPercent / 100).clamp(0.0, 1.0);
+
+    return Card(
+      elevation: 8,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(9),
+        child: SizedBox(
+          width: 230,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.bolt, color: colorScheme.primary, size: 17),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Charging in progress',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: progressValue,
+                minHeight: 5,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${progress.estimatedEnergyKwh.toStringAsFixed(2)} kWh doldu',
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Tahmini ücret: ₺${progress.estimatedCost.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Geçen süre: ${progress.elapsedMinutes} dk',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

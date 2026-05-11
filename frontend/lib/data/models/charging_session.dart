@@ -28,7 +28,9 @@ class ChargingSession {
             json['consumed_energy'] ??
             json['consumedEnergy'],
       ),
-      totalCost: _asDouble(json['cost'] ?? json['total_cost'] ?? json['totalCost']),
+      totalCost: _asDouble(
+        json['cost'] ?? json['total_cost'] ?? json['totalCost'],
+      ),
       status: (json['status'] ?? '').toString(),
     );
   }
@@ -43,5 +45,37 @@ class ChargingSession {
     if (value is double) return value;
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+}
+
+class ChargingSessionProgress {
+  const ChargingSessionProgress({
+    required this.sessionId,
+    required this.reservationId,
+    required this.status,
+    required this.elapsedMinutes,
+    required this.estimatedEnergyKwh,
+    required this.estimatedCost,
+    required this.progressPercent,
+  });
+
+  final int sessionId;
+  final int reservationId;
+  final String status;
+  final int elapsedMinutes;
+  final double estimatedEnergyKwh;
+  final double estimatedCost;
+  final double progressPercent;
+
+  factory ChargingSessionProgress.fromJson(Map<String, dynamic> json) {
+    return ChargingSessionProgress(
+      sessionId: json['session_id'] as int,
+      reservationId: json['reservation_id'] as int,
+      status: json['status'] as String,
+      elapsedMinutes: json['elapsed_minutes'] as int,
+      estimatedEnergyKwh: (json['estimated_energy_kwh'] as num).toDouble(),
+      estimatedCost: (json['estimated_cost'] as num).toDouble(),
+      progressPercent: (json['progress_percent'] as num).toDouble(),
+    );
   }
 }

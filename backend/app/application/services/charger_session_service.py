@@ -310,3 +310,72 @@ class ChargingSessionService:
         end_datetime = datetime.combine(date.today(), end_time)
         duration_hours = (end_datetime - start_datetime).total_seconds() / 3600
         return round(duration_hours * charging_power_kw, 3)
+    
+    
+    def get_active_session_progress(
+        self,
+        current_user_id: int,
+        is_staff: bool = False,
+    ):
+        with self.uow:
+            sessions = self.uow.charging_sessions.list()
+
+            active_session = None
+            active_reservation = None
+
+            for session in sessions:
+                if session.status not in RUNNING_SESSION_STATUSES:
+                    continue
+
+                reservation = self.uow.reservations.get(session.reservation_id)
+                if not reservation:
+                    continue
+
+                if reservation.user_id == current_user_id or is_staff:
+                    active_session = session
+                    active_reservation = reservation
+                    break
+
+            if not active_session or not active_reservation:
+                return None
+
+            charger = self.uow.chargers.get(active_reservation.charger_id)
+            vehicle = self.uow.vehicles.get(active_reservation.vehicle_id)
+
+            if not charger or not vehicle:
+                raise LookupError("Charger or vehicle not found")
+
+            now = datetime.now()
+            current_time = now.time().replace(microsecond=0)
+
+            charging_power_kw = min(vehicle.max_charging_power, charger.max_power)
+
+            estimated_energy = self._calculate_consumed_energy(
+                active_session.start_time,
+                current_time,
+                charging_power_kw,
+            )
+
+            estimated_cost = round(estimated_energy * charger.price_per_kwh, 2)
+
+            session_start_dt = datetime.combine(date.today(), self._normalize_time(active_session.start_time))
+            now_dt = datetime.combine(date.today(), self._normalize_time(current_time))
+            elapsed_seconds = max((now_dt - session_start_dt).total_seconds(), 0)
+
+            battery_capacity = getattr(vehicle, "battery_capacity", None)
+            if battery_capacity is None:
+                battery_capacity = getattr(vehicle, "battery_capacity_kwh", None)
+
+            if battery_capacity and battery_capacity > 0:
+                progress_percent = min((estimated_energy / battery_capacity) * 100, 100)
+            else:
+                progress_percent = 0
+            return {
+                "session_id": active_session.id,
+                "reservation_id": active_session.reservation_id,
+                "status": active_session.status,
+                "elapsed_minutes": int(elapsed_seconds // 60),
+                "estimated_energy_kwh": round(estimated_energy, 2),
+                "estimated_cost": estimated_cost,
+                "progress_percent": round(progress_percent, 1),
+            }

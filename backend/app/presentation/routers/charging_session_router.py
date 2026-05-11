@@ -13,6 +13,7 @@ from app.schemas.charging_session import (
     ChargingSession,
     ChargingSessionFinishRequest,
     ChargingSessionStartRequest,
+    ChargingSessionProgress,
 )
 
 router = APIRouter()
@@ -58,6 +59,23 @@ def finish_session(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+@router.get("/active/progress", response_model=ChargingSessionProgress)
+def get_active_session_progress(
+    service: ChargingSessionService = Depends(get_charging_session_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    try:
+        progress = service.get_active_session_progress(
+            current_user.id,
+            current_user.is_staff,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    if not progress:
+        raise HTTPException(status_code=404, detail="Active charging session not found")
+
+    return progress
 
 @router.patch("/{session_id}/finish", response_model=ChargingSession)
 def finish_session_by_id(
@@ -103,6 +121,8 @@ def get_active_sessions(
     return service.get_active_sessions_by_user_id(current_user.id)
 
 
+
+
 @router.get("/{session_id}", response_model=ChargingSession)
 def get_session(
     session_id: int,
@@ -116,3 +136,5 @@ def get_session(
     if not service.can_access_session(session, current_user.id, current_user.is_staff):
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return session
+
+

@@ -24,3 +24,12 @@ class ChargingSession(ChargingSessionCreate):
     # Diagram uses double line which means Weak Entity,
     # it depends on Reservation. We use reservation_id as the relation.
     id: int
+
+class ChargingSessionProgress(BaseModel):
+    session_id: int
+    reservation_id: int
+    status: str
+    elapsed_minutes: int
+    estimated_energy_kwh: float
+    estimated_cost: float
+    progress_percent: float
