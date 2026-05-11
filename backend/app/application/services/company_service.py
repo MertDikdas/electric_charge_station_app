@@ -51,22 +51,12 @@ class CompanyService:
             self.uow.companies.delete(company)
             self.uow.commit()
     
-    def deactivate_company(self, company_id: int) -> CompanyEntity:
+    def update_company_status(self, company_id: int, is_active: bool) -> CompanyEntity:
         with self.uow:
             company = self.uow.companies.get(company_id)
             if not company:
                 raise ValueError("Company not found")
-            company.is_active = False
-            updated_company = self.uow.companies.update(company)
-            self.uow.commit()
-            return updated_company
-        
-    def activate_company(self, company_id: int) -> CompanyEntity:
-        with self.uow:
-            company = self.uow.companies.get(company_id)
-            if not company:
-                raise ValueError("Company not found")
-            company.is_active = True
+            company.is_active = is_active
             updated_company = self.uow.companies.update(company)
             self.uow.commit()
             return updated_company
