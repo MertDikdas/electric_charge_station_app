@@ -163,3 +163,14 @@ def delete_station(
         raise HTTPException(status_code=404, detail="Station not found")
 
     service.delete_station(station_id)
+
+@router.delete("/admin/{station_id}", status_code=204)
+def delete_station_admin(
+    station_id: int,
+    service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_admin),
+):
+    existing_station = service.get_station(station_id)
+    if not existing_station:
+        raise HTTPException(status_code=404, detail="Station not found")
+    service.delete_station(station_id)

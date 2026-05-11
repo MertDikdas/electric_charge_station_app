@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.company_service import CompanyService
-from app.core.dependencies import get_admin, get_company_service
+from app.core.dependencies import AuthenticatedUser, get_admin, get_company_service
 from app.domain.models.company import CompanyEntity
 from app.schemas.company import Company, CompanyActivate, CompanyCreate, CompanyUpdate
 
@@ -12,7 +12,7 @@ router = APIRouter()
 def create_company(
     company: CompanyCreate,
     service: CompanyService = Depends(get_company_service),
-    current_user=Depends(get_admin),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     company_entity = CompanyEntity(**company.model_dump())
 
@@ -25,7 +25,7 @@ def create_company(
 @router.get("/all", response_model=list[Company])
 def get_companies(
     service: CompanyService = Depends(get_company_service),
-    current_user=Depends(get_admin),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_all_companies()
 
@@ -33,7 +33,7 @@ def get_companies(
 @router.get("/active", response_model=list[Company])
 def get_active_companies(
     service: CompanyService = Depends(get_company_service),
-    current_user=Depends(get_admin),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_all_active_companies()
 
@@ -42,7 +42,7 @@ def get_active_companies(
 def get_company(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    current_user=Depends(get_admin),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     company = service.get_company(company_id)
 
@@ -57,7 +57,7 @@ def update_company(
     company_id: int,
     company_update: CompanyUpdate,
     service: CompanyService = Depends(get_company_service),
-    current_user=Depends(get_admin),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     update_data = company_update.model_dump(exclude_unset=True)
 
@@ -70,7 +70,7 @@ def update_company(
 def delete_company(
     company_id: int,
     service: CompanyService = Depends(get_company_service),
-    current_user=Depends(get_admin),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     try:
         service.delete_company(company_id)
@@ -82,7 +82,7 @@ def update_company_status(
     company_id: int,
     status_update: CompanyActivate,
     service: CompanyService = Depends(get_company_service),
-    current_user=Depends(get_admin),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     try:
         return service.update_company_status(company_id, status_update.is_active)
