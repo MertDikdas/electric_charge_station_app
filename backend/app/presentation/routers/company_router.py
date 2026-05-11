@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.application.services.company_service import CompanyService
 from app.core.dependencies import get_admin, get_company_service
 from app.domain.models.company import CompanyEntity
-from app.schemas.company import Company, CompanyCreate, CompanyUpdate
+from app.schemas.company import Company, CompanyActivate, CompanyCreate, CompanyUpdate
 
 router = APIRouter()
 
@@ -65,18 +65,6 @@ def update_company(
         return service.update_company(company_id, update_data)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.patch("/{company_id}/deactivate", response_model=Company)
-def deactivate_company(
-    company_id: int,
-    service: CompanyService = Depends(get_company_service),
-    current_user=Depends(get_admin),
-):
-    try:
-        return service.deactivate_company(company_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
     
 @router.delete("/{company_id}", status_code=204)
 def delete_company(
@@ -88,14 +76,15 @@ def delete_company(
         service.delete_company(company_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    
-@router.patch("/{company_id}/activate", response_model=Company)
-def activate_company(
+
+@router.patch("/{company_id}/status", response_model=Company)
+def update_company_status(
     company_id: int,
+    status_update: CompanyActivate,
     service: CompanyService = Depends(get_company_service),
     current_user=Depends(get_admin),
 ):
     try:
-        return service.activate_company(company_id)
+        return service.update_company_status(company_id, status_update.is_active)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
