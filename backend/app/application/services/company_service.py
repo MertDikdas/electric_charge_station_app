@@ -10,8 +10,8 @@ class CompanyService:
 
     def create_company(self, company: CompanyEntity) -> CompanyEntity:
         with self.uow:
-            company = self.uow.companies.get_by_name(company.name)
-            if company:
+            existing_company = self.uow.companies.get_by_name(company.name)
+            if existing_company:
                 raise ValueError("Company with this name already exists")   
             new_company = self.uow.companies.add(company)
             self.uow.commit()
@@ -57,6 +57,16 @@ class CompanyService:
             if not company:
                 raise ValueError("Company not found")
             company.is_active = False
+            updated_company = self.uow.companies.update(company)
+            self.uow.commit()
+            return updated_company
+        
+    def activate_company(self, company_id: int) -> CompanyEntity:
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            company.is_active = True
             updated_company = self.uow.companies.update(company)
             self.uow.commit()
             return updated_company
