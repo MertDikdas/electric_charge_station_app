@@ -109,10 +109,11 @@ class StationService:
                 return None
 
             station.status = normalized_status
+            self.uow.stations.update(station)
             updated_station = self.uow.stations.update(station)
             self._create_station_unavailable_notifications(updated_station)
             self.uow.commit()
-            return updated_station
+            return station
 
     def _create_station_unavailable_notifications(self, station: StationEntity) -> None:
         unavailable_statuses = {"CLOSED", "OUT_OF_SERVICE", "MAINTENANCE"}

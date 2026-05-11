@@ -14,6 +14,8 @@ from app.presentation.routers.auth_router import router as auth_router
 from app.presentation.routers.coupon_router import router as coupon_router
 from app.presentation.routers.payment_router import router as payment_router
 from app.presentation.routers.chatbot_router import router as chatbot_router
+from app.presentation.routers.company_router import router as company_router
+from app.presentation.routers.company_member_router import router as company_member_router
 from app.core.notification_scheduler import (
     start_notification_scheduler,
     stop_notification_scheduler,
@@ -46,7 +48,8 @@ app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(coupon_router, prefix="/coupons", tags=["Coupons"])
 app.include_router(payment_router, prefix="/payments", tags=["Payments"])
 app.include_router(chatbot_router, prefix="/chatbots", tags=["Chatbots"])
-
+app.include_router(company_router, prefix="/admin/companies", tags=["Companies"])
+app.include_router(company_member_router, prefix="/admin/company-members", tags=["Company Members"])
 
 @app.on_event("startup")
 def startup_event():

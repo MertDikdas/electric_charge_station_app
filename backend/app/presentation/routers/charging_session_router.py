@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from app.application.services.charger_session_service import ChargingSessionService
 from app.core.dependencies import (
     AuthenticatedUser,
-    get_admin_or_station_manager,
+    get_admin,
     get_charging_session_service,
     get_current_user,
 )
@@ -81,10 +81,10 @@ def finish_session_by_id(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/all", response_model=List[ChargingSession])
+@router.get("/admin/all", response_model=List[ChargingSession])
 def get_sessions(
     service: ChargingSessionService = Depends(get_charging_session_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_all_sessions()
 

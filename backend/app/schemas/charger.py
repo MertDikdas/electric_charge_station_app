@@ -59,3 +59,17 @@ class ChargerStatusUpdate(BaseModel):
 
 class ChargerPriceUpdate(BaseModel):
     price_per_kwh: float = Field(..., ge=0)
+
+class ChagerCreateRequest(BaseModel):
+    connector_type: ConnectorType
+    current_type: CurrentType
+    max_power: float = Field(default=1.0, gt=0)
+    price_per_kwh: float = Field(default=0.0, ge=0)
+    status: ChargerStatus = "AVAILABLE"
+
+    @field_validator("connector_type", "current_type", "status", mode="before")
+    @classmethod
+    def normalize_uppercase(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.upper()
+        return value

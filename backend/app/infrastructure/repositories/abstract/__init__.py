@@ -17,6 +17,8 @@ from app.infrastructure.repositories.abstract.user_session_repository import (
     AbstractUserSessionRepository,
 )
 from app.infrastructure.repositories.abstract.vehicle_repository import AbstractVehicleRepository
+from app.infrastructure.repositories.abstract.company_repository import AbstractCompanyRepository
+from app.infrastructure.repositories.abstract.company_member_repository import AbstractCompanyMemberRepository
 
 __all__ = [
     "AbstractRepository",
@@ -30,4 +32,6 @@ __all__ = [
     "AbstractUserRepository",
     "AbstractUserSessionRepository",
     "AbstractVehicleRepository",
+    "AbstractCompanyRepository",
+    "AbstractCompanyMemberRepository",
 ]

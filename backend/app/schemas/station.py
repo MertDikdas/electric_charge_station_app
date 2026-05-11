@@ -18,7 +18,6 @@ class StationCreate(BaseModel):
     address: str
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
-    company_id: int
     status: str = "AVAILABLE"
 
 
@@ -36,3 +35,4 @@ class StationStatusUpdate(BaseModel):
         if isinstance(value, str):
             return value.upper()
         return value
+

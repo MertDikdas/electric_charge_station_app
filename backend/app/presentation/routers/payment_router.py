@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.application.services.payment_service import PaymentService
 from app.core.dependencies import (
     AuthenticatedUser,
-    get_admin_or_station_manager,
+    get_admin,
     get_current_user,
     get_payment_service,
 )
@@ -40,7 +40,7 @@ def create_payment(
 @router.get("", response_model=List[PaymentResponse])
 def get_payments(
     service: PaymentService = Depends(get_payment_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_payments_by_status("COMPLETED")
 
@@ -57,7 +57,7 @@ def get_my_payments(
 def get_payments_by_status(
     status: str,
     service: PaymentService = Depends(get_payment_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     try:
         return service.get_payments_by_status(status.upper())
@@ -101,7 +101,7 @@ def update_payment(
     payment_id: int,
     payment_update: PaymentUpdate,
     service: PaymentService = Depends(get_payment_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     existing_payment = service.get_payment(payment_id)
     if not existing_payment:
@@ -150,7 +150,7 @@ def complete_payment(
 def fail_payment(
     payment_id: int,
     service: PaymentService = Depends(get_payment_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     try:
         return service.fail_payment(payment_id)
@@ -162,7 +162,7 @@ def fail_payment(
 def refund_payment(
     payment_id: int,
     service: PaymentService = Depends(get_payment_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     try:
         return service.refund_payment(payment_id)
@@ -176,7 +176,7 @@ def refund_payment(
 def delete_payment(
     payment_id: int,
     service: PaymentService = Depends(get_payment_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     if not service.delete_payment(payment_id):
         raise HTTPException(status_code=404, detail="Payment not found")

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.application.services.reservation_service import ReservationService
 from app.core.dependencies import (
     AuthenticatedUser,
-    get_admin_or_station_manager,
+    get_admin,
     get_current_user,
     get_reservation_service,
 )
@@ -33,10 +33,10 @@ def create_reservation(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/all", response_model=List[Reservation])
+@router.get("/admin/all", response_model=List[Reservation])
 def get_reservations(
     service: ReservationService = Depends(get_reservation_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_all_reservations()
 

@@ -1,0 +1,81 @@
+from typing import Optional, List
+
+from app.domain.models.company import CompanyEntity
+from app.domain.rules.company_rules import (
+    validate_company_entity,
+    validate_company_status,
+    validate_company_update_data,
+)
+from app.core.uow import AbstractUnitOfWork
+
+
+class CompanyService:
+    def __init__(self, uow: AbstractUnitOfWork):
+        self.uow = uow
+
+    def create_company(self, company: CompanyEntity) -> CompanyEntity:
+        validate_company_entity(company)
+
+        with self.uow:
+            existing_company = self.uow.companies.get_by_name(company.name)
+            if existing_company:
+                raise ValueError("Company with this name already exists")   
+            new_company = self.uow.companies.add(company)
+            self.uow.commit()
+            return new_company
+        
+    def get_company(self, company_id: int) -> Optional[CompanyEntity]:
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            return company
+        
+    def get_all_companies(self) -> List[CompanyEntity]:
+        with self.uow:
+            return self.uow.companies.list()
+        
+    def get_all_active_companies(self) -> List[CompanyEntity]:
+        with self.uow:
+            return self.uow.companies.get_all_active()
+    
+    def update_company(self, company_id: int, updated_company: dict) -> CompanyEntity:
+        validate_company_update_data(updated_company)
+
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            for field, value in updated_company.items():
+                setattr(company, field, value)
+            validate_company_entity(company)
+            self.uow.companies.update(company)
+            self.uow.commit()
+            return company
+        
+    def delete_company(self, company_id: int) -> None:
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            self.uow.companies.delete(company)
+            self.uow.commit()
+    
+    def update_company_status(self, company_id: int, is_active: bool) -> CompanyEntity:
+        validate_company_status(is_active)
+
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+
+            if not is_active:
+                active_members = self.uow.company_members.get_all_active_by_company(company_id)
+                for member in active_members:
+                    member.is_active = False
+                    self.uow.company_members.update(member)
+
+            company.is_active = is_active
+            updated_company = self.uow.companies.update(company)
+            self.uow.commit()
+            return updated_company

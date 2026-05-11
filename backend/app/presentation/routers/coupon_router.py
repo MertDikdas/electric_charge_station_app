@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.application.services.coupon_service import CouponService
 from app.core.dependencies import (
     AuthenticatedUser,
-    get_admin_or_station_manager,
+    get_admin,
     get_coupon_service,
     get_current_user,
 )
@@ -19,7 +19,7 @@ router = APIRouter()
 def create_coupon(
     coupon: CouponCreate,
     service: CouponService = Depends(get_coupon_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     coupon_entity = CouponEntity(**coupon.model_dump())
     try:
@@ -33,7 +33,7 @@ def create_coupon(
 @router.get("/all", response_model=List[Coupon])
 def get_coupons(
     service: CouponService = Depends(get_coupon_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_all_coupons()
 
@@ -62,7 +62,7 @@ def get_my_coupon_by_code(
 def get_user_coupons(
     user_id: int,
     service: CouponService = Depends(get_coupon_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_user_coupons(user_id)
 
@@ -72,7 +72,7 @@ def get_user_coupon_by_code(
     user_id: int,
     code: str,
     service: CouponService = Depends(get_coupon_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     coupon = service.get_user_coupon_by_code(user_id, code)
     if not coupon:
@@ -122,7 +122,7 @@ def apply_coupon(
 def delete_coupon(
     coupon_id: int,
     service: CouponService = Depends(get_coupon_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     if not service.delete_coupon(coupon_id):
         raise HTTPException(status_code=404, detail="Coupon not found")

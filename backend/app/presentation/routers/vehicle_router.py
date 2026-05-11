@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.vehicle_service import VehicleService
-from app.core.dependencies import AuthenticatedUser, get_current_user, get_vehicle_service, get_admin_or_station_manager
+from app.core.dependencies import AuthenticatedUser, get_admin, get_current_user, get_vehicle_service
 from app.domain.models.vehicle import VehicleEntity
 from app.schemas.charger import Charger
 from app.schemas.vehicle import VehicleCreate, Vehicle
@@ -34,10 +34,10 @@ def create_vehicle(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/all", response_model=List[Vehicle])
+@router.get("/admin/all", response_model=List[Vehicle])
 def get_vehicles(
     service: VehicleService = Depends(get_vehicle_service),
-    current_user: AuthenticatedUser = Depends(get_admin_or_station_manager),
+    current_user: AuthenticatedUser = Depends(get_admin),
 ):
     return service.get_all_vehicles()
 

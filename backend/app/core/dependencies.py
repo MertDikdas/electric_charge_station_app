@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.application.services.charger_service import ChargerService
 from app.application.services.charger_session_service import ChargingSessionService
+from app.application.services.company_member_service import CompanyMemberService
 from app.application.services.coupon_service import CouponService
 from app.application.services.notification_service import NotificationService
 from app.application.services.payment_service import PaymentService
@@ -27,6 +28,8 @@ from app.infrastructure.repositories.sqlalchemy.user_repository import SqlAlchem
 from app.schemas.company_member import CompanyMember
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from app.infrastructure.database.tables import Charger, CompanyMember, Station
+from app.application.services.company_service import CompanyService
 
 security = HTTPBearer(auto_error=False)
 
@@ -89,15 +92,14 @@ def get_current_user(
     return AuthenticatedUser(id=session.user_id, role=user.role or USER_ROLE)
 
 def get_current_company_member(
-    company_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CompanyMember:
     member = (
         db.query(CompanyMember)
         .filter(
-            CompanyMember.company_id == company_id,
             CompanyMember.user_id == current_user.id,
+            CompanyMember.is_active == True,
         )
         .first()
     )
@@ -141,31 +143,35 @@ def get_company_member(
         raise HTTPException(status_code=403, detail="Station staff role required")
     return current_user
 
-def get_admin_or_station_manager(
-    company_id: int,
+def ensure_same_company(
+    station_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> AuthenticatedUser:
-    if current_user.role == ADMIN_ROLE:
-        return current_user
-
+):
+    station = ( db.query(Station).filter(Station.id == station_id).first() )
+    if station is None:
+        raise HTTPException(status_code=404, detail="Station not found")
     member = (
-        db.query(CompanyMember)
-        .filter(
-            CompanyMember.company_id == company_id,
-            CompanyMember.user_id == current_user.id,
-        )
-        .first()
-    )
-
+        db.query(CompanyMember).filter(CompanyMember.company_id == station.company_id, CompanyMember.user_id == current_user.id).first())
     if member is None:
         raise HTTPException(status_code=403, detail="Company membership required")
 
-    if member.role != STATION_MANAGER_ROLE:
-        raise HTTPException(status_code=403, detail="Admin or station manager role required")
-
-    return current_user
-
+def ensure_same_company_for_charger(
+    charger_id: int,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CompanyMember:
+    charger = ( db.query(Charger).filter(Charger.id == charger_id).first() )
+    if charger is None:
+        raise HTTPException(status_code=404, detail="Charger not found")
+    station = ( db.query(Station).filter(Station.id == charger.station_id).first() )
+    if station is None:
+        raise HTTPException(status_code=404, detail="Station not found")
+    member = (
+        db.query(CompanyMember).filter(CompanyMember.company_id == station.company_id, CompanyMember.user_id == current_user.id).first())
+    if member is None:
+        raise HTTPException(status_code=403, detail="Company membership required")
+    return member
 
 
 def get_uow(db: Session = Depends(get_db)) -> AbstractUnitOfWork:
@@ -213,3 +219,10 @@ def get_payment_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> PaymentSe
 
 def get_chatbot_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> ChatbotService:
     return ChatbotService(uow)
+
+def get_company_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanyService:
+    return CompanyService(uow)
+
+def get_company_member_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanyMemberService:
+    return CompanyMemberService(uow)
+
