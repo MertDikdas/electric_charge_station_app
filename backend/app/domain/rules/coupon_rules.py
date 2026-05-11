@@ -53,6 +53,20 @@ def ensure_coupon_is_usable(
         return False
     return order_amount >= coupon.min_order_amount
 
+def ensure_coupon_is_usable_for_payment(
+    coupon: CouponEntity,
+    order_amount: float,
+    now: datetime | None = None,
+) -> bool:
+    current_time = now or datetime.now(timezone.utc)
+    valid_from = _to_aware_utc(coupon.valid_from)
+    valid_until = _to_aware_utc(coupon.valid_until)
+
+    if not coupon.is_active:
+        return False
+    if current_time < valid_from or current_time > valid_until:
+        return False
+    return order_amount >= coupon.min_order_amount
 
 def calculate_coupon_discount(coupon: CouponEntity, order_amount: float) -> float:
     if order_amount <= 0:

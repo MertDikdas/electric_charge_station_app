@@ -5,7 +5,7 @@ from app.core.uow import AbstractUnitOfWork
 from app.domain.models.payment import PaymentEntity
 from app.domain.rules.coupon_rules import (
     calculate_coupon_discount,
-    ensure_coupon_is_usable,
+    ensure_coupon_is_usable_for_payment,
 )
 from app.domain.rules.payment_rules import PaymentRules
 
@@ -105,7 +105,7 @@ class PaymentService:
             raise LookupError("Coupon not found")
         if coupon.user_id != payment.user_id:
             raise ValueError("Coupon does not belong to payment user")
-        if not ensure_coupon_is_usable(coupon, payment.amount):
+        if not ensure_coupon_is_usable_for_payment(coupon, payment.amount):
             raise ValueError("Coupon is not usable for this payment")
 
         discount_amount = calculate_coupon_discount(coupon, payment.amount)
