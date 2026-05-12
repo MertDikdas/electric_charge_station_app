@@ -151,7 +151,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
         Navigator.of(context).pop(_didCancelReservation);
       },
       child: Scaffold(
-        appBar: const AppAppBar(title: 'Rezervasyonlarim'),
+        appBar: const AppAppBar(title: 'My Reservations'),
         body: SafeArea(
           child: RefreshIndicator(
             onRefresh: _refreshReservations,
@@ -187,7 +187,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     if (errorMessage != null) {
       return _MessageCard(
         icon: Icons.error_outline,
-        title: 'Rezervasyonlar yuklenemedi',
+        title: 'Reservations could not be loaded',
         subtitle: errorMessage,
       );
     }
@@ -214,8 +214,8 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
         if (visibleReservations.isEmpty)
           const _MessageCard(
             icon: Icons.receipt_long,
-            title: 'Rezervasyon bulunamadi',
-            subtitle: 'Bu bolumde gosterilecek rezervasyon yok.',
+            title: 'No reservations found',
+            subtitle: 'There are no reservations to show here.',
           )
         else
           ...visibleReservations.map(
@@ -320,7 +320,7 @@ class _ReservationViewSwitch extends StatelessWidget {
             Expanded(
               child: _ReservationSwitchItem(
                 icon: Icons.bolt,
-                label: 'Gelecek',
+                label: 'Upcoming',
                 count: upcomingCount,
                 isSelected: selectedView == _ReservationView.upcoming,
                 onTap: () => onChanged(_ReservationView.upcoming),
@@ -329,7 +329,7 @@ class _ReservationViewSwitch extends StatelessWidget {
             Expanded(
               child: _ReservationSwitchItem(
                 icon: Icons.history,
-                label: 'Gecmis',
+                label: 'Past',
                 count: pastCount,
                 isSelected: selectedView == _ReservationView.past,
                 onTap: () => onChanged(_ReservationView.past),
@@ -634,13 +634,13 @@ class _CreateReservationPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Rezervasyon Olustur',
+                        'Create Reservation',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Haritadan istasyon secerek uygun sarj noktasina hizlica rezervasyon yap.',
+                        'Select a station on the map and quickly reserve an available charging point.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -655,9 +655,9 @@ class _CreateReservationPanel extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _InfoPill(icon: Icons.ev_station, text: 'Istasyon'),
-                _InfoPill(icon: Icons.directions_car_outlined, text: 'Arac'),
-                _InfoPill(icon: Icons.schedule, text: 'Zaman'),
+                _InfoPill(icon: Icons.ev_station, text: 'Station'),
+                _InfoPill(icon: Icons.directions_car_outlined, text: 'Vehicle'),
+                _InfoPill(icon: Icons.schedule, text: 'Time'),
               ],
             ),
             const SizedBox(height: 14),
@@ -666,7 +666,7 @@ class _CreateReservationPanel extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onMapPressed,
                 icon: const Icon(Icons.map_outlined),
-                label: const Text('Haritadan Sec'),
+                label: const Text('Select on Map'),
               ),
             ),
           ],

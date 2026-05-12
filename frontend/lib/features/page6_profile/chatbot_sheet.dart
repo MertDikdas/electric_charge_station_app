@@ -265,7 +265,7 @@ class _TypingBubble extends StatelessWidget {
           color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(18),
         ),
-        child: const Text('Yazıyor...'),
+        child: const Text('Typing...'),
       ),
     );
   }

@@ -104,7 +104,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                     const _SignupLogo(size: 108),
                     const SizedBox(height: 18),
                     Text(
-                      'Hemen Üye Olun',
+                      'Create Your Account',
                       textAlign: TextAlign.center,
                       style: textTheme.headlineSmall?.copyWith(
                         color: colorScheme.onSurface,
@@ -113,7 +113,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Geleceğe adım atın ve kolayca şarj edin.',
+                      'Step into the future and charge with ease.',
                       textAlign: TextAlign.center,
                       style: textTheme.bodyLarge?.copyWith(
                         color: colorScheme.onSurfaceVariant,
@@ -130,19 +130,19 @@ class _SignupUserPageState extends State<SignupUserPage> {
                       ],
                       decoration: _inputDecoration(
                         context,
-                        hintText: 'Telefon Numarası',
+                        hintText: 'Phone Number',
                         prefixIcon: const Icon(Icons.phone_outlined),
                       ),
                       validator: (value) {
                         final phone = value?.trim() ?? '';
                         if (phone.isEmpty) {
-                          return 'Telefon numarası gerekli';
+                          return 'Phone number is required';
                         }
                         if (phone.length != 10) {
-                          return 'Telefon numarası 10 haneli olmalı';
+                          return 'Phone number must be 10 digits';
                         }
                         if (!phone.startsWith('5')) {
-                          return 'Telefon numarası 5 ile başlamalı';
+                          return 'Phone number must start with 5';
                         }
                         return null;
                       },
@@ -159,7 +159,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                       ),
                       validator: (value) {
                         if ((value?.trim() ?? '').length < 3) {
-                          return 'Ad soyad en az 3 karakter olmalı';
+                          return 'Full name must be at least 3 characters';
                         }
                         return null;
                       },
@@ -177,10 +177,10 @@ class _SignupUserPageState extends State<SignupUserPage> {
                       validator: (value) {
                         final email = value?.trim() ?? '';
                         if (email.isEmpty) {
-                          return 'E-posta gerekli';
+                          return 'Email is required';
                         }
                         if (!email.contains('@') || !email.contains('.')) {
-                          return 'Geçerli bir e-posta girin';
+                          return 'Enter a valid email address';
                         }
                         return null;
                       },
@@ -196,7 +196,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                         hintText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          tooltip: _obscurePassword ? 'Göster' : 'Gizle',
+                          tooltip: _obscurePassword ? 'Show' : 'Hide',
                           onPressed: () {
                             setState(() {
                               _obscurePassword = !_obscurePassword;
@@ -211,7 +211,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                       ),
                       validator: (value) {
                         if ((value ?? '').length < 6) {
-                          return 'Parola en az 6 karakter olmalı';
+                          return 'Password must be at least 6 characters';
                         }
                         return null;
                       },
@@ -227,7 +227,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                         hintText: 'Confirm Password',
                         prefixIcon: const Icon(Icons.lock_reset_outlined),
                         suffixIcon: IconButton(
-                          tooltip: _obscureConfirmPassword ? 'Göster' : 'Gizle',
+                          tooltip: _obscureConfirmPassword ? 'Show' : 'Hide',
                           onPressed: () {
                             setState(() {
                               _obscureConfirmPassword =
@@ -243,7 +243,7 @@ class _SignupUserPageState extends State<SignupUserPage> {
                       ),
                       validator: (value) {
                         if (value != _passwordController.text) {
-                          return 'Parolalar eşleşmeli';
+                          return 'Passwords must match';
                         }
                         return null;
                       },

@@ -110,7 +110,10 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     }
 
     if (_vehicles.isEmpty) {
-      AppSnackBar.showWarning(context, 'Arac ekleyin veya Skip for Now ile devam edin');
+      AppSnackBar.showWarning(
+        context,
+        'Add a vehicle or continue with Skip for Now',
+      );
       return;
     }
 
@@ -149,8 +152,8 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
       AppSnackBar.showSuccess(
         context,
         skippedVehicleInfo
-            ? 'Uyelik arac bilgisi olmadan tamamlandi'
-            : 'Uyelik ve arac bilgileri kaydedildi',
+            ? 'Signup completed without vehicle information'
+            : 'Signup and vehicle information saved',
       );
 
       Navigator.of(context).pushAndRemoveUntil(
@@ -169,13 +172,13 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
   }
 
   String? _required(String? value) {
-    if ((value ?? '').trim().isEmpty) return 'Bu alan gerekli';
+    if ((value ?? '').trim().isEmpty) return 'This field is required';
     return null;
   }
 
   String? _positiveNumber(String? value) {
     final parsed = double.tryParse((value ?? '').trim());
-    if (parsed == null || parsed <= 0) return 'Pozitif sayi girin';
+    if (parsed == null || parsed <= 0) return 'Enter a positive number';
     return null;
   }
 
@@ -233,7 +236,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                   ),
                   validator: (value) {
                     if ((value?.trim() ?? '').length < 5) {
-                      return 'Gecerli bir plaka girin';
+                      return 'Enter a valid plate number';
                     }
                     return null;
                   },

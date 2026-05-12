@@ -107,7 +107,7 @@ class _MapScreenState extends State<MapScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      _showSnackBar('Session history yuklenemedi: $error');
+      _showSnackBar('Session history could not be loaded: $error');
     }
   }
 
@@ -381,7 +381,7 @@ class _MapScreenState extends State<MapScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      _showSnackBar('Araclar yuklenemedi: $error');
+      _showSnackBar('Vehicles could not be loaded: $error');
     } finally {
       if (mounted) {
         setState(() {
@@ -399,7 +399,7 @@ class _MapScreenState extends State<MapScreen> {
     if (!mounted) return;
 
     if (_vehicles.isEmpty) {
-      _showSnackBar('Rezervasyon icin once profilinizden arac ekleyin.');
+      _showSnackBar('Add a vehicle from your profile before reserving.');
       return;
     }
 
@@ -412,7 +412,10 @@ class _MapScreenState extends State<MapScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             children: [
-              Text('Arac sec', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Select Vehicle',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 12),
               for (final vehicle in _vehicles)
                 ListTile(
@@ -444,7 +447,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _selectedVehicle = selected;
     });
-    _showSnackBar('${selected.model} rezervasyon araci olarak secildi.');
+    _showSnackBar('${selected.model} selected for the reservation.');
     await _refreshVisibleMarkers();
   }
 
@@ -790,7 +793,7 @@ class _MapScreenState extends State<MapScreen> {
   ) async {
     final vehicle = _selectedVehicle;
     if (vehicle == null) {
-      _showSnackBar('Rezervasyon icin once bir arac secin.');
+      _showSnackBar('Select a vehicle before making a reservation.');
       return;
     }
 
@@ -898,9 +901,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<ChargingSession?> _openChargingVerification() async {
-    return Navigator.of(context).push(
-      ChargingVerificationRoute(),
-    );
+    return Navigator.of(context).push(ChargingVerificationRoute());
   }
 
   @override
@@ -1177,15 +1178,15 @@ class ActiveChargingCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              '${progress.estimatedEnergyKwh.toStringAsFixed(2)} kWh doldu',
+              '${progress.estimatedEnergyKwh.toStringAsFixed(2)} kWh charged',
               style: const TextStyle(fontSize: 14),
             ),
             Text(
-              'Tahmini ücret: ₺${progress.estimatedCost.toStringAsFixed(2)}',
+              'Estimated cost: ₺${progress.estimatedCost.toStringAsFixed(2)}',
               style: const TextStyle(fontSize: 14),
             ),
             Text(
-              'Geçen süre: ${progress.elapsedMinutes} dk',
+              'Elapsed time: ${progress.elapsedMinutes} min',
               style: const TextStyle(fontSize: 14),
             ),
           ],
@@ -1271,8 +1272,8 @@ class _VehiclePickerButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: selectedVehicle == null
-          ? 'Arac sec'
-          : '${selectedVehicle!.model} secili',
+          ? 'Select vehicle'
+          : '${selectedVehicle!.model} selected',
       child: FloatingActionButton(
         heroTag: 'vehicle-picker',
         backgroundColor: backgroundColor,
@@ -1534,7 +1535,6 @@ class _SessionHistoryTile extends StatelessWidget {
   }
 }
 
-
 class _SessionHistorySheetContent extends StatelessWidget {
   const _SessionHistorySheetContent({required this.sessions});
 
@@ -1621,17 +1621,17 @@ class _ActiveChargingCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '${progress.estimatedEnergyKwh.toStringAsFixed(2)} kWh doldu',
+                '${progress.estimatedEnergyKwh.toStringAsFixed(2)} kWh charged',
                 style: const TextStyle(fontSize: 12),
               ),
               const SizedBox(height: 2),
               Text(
-                'Tahmini ücret: ₺${progress.estimatedCost.toStringAsFixed(2)}',
+                'Estimated cost: ₺${progress.estimatedCost.toStringAsFixed(2)}',
                 style: const TextStyle(fontSize: 12),
               ),
               const SizedBox(height: 2),
               Text(
-                'Geçen süre: ${progress.elapsedMinutes} dk',
+                'Elapsed time: ${progress.elapsedMinutes} min',
                 style: const TextStyle(fontSize: 12),
               ),
             ],

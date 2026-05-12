@@ -19,7 +19,7 @@ class AuthService {
   }) async {
     final normalized = identifier.trim();
     if (normalized.isEmpty) {
-      throw const ApiException('Telefon/e-posta gerekli');
+      throw const ApiException('Phone/email is required');
     }
 
     final response = parseObject(

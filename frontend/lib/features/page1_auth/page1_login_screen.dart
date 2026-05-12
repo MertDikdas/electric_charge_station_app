@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final identifier = _identifierController.text.trim();
     final password = _passwordController.text;
     if (identifier.isEmpty || password.isEmpty) {
-      _showError('Telefon/e-posta ve parola gerekli');
+      _showError('Phone/email and password are required');
       return;
     }
 
@@ -102,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Ho\u015f Geldin',
+                  'Welcome',
                   textAlign: TextAlign.center,
                   style: textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Gelece\u011fi \u015earj Et',
+                  'Charge the Future',
                   textAlign: TextAlign.center,
                   style: textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurfaceVariant,
@@ -136,8 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       tooltip: _obscurePassword
-                          ? 'Şifreyi göster'
-                          : 'Şifreyi gizle',
+                          ? 'Show password'
+                          : 'Hide password',
                       onPressed: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
@@ -164,10 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     Expanded(
                       child: Text('Remember me', style: textTheme.bodyMedium),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text('\u015eifremi Unuttum(deneme)'),
                     ),
                   ],
                 ),
@@ -217,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 32),
                 TextButton(
                   onPressed: _isLoading ? null : _continueToApp,
-                  child: const Text('Misafir Olarak Devam Et \u2192'),
+                  child: const Text('Continue as Guest \u2192'),
                 ),
               ],
             ),

@@ -63,27 +63,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text('Profil Bilgileri', style: textTheme.headlineSmall),
+                Text('Profile Information', style: textTheme.headlineSmall),
                 const SizedBox(height: 16),
                 if (snapshot.connectionState == ConnectionState.waiting)
                   const Center(child: CircularProgressIndicator())
                 else if (snapshot.hasError)
                   _MessageCard(
                     icon: Icons.error_outline,
-                    title: 'Profil yuklenemedi',
+                    title: 'Profile could not be loaded',
                     subtitle: snapshot.error.toString(),
                   )
                 else if (user == null)
                   const _MessageCard(
                     icon: Icons.info_outline,
-                    title: 'Misafir oturum',
-                    subtitle: 'Profil bilgileri icin giris yapin.',
+                    title: 'Guest session',
+                    subtitle: 'Sign in to view profile information.',
                   )
                 else ...[
                   Card(
                     child: ListTile(
                       leading: const Icon(Icons.person_outline),
-                      title: const Text('Ad Soyad'),
+                      title: const Text('Full Name'),
                       subtitle: Text(
                         user.fullName.isEmpty ? '-' : user.fullName,
                       ),
@@ -128,8 +128,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.directions_car_outlined),
-                    title: const Text('Araclarim'),
-                    subtitle: const Text('Arac ekle / duzenle'),
+                    title: const Text('My Vehicles'),
+                    subtitle: const Text('Add or edit vehicles'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.of(context).push(
@@ -276,7 +276,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
-                        'Eski tutar: ${_formatAmount(payment.amount)}',
+                        'Original amount: ${_formatAmount(payment.amount)}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           decoration: TextDecoration.lineThrough,
                         ),
@@ -316,8 +316,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       ),
                       label: Text(
                         payment.couponId == null
-                            ? 'Kupon Ekle'
-                            : 'Kuponu Çıkart',
+                            ? 'Add Coupon'
+                            : 'Remove Coupon',
                       ),
                     ),
                   ),
@@ -394,7 +394,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         _paymentsFuture = _loadPayments();
       });
 
-      _showMessage('Kupon kaldırıldı');
+      _showMessage('Coupon removed');
     } catch (error) {
       if (!mounted) return;
       _showMessage(error.toString());
@@ -449,11 +449,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Vazgeç'),
+                child: const Text('Cancel'),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Uygula'),
+                child: const Text('Apply'),
               ),
             ],
           );
@@ -474,7 +474,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         _paymentsFuture = _loadPayments();
       });
 
-      _showMessage('Kupon uygulandı');
+      _showMessage('Coupon applied');
     } catch (error) {
       if (!mounted) return;
       _showMessage(error.toString());
@@ -519,7 +519,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         ),
         isThreeLine: true,
         trailing: IconButton(
-          tooltip: 'Kodu kopyala',
+          tooltip: 'Copy code',
           icon: const Icon(Icons.copy),
           onPressed: () => _copyCouponCode(coupon.code),
         ),
@@ -556,12 +556,12 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   String _couponStatus(Coupon coupon) {
-    if (!coupon.isActive) return 'Pasif';
+    if (!coupon.isActive) return 'Inactive';
     if (_isCouponNotStarted(coupon)) return 'Not started';
     if (_isCouponExpired(coupon)) return 'Expired';
     if (_isCouponUsedUp(coupon)) return 'Usage rights have expired.';
 
-    return 'Aktif';
+    return 'Active';
   }
 
   String _formatCouponDiscount(Coupon coupon) {
@@ -588,7 +588,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Kupon kodu kopyalandı')));
+    ).showSnackBar(const SnackBar(content: Text('Coupon code copied')));
   }
 
   Widget _buildCouponsTab() {
@@ -605,7 +605,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             children: [
               _MessageCard(
                 icon: Icons.error_outline,
-                title: 'Coupons can\'t uploaded.',
+                title: 'Coupons could not be loaded',
                 subtitle: snapshot.error.toString(),
               ),
             ],
@@ -621,7 +621,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               _MessageCard(
                 icon: Icons.confirmation_number_outlined,
                 title: 'You don\'t have any coupons',
-                subtitle: 'Your coupon\'s shown here.',
+                subtitle: 'Your coupons will appear here.',
               ),
             ],
           );
@@ -666,7 +666,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                   children: [
                     _MessageCard(
                       icon: Icons.error_outline,
-                      title: 'Payments can\'t loaded!',
+                      title: 'Payments could not be loaded',
                       subtitle: snapshot.error.toString(),
                     ),
                   ],
@@ -708,13 +708,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                           _buildPaymentList(
                             unpaidPayments,
                             emptyTitle: 'There aren\'t any unpaid payments',
-                            emptySubtitle: 'Your payments shown here.',
+                            emptySubtitle: 'Your payments will appear here.',
                           ),
                           _buildPaymentList(
                             paidPayments,
                             emptyTitle: 'There aren\'t any paid payments',
                             emptySubtitle:
-                                'Your completed payments shown here.',
+                                'Your completed payments will appear here.',
                           ),
                           _buildCouponsTab(),
                         ],
@@ -755,7 +755,7 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
     final amount = double.tryParse((value ?? '').trim());
 
     if (amount == null || amount <= 0) {
-      return 'Pozitif bir tutar girin';
+      return 'Enter a positive amount';
     }
 
     return null;
@@ -775,7 +775,7 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
 
       if (!mounted) return;
 
-      AppSnackBar.showSuccess(context, 'Amount added.');
+      AppSnackBar.showSuccess(context, 'Balance added.');
 
       Navigator.of(context).pop();
     } catch (error) {
@@ -793,13 +793,13 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppAppBar(title: 'Add amount.'),
+      appBar: const AppAppBar(title: 'Add Balance'),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Add amount.',
+              'Add Balance',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
@@ -811,7 +811,7 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
                   decimal: true,
                 ),
                 decoration: const InputDecoration(
-                  labelText: 'Tutar',
+                  labelText: 'Amount',
                   prefixIcon: Icon(Icons.account_balance_wallet_outlined),
                   suffixText: 'TL',
                 ),
@@ -822,7 +822,7 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
             FilledButton.icon(
               onPressed: _isSaving ? null : _addBalance,
               icon: const Icon(Icons.add),
-              label: Text(_isSaving ? 'Adding...' : 'Add amount.'),
+              label: Text(_isSaving ? 'Adding...' : 'Add Balance'),
             ),
           ],
         ),
@@ -870,7 +870,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
 
     final userId = await _tokenStorage.readUserId();
     if (userId == null || userId == 0) {
-      _showMessage('Arac eklemek icin giris yapmalisiniz');
+      _showMessage('You must sign in to add a vehicle');
       return;
     }
 
@@ -902,7 +902,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
       setState(() {
         _vehiclesFuture = _loadVehicles();
       });
-      _showMessage('Arac eklendi');
+      _showMessage('Vehicle added');
     } catch (error) {
       if (!mounted) return;
       _showMessage(error.toString());
@@ -922,7 +922,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
       setState(() {
         _vehiclesFuture = _loadVehicles();
       });
-      _showMessage('Arac silindi');
+      _showMessage('Vehicle deleted');
     } catch (error) {
       if (!mounted) return;
       _showMessage(error.toString());
@@ -934,13 +934,13 @@ class _VehicleScreenState extends State<VehicleScreen> {
   }
 
   String? _required(String? value) {
-    if ((value ?? '').trim().isEmpty) return 'Bu alan gerekli';
+    if ((value ?? '').trim().isEmpty) return 'This field is required';
     return null;
   }
 
   String? _positiveNumber(String? value) {
     final parsed = double.tryParse((value ?? '').trim());
-    if (parsed == null || parsed <= 0) return 'Pozitif sayi girin';
+    if (parsed == null || parsed <= 0) return 'Enter a positive number';
     return null;
   }
 
@@ -1075,7 +1075,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                 if (snapshot.hasError) {
                   return _MessageCard(
                     icon: Icons.error_outline,
-                    title: 'Araclar yuklenemedi',
+                    title: 'Vehicles could not be loaded',
                     subtitle: snapshot.error.toString(),
                   );
                 }
@@ -1206,19 +1206,19 @@ class _CouponCodeDialogState extends State<_CouponCodeDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Kupon Ekle'),
+      title: const Text('Add Coupon'),
       content: TextField(
         controller: _codeController,
         textCapitalization: TextCapitalization.characters,
         decoration: const InputDecoration(
-          labelText: 'Kupon Kodu',
+          labelText: 'Coupon Code',
           prefixIcon: Icon(Icons.confirmation_number_outlined),
         ),
         onSubmitted: (_) => _submit(),
       ),
       actions: [
-        TextButton(onPressed: _cancel, child: const Text('İptal')),
-        FilledButton(onPressed: _submit, child: const Text('Devam')),
+        TextButton(onPressed: _cancel, child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Continue')),
       ],
     );
   }
