@@ -7,6 +7,7 @@ class Reservation {
     required this.date,
     required this.startTime,
     required this.endTime,
+    required this.durationMinutes,
     required this.status,
   });
 
@@ -17,6 +18,7 @@ class Reservation {
   final String date;
   final String startTime;
   final String endTime;
+  final int durationMinutes;
   final String status;
 
   factory Reservation.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,9 @@ class Reservation {
       date: (json['date'] ?? '').toString(),
       startTime: (json['start_time'] ?? json['startTime'] ?? '').toString(),
       endTime: (json['end_time'] ?? json['endTime'] ?? '').toString(),
+      durationMinutes: _asInt(
+        json['duration_minutes'] ?? json['durationMinutes'] ?? 120,
+      ),
       status: (json['status'] ?? '').toString(),
     );
   }
@@ -41,28 +46,31 @@ class Reservation {
 
 class ReservationInput {
   const ReservationInput({
+    this.stationId,
     required this.vehicleId,
     required this.chargerId,
     required this.date,
     required this.startTime,
-    required this.endTime,
+    this.endTime,
     this.status = 'PENDING',
   });
 
+  final int? stationId;
   final int vehicleId;
   final int chargerId;
   final String date;
   final String startTime;
-  final String endTime;
+  final String? endTime;
   final String status;
 
   Map<String, dynamic> toJson() {
     return {
+      if (stationId != null) 'station_id': stationId,
       'vehicle_id': vehicleId,
       'charger_id': chargerId,
       'date': date,
       'start_time': startTime,
-      'end_time': endTime,
+      if (endTime != null) 'end_time': endTime,
       'status': status,
     };
   }

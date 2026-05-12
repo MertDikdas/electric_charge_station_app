@@ -6,17 +6,18 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/charger.dart';
-import '../../data/models/reservation.dart';
 import '../../data/models/station.dart';
 import '../../data/models/vehicle.dart';
 import '../../data/models/charging_session.dart';
+import '../../core/app_snackbar.dart';
 import '../../data/repositories/station_repository.dart';
 import '../../data/services/location_service.dart';
-import '../../data/services/reservation_service.dart';
 import '../../data/services/vehicle_service.dart';
 import '../../data/services/charging_session_service.dart';
 import '../page6_profile/page6_profile.dart';
 import '../page7_reservations/page7_rezervations_screen.dart';
+import '../reservation_time_selection/reservation_time_selection_screen.dart';
+import '../charging_verification/charging_verification_screen.dart';
 import '../notifications/in_app_notification_controller.dart';
 import '../notifications/notification_panel.dart';
 import 'map_camera_service.dart';
@@ -43,7 +44,6 @@ class _MapScreenState extends State<MapScreen> {
   final _locationService = LocationService();
   final _mapCameraService = MapCameraService();
   final _markerBuilder = StationMarkerBuilder();
-  final _reservationService = ReservationService();
   final _routeService = RouteService();
   final _stationRepository = StationRepository();
   final _vehicleService = VehicleService();
@@ -57,6 +57,8 @@ class _MapScreenState extends State<MapScreen> {
   Marker? _userLocationMarker;
   DateTime? _lastCameraFollowAt;
   int? _selectedStationId;
+  Station? _selectedStation;
+  Charger? _selectedCharger;
   RouteDetails? _activeRouteDetails;
   int? _activeRouteStationId;
   List<Station> _allStations = const [];
@@ -449,8 +451,14 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _showStationDetails(Station station) async {
     final bottomSheetColor = Theme.of(context).colorScheme.surface;
 
+    final previousStationId = _selectedStationId;
+
     setState(() {
       _selectedStationId = station.id;
+      _selectedStation = station;
+      if (previousStationId != station.id) {
+        _selectedCharger = null;
+      }
     });
     await _refreshVisibleMarkers();
 
@@ -475,8 +483,14 @@ class _MapScreenState extends State<MapScreen> {
           onRoutePressed: () => _drawRouteToStation(station),
           onReserveCharger: (charger) {
             Navigator.of(context).pop();
-            _createReservation(charger);
+            _openReservationTimeSelection(station, charger);
           },
+          onSelectCharger: (charger) {
+            setState(() {
+              _selectedCharger = charger;
+            });
+          },
+          selectedChargerId: _selectedCharger?.id,
           onSelectVehiclePressed: () {
             Navigator.of(context).pop();
             _showVehiclePicker();
@@ -770,71 +784,28 @@ class _MapScreenState extends State<MapScreen> {
     return isCompatible && isAvailable;
   }
 
-  Future<void> _createReservation(Charger charger) async {
+  Future<void> _openReservationTimeSelection(
+    Station station,
+    Charger charger,
+  ) async {
     final vehicle = _selectedVehicle;
     if (vehicle == null) {
       _showSnackBar('Rezervasyon icin once bir arac secin.');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final slot = _nextReservationSlot();
-      await _reservationService.createReservation(
-        ReservationInput(
-          vehicleId: vehicle.id,
-          chargerId: charger.id,
-          date: _formatDate(slot.start),
-          startTime: _formatTime(slot.start),
-          endTime: _formatTime(slot.end),
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReservationTimeSelectionScreen(
+          station: station,
+          charger: charger,
+          vehicle: vehicle,
         ),
-      );
-
-      if (!mounted) return;
-      _showSnackBar('${vehicle.model} icin rezervasyon olusturuldu.');
-      await _reloadStations();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.toString();
-      });
-      _showSnackBar('Rezervasyon olusturulamadi: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  _ReservationSlot _nextReservationSlot() {
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day, now.hour + 1);
-    return _ReservationSlot(
-      start: start,
-      end: start.add(const Duration(hours: 1)),
+      ),
     );
-  }
 
-  String _formatDate(DateTime dateTime) {
-    return [
-      dateTime.year.toString().padLeft(4, '0'),
-      dateTime.month.toString().padLeft(2, '0'),
-      dateTime.day.toString().padLeft(2, '0'),
-    ].join('-');
-  }
-
-  String _formatTime(DateTime dateTime) {
-    return [
-      dateTime.hour.toString().padLeft(2, '0'),
-      dateTime.minute.toString().padLeft(2, '0'),
-      '00',
-    ].join(':');
+    if (!mounted) return;
+    await _reloadStations();
   }
 
   String _formatPrice(double pricePerKwh) {
@@ -850,9 +821,7 @@ class _MapScreenState extends State<MapScreen> {
 
   void _showSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.showInfo(context, message);
   }
 
   Future<void> _openNotificationPanel() async {
@@ -884,7 +853,16 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       if (_activeChargingSession == null) {
-        final session = await _chargingSessionService.startSession();
+        final session = await _openChargingVerification();
+
+        if (session == null) {
+          if (mounted) {
+            setState(() {
+              _isSessionLoading = false;
+            });
+          }
+          return;
+        }
 
         if (!mounted) return;
         setState(() {
@@ -895,10 +873,6 @@ class _MapScreenState extends State<MapScreen> {
         _showSnackBar('Charging session started.');
         await _loadSessionHistory();
       } else {
-        await _chargingSessionService.finishSession(
-          sessionId: _activeChargingSession!.id,
-        );
-
         if (!mounted) return;
         setState(() {
           _activeChargingSession = null;
@@ -921,6 +895,12 @@ class _MapScreenState extends State<MapScreen> {
         });
       }
     }
+  }
+
+  Future<ChargingSession?> _openChargingVerification() async {
+    return Navigator.of(context).push(
+      ChargingVerificationRoute(),
+    );
   }
 
   @override
@@ -1272,13 +1252,6 @@ class _NotificationBellButton extends StatelessWidget {
   }
 }
 
-class _ReservationSlot {
-  const _ReservationSlot({required this.start, required this.end});
-
-  final DateTime start;
-  final DateTime end;
-}
-
 class _VehiclePickerButton extends StatelessWidget {
   const _VehiclePickerButton({
     required this.backgroundColor,
@@ -1393,7 +1366,7 @@ class _BottomNavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 24, color: colorScheme.onSurfaceVariant),
+            Icon(icon, size: 32, color: colorScheme.onSurfaceVariant),
             const SizedBox(height: 4),
             Text(
               label,
@@ -1402,7 +1375,7 @@ class _BottomNavItem extends StatelessWidget {
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
-                fontSize: 12,
+                fontSize: 15,
               ),
             ),
           ],
@@ -1560,6 +1533,7 @@ class _SessionHistoryTile extends StatelessWidget {
     );
   }
 }
+
 
 class _SessionHistorySheetContent extends StatelessWidget {
   const _SessionHistorySheetContent({required this.sessions});

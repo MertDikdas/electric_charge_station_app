@@ -14,6 +14,19 @@ class ReservationService {
     );
   }
 
+  Future<List<Reservation>> getChargerReservations({
+    required int chargerId,
+    required DateTime date,
+  }) async {
+    return parseList(
+      await _apiClient.get(
+        '/chargers/$chargerId/reservations',
+        queryParameters: {'date': _formatBackendDate(date)},
+      ),
+      Reservation.fromJson,
+    );
+  }
+
   Future<List<Reservation>> getReservations() async {
     return parseList(
       await _apiClient.get('/reservations/my'),
@@ -50,5 +63,13 @@ class ReservationService {
         ),
       ),
     );
+  }
+
+  String _formatBackendDate(DateTime date) {
+    return [
+      date.day.toString().padLeft(2, '0'),
+      date.month.toString().padLeft(2, '0'),
+      date.year.toString().padLeft(4, '0'),
+    ].join('-');
   }
 }

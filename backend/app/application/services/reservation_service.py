@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from app.core.uow import AbstractUnitOfWork
 from app.domain.models.reservation import ReservationEntity
@@ -9,15 +9,20 @@ from app.domain.rules.reservation_rules import (
     validate_reservation_conflicts,
     validate_reservation_duration,
     validate_reservation_time,
-    add_minutes_to_time,
     validate_reservation_status,
     validate_charger_id,
     validate_vehicle_id,
     validate_compatibility,
     validate_user_reservation_conflicts,
+    validate_reservation_slot_interval,
+    calculate_end_time,
 )
 
-BUFFER_MINUTES = 10
+DURATION_MINUTES = 120
+
+
+class ReservationConflictError(ValueError):
+    pass
 
 class ReservationService:
     allowed_statuses = {"PENDING", "CONFIRMED"}
@@ -33,6 +38,12 @@ class ReservationService:
         with self.uow:
             reservation.user_id = current_user_id
             reservation.status = reservation.status.upper()
+            reservation.duration_minutes = DURATION_MINUTES
+            start_at = datetime.combine(reservation.date, reservation.start_time)
+            end_at = start_at + timedelta(minutes=DURATION_MINUTES)
+            if end_at.date() != reservation.date:
+                raise ValueError("Reservation must end on the same day")
+            reservation.end_time = end_at.time()
             self._validate_reservation_request(reservation)
 
             new_reservation = self.uow.reservations.add(reservation)
@@ -73,11 +84,12 @@ class ReservationService:
 
     def _validate_reservation_request(self, reservation: ReservationEntity) -> None:
         validate_reservation_time(reservation)
+        validate_reservation_slot_interval(reservation)
         validate_reservation_status(reservation)
 
         ensure_reservation_not_in_past(reservation)
         ensure_reservation_not_too_far_in_future(reservation)
-        validate_reservation_duration(reservation)
+        validate_reservation_duration(reservation, expected_minutes=DURATION_MINUTES)
         
         user = self.uow.users.get(reservation.user_id)
         if not user:
@@ -125,21 +137,32 @@ class ReservationService:
         validate_charger_id(reservation, charger)
         validate_compatibility(reservation, vehicle, charger)
 
+        self.check_reservation_availability(reservation)
+
+    def check_reservation_availability(self, reservation: ReservationEntity) -> None:
         charger_conflicts = self.uow.reservations.list_overlapping_by_charger(
             reservation.charger_id,
             reservation.date,
-            add_minutes_to_time(reservation.start_time, BUFFER_MINUTES),
+            reservation.start_time,
             reservation.end_time,
         )
-        validate_reservation_conflicts(reservation, charger_conflicts, BUFFER_MINUTES)
-
         user_conflicts = self.uow.reservations.list_overlapping_by_user(
             reservation.user_id,
             reservation.date,
             reservation.start_time,
             reservation.end_time,
         )
-        validate_user_reservation_conflicts(reservation, user_conflicts)
+
+        try:
+            validate_reservation_conflicts(reservation, charger_conflicts)
+            validate_user_reservation_conflicts(reservation, user_conflicts)
+        except ValueError as exc:
+            raise ReservationConflictError(
+                "Selected time slot is already occupied."
+            ) from exc
+
+    def checkReservationAvailability(self, reservation: ReservationEntity) -> None:
+        self.check_reservation_availability(reservation)
 
     def _delete_future_reservations(self, reservation: ReservationEntity) -> None:
         future_reservations = self.uow.reservations.list_by_user_after_date(

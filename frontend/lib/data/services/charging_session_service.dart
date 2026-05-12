@@ -1,5 +1,6 @@
 import '../api/api_client.dart';
 import '../models/charging_session.dart';
+import '../models/charging_verification.dart';
 import '../api/api_exception.dart';
 import 'json_helpers.dart';
 
@@ -12,6 +13,23 @@ class ChargingSessionService {
   Future<ChargingSession> startSession() async {
     return ChargingSession.fromJson(
       parseObject(await _apiClient.post('/charging-sessions/start', body: {})),
+    );
+  }
+
+  Future<ChargingVerificationResult> verifyChargerCode({
+    required int chargerId,
+    required String verificationCode,
+  }) async {
+    return ChargingVerificationResult.fromJson(
+      parseObject(
+        await _apiClient.post(
+          '/charging/verify-code',
+          body: {
+            'charger_id': chargerId,
+            'verification_code': verificationCode,
+          },
+        ),
+      ),
     );
   }
 

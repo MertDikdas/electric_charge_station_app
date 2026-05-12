@@ -15,6 +15,8 @@ class StationDetailsBottomSheet extends StatefulWidget {
     required this.initialRouteDetails,
     required this.onRoutePressed,
     required this.onReserveCharger,
+    required this.onSelectCharger,
+    required this.selectedChargerId,
     required this.onSelectVehiclePressed,
     required this.formatPrice,
     required this.canReserveCharger,
@@ -27,6 +29,8 @@ class StationDetailsBottomSheet extends StatefulWidget {
   final RouteDetails? initialRouteDetails;
   final Future<RouteDetails?> Function() onRoutePressed;
   final ValueChanged<Charger> onReserveCharger;
+  final ValueChanged<Charger> onSelectCharger;
+  final int? selectedChargerId;
   final VoidCallback onSelectVehiclePressed;
   final String Function(double pricePerKwh) formatPrice;
   final bool Function(Charger charger) canReserveCharger;
@@ -39,11 +43,13 @@ class StationDetailsBottomSheet extends StatefulWidget {
 class _StationDetailsBottomSheetState extends State<StationDetailsBottomSheet> {
   RouteDetails? _routeDetails;
   bool _isRouteLoading = false;
+  int? _selectedChargerId;
 
   @override
   void initState() {
     super.initState();
     _routeDetails = widget.initialRouteDetails;
+    _selectedChargerId = widget.selectedChargerId;
   }
 
   Future<void> _requestRoute() async {
@@ -88,6 +94,22 @@ class _StationDetailsBottomSheetState extends State<StationDetailsBottomSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_selectedChargerId == null && chargers.isNotEmpty)
+                    Builder(
+                      builder: (context) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted || _selectedChargerId != null) return;
+                          final defaultCharger =
+                              chargers.where(widget.canReserveCharger).firstOrNull ??
+                              chargers.first;
+                          setState(() {
+                            _selectedChargerId = defaultCharger.id;
+                          });
+                          widget.onSelectCharger(defaultCharger);
+                        });
+                        return const SizedBox.shrink();
+                      },
+                    ),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
@@ -189,6 +211,13 @@ class _StationDetailsBottomSheetState extends State<StationDetailsBottomSheet> {
                     snapshot: snapshot,
                     canReserveCharger: widget.canReserveCharger,
                     onReserveCharger: widget.onReserveCharger,
+                    onSelectCharger: (charger) {
+                      setState(() {
+                        _selectedChargerId = charger.id;
+                      });
+                      widget.onSelectCharger(charger);
+                    },
+                    selectedChargerId: _selectedChargerId,
                     formatPrice: widget.formatPrice,
                   ),
                 ],
@@ -380,6 +409,8 @@ class _ChargerList extends StatelessWidget {
     required this.snapshot,
     required this.canReserveCharger,
     required this.onReserveCharger,
+    required this.onSelectCharger,
+    required this.selectedChargerId,
     required this.formatPrice,
   });
 
@@ -387,6 +418,8 @@ class _ChargerList extends StatelessWidget {
   final AsyncSnapshot<List<Charger>> snapshot;
   final bool Function(Charger charger) canReserveCharger;
   final ValueChanged<Charger> onReserveCharger;
+  final ValueChanged<Charger> onSelectCharger;
+  final int? selectedChargerId;
   final String Function(double pricePerKwh) formatPrice;
 
   @override
@@ -420,24 +453,43 @@ class _ChargerList extends StatelessWidget {
     return Column(
       children: chargers
           .map(
-            (charger) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.ev_station),
-              title: Text('${charger.connectorType} - ${charger.currentType}'),
-              subtitle: Text(
-                [
-                  charger.status,
-                  '${charger.maxPower.toStringAsFixed(0)} kW',
-                  formatPrice(charger.pricePerKwh),
-                ].join(' | '),
-              ),
-              trailing: FilledButton.tonal(
-                onPressed: canReserveCharger(charger)
-                    ? () => onReserveCharger(charger)
-                    : null,
-                child: const Text('Reserve'),
-              ),
-            ),
+            (charger) {
+              final isSelected = charger.id == selectedChargerId;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.ev_station,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                title: Text('${charger.connectorType} - ${charger.currentType}'),
+                subtitle: Text(
+                  [
+                    charger.status,
+                    '${charger.maxPower.toStringAsFixed(0)} kW',
+                    formatPrice(charger.pricePerKwh),
+                  ].join(' | '),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSelected)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(Icons.check_circle, size: 20),
+                      ),
+                    FilledButton.tonal(
+                      onPressed: canReserveCharger(charger)
+                          ? () => onReserveCharger(charger)
+                          : null,
+                      child: const Text('Reserve'),
+                    ),
+                  ],
+                ),
+                onTap: () => onSelectCharger(charger),
+              );
+            },
           )
           .toList(),
     );
