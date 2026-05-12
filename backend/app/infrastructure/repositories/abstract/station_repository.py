@@ -22,3 +22,7 @@ class AbstractStationRepository(AbstractRepository[StationEntity]):
     def list_nearby_in_area(self, north_latitude: float, south_latitude: float, east_longitude: float, west_longitude: float) -> List[StationEntity]:
         raise NotImplementedError
     
+    @abstractmethod
+    def close_by_company_id(self, company_id: int) -> None:
+        raise NotImplementedError
+    

@@ -45,3 +45,21 @@ class SqlAlchemyCompanyMemberRepository(SqlAlchemyRepository[CompanyMemberEntity
     def get_all_active(self) -> list[CompanyMemberEntity]:
         models = self.session.query(CompanyMemberModel).filter(CompanyMemberModel.is_active.is_(True)).all()
         return [self.to_entity(model) for model in models]
+    
+    def deactivate_by_user_id(self, user_id: int) -> None:
+        self.session.query(CompanyMemberModel).filter(
+            CompanyMemberModel.user_id == user_id,
+            CompanyMemberModel.is_active.is_(True),
+        ).update(
+            {CompanyMemberModel.is_active: False},
+            synchronize_session=False,
+        )
+
+    def deactivate_by_company_id(self, company_id: int) -> None:
+        self.session.query(CompanyMemberModel).filter(
+            CompanyMemberModel.company_id == company_id,
+            CompanyMemberModel.is_active.is_(True),
+        ).update(
+            {CompanyMemberModel.is_active: False},
+            synchronize_session=False,
+        )

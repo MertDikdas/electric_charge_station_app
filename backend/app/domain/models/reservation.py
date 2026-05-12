@@ -9,6 +9,7 @@ from app.domain.models.base import BaseEntity
 class ReservationEntity(BaseEntity):
     user_id: int
     vehicle_id: int
+    station_id: int
     charger_id: int
     date: date
     start_time: time

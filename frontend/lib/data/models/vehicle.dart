@@ -2,6 +2,8 @@ class Vehicle {
   const Vehicle({
     required this.id,
     required this.userId,
+    required this.name,
+    required this.brand,
     required this.model,
     required this.plate,
     required this.maxChargingPower,
@@ -12,6 +14,8 @@ class Vehicle {
 
   final int id;
   final int userId;
+  final String name;
+  final String brand;
   final String model;
   final String plate;
   final double maxChargingPower;
@@ -23,6 +27,8 @@ class Vehicle {
     return Vehicle(
       id: _asInt(json['id']),
       userId: _asInt(json['user_id'] ?? json['userId']),
+      name: (json['name'] ?? '').toString(),
+      brand: (json['brand'] ?? '').toString(),
       model: (json['model'] ?? '').toString(),
       plate: (json['plate'] ?? json['license_plate'] ?? '').toString(),
       maxChargingPower: _asDouble(
@@ -41,6 +47,8 @@ class Vehicle {
   Map<String, dynamic> toJson() {
     return {
       'user_id': userId,
+      'name': name,
+      'brand': brand,
       'model': model,
       'plate': plate,
       'max_charging_power': maxChargingPower,
@@ -66,6 +74,8 @@ class Vehicle {
 class VehicleInput {
   const VehicleInput({
     required this.userId,
+    required this.name,
+    required this.brand,
     required this.model,
     required this.plate,
     required this.maxChargingPower,
@@ -75,6 +85,8 @@ class VehicleInput {
   });
 
   final int userId;
+  final String name;
+  final String brand;
   final String model;
   final String plate;
   final double maxChargingPower;
@@ -85,6 +97,8 @@ class VehicleInput {
   Map<String, dynamic> toJson() {
     return {
       'user_id': userId,
+      'name': name,
+      'brand': brand,
       'model': model,
       'plate': plate,
       'max_charging_power': maxChargingPower,

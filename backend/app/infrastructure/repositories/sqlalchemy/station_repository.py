@@ -20,6 +20,7 @@ class SqlAlchemyStationRepository(
     def to_model(self, entity: StationEntity) -> StationModel:
         return StationModel(
             id=entity.id,
+            name=entity.name,
             address=entity.address,
             company_id=entity.company_id,
             latitude=entity.latitude,
@@ -31,6 +32,7 @@ class SqlAlchemyStationRepository(
     def to_entity(self, model: StationModel) -> StationEntity:
         return StationEntity(
             id=model.id,
+            name=model.name,
             address=model.address,
             company_id=model.company_id,
             latitude=model.latitude,
@@ -78,6 +80,7 @@ class SqlAlchemyStationRepository(
     def update(self, station: StationEntity) -> None:
         model = self.session.get(StationModel, station.id)
         if model:
+            model.name = station.name
             model.address = station.address
             model.company_id = station.company_id
             model.latitude = station.latitude
@@ -93,3 +96,12 @@ class SqlAlchemyStationRepository(
             .all()
         )
         return [self.to_entity(model) for model in models]
+    
+    def close_by_company_id(self, company_id: int) -> None:
+        self.session.query(StationModel).filter(
+            StationModel.company_id == company_id, 
+            StationModel.status != 'CLOSED',
+        ).update(
+            {StationModel.status: 'CLOSED'},
+            synchronize_session=False,
+        )

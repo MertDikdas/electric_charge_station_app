@@ -6,6 +6,7 @@ from app.domain.models.charger import ChargerEntity
 
 @dataclass
 class StationEntity(BaseEntity):
+    name: str
     address: str
     latitude: float
     longitude: float
