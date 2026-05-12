@@ -26,6 +26,7 @@ class VehicleInfoPage extends StatefulWidget {
 
 class _VehicleInfoPageState extends State<VehicleInfoPage> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _brandController = TextEditingController();
   final _modelController = TextEditingController();
   final _plateController = TextEditingController();
@@ -38,6 +39,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _brandController.dispose();
     _modelController.dispose();
     _plateController.dispose();
@@ -53,12 +55,14 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     setState(() {
       _vehicles.add(
         _VehicleInfo(
+          name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
           chargingPower: _chargingPowerController.text.trim(),
         ),
       );
+      _nameController.clear();
       _brandController.clear();
       _modelController.clear();
       _plateController.clear();
@@ -76,7 +80,8 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
   }
 
   bool get _hasVehicleDraft {
-    return _brandController.text.trim().isNotEmpty ||
+    return _nameController.text.trim().isNotEmpty ||
+        _brandController.text.trim().isNotEmpty ||
         _modelController.text.trim().isNotEmpty ||
         _plateController.text.trim().isNotEmpty ||
         _chargingPowerController.text.trim().isNotEmpty;
@@ -90,6 +95,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
       _vehicles.add(
         _VehicleInfo(
+          name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
@@ -127,7 +133,8 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           await _vehicleService.createVehicle(
             VehicleInput(
               userId: user.id,
-              name: '${vehicle.brand} ${vehicle.model}'.trim(),
+              name: vehicle.name,
+              model: vehicle.model,
               brand: vehicle.brand,
               plate: vehicle.licensePlate,
               maxChargingPower: double.parse(vehicle.chargingPower),
@@ -231,6 +238,22 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                     ],
                     const SizedBox(height: 30),
                     TextFormField(
+                      controller: _nameController,
+                      textInputAction: TextInputAction.next,
+                      decoration: _inputDecoration(
+                        context,
+                        hintText: 'Car Name',
+                        prefixIcon: const Icon(Icons.directions_car_outlined),
+                      ),
+                      validator: (value) {
+                        if ((value?.trim() ?? '').isEmpty) {
+                          return 'Car name is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 30),
+                    TextFormField(
                       controller: _brandController,
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
@@ -240,7 +263,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                       ),
                       validator: (value) {
                         if ((value?.trim() ?? '').isEmpty) {
-                          return 'Araç markası gerekli';
+                          return 'Car brand is required';
                         }
                         return null;
                       },
@@ -256,7 +279,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                       ),
                       validator: (value) {
                         if ((value?.trim() ?? '').isEmpty) {
-                          return 'Araç modeli gerekli';
+                          return 'Car model is required';
                         }
                         return null;
                       },
@@ -273,7 +296,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                       ),
                       validator: (value) {
                         if ((value?.trim() ?? '').length < 5) {
-                          return 'Geçerli bir plaka girin';
+                          return 'Please enter a valid plate';
                         }
                         return null;
                       },
@@ -296,7 +319,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                       validator: (value) {
                         final power = double.tryParse(value?.trim() ?? '');
                         if (power == null || power <= 0) {
-                          return 'Geçerli bir kW değeri girin';
+                          return 'Enter a valid charging power';
                         }
                         return null;
                       },
@@ -343,12 +366,13 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
 class _VehicleInfo {
   const _VehicleInfo({
+    required this.name,
     required this.brand,
     required this.model,
     required this.licensePlate,
     required this.chargingPower,
   });
-
+  final String name;
   final String brand;
   final String model;
   final String licensePlate;
