@@ -5,21 +5,23 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../core/app_snackbar.dart';
 import '../../data/models/charger.dart';
+import '../../data/models/reservation.dart';
+import '../../data/models/charging_session.dart';
 import '../../data/models/station.dart';
 import '../../data/models/vehicle.dart';
-import '../../data/models/charging_session.dart';
-import '../../core/app_snackbar.dart';
 import '../../data/repositories/station_repository.dart';
-import '../../data/services/location_service.dart';
-import '../../data/services/vehicle_service.dart';
 import '../../data/services/charging_session_service.dart';
-import '../page6_profile/page6_profile.dart';
-import '../page7_reservations/page7_rezervations_screen.dart';
-import '../reservation_time_selection/reservation_time_selection_screen.dart';
+import '../../data/services/location_service.dart';
+import '../../data/services/reservation_service.dart';
+import '../../data/services/vehicle_service.dart';
 import '../charging_verification/charging_verification_screen.dart';
 import '../notifications/in_app_notification_controller.dart';
 import '../notifications/notification_panel.dart';
+import '../page6_profile/page6_profile.dart';
+import '../page7_reservations/page7_rezervations_screen.dart';
+import '../reservation_time_selection/reservation_time_selection_screen.dart';
 import 'map_camera_service.dart';
 import 'route_details.dart';
 import 'route_service.dart';
@@ -44,6 +46,7 @@ class _MapScreenState extends State<MapScreen> {
   final _locationService = LocationService();
   final _mapCameraService = MapCameraService();
   final _markerBuilder = StationMarkerBuilder();
+  final _reservationService = ReservationService();
   final _routeService = RouteService();
   final _stationRepository = StationRepository();
   final _vehicleService = VehicleService();
@@ -135,12 +138,12 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadActiveChargingSession() async {
-    print('ACTIVE SESSION LOAD STARTED');
+    debugPrint('ACTIVE SESSION LOAD STARTED');
 
     try {
       final session = await _chargingSessionService.getActiveSession();
 
-      print('ACTIVE SESSION RESULT: $session');
+      debugPrint('ACTIVE SESSION RESULT: $session');
 
       if (!mounted) return;
 
@@ -150,7 +153,7 @@ class _MapScreenState extends State<MapScreen> {
 
       await _loadActiveProgress();
     } catch (error) {
-      print('ACTIVE SESSION ERROR: $error');
+      debugPrint('ACTIVE SESSION ERROR: $error');
 
       if (!mounted) return;
 
@@ -811,6 +814,77 @@ class _MapScreenState extends State<MapScreen> {
     await _reloadStations();
   }
 
+  // Kept for the legacy immediate-reservation merge path. The active reserve
+  // flow uses ReservationTimeSelectionScreen so users choose a slot first.
+  // ignore: unused_element
+  Future<void> _createReservation(Charger charger) async {
+    final vehicle = _selectedVehicle;
+    if (vehicle == null) {
+      _showSnackBar('Select a vehicle before making a reservation.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final slot = _nextReservationSlot();
+      await _reservationService.createReservation(
+        ReservationInput(
+          stationId: _selectedStation?.id,
+          vehicleId: vehicle.id,
+          chargerId: charger.id,
+          date: _formatDate(slot.start),
+          startTime: _formatTime(slot.start),
+          endTime: _formatTime(slot.end),
+        ),
+      );
+
+      if (!mounted) return;
+      _showSnackBar('${vehicle.model} reservation created.');
+      await _reloadStations();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+      });
+      _showSnackBar('Reservation could not be created: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  _ReservationSlot _nextReservationSlot() {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day, now.hour + 1);
+    return _ReservationSlot(
+      start: start,
+      end: start.add(const Duration(hours: 1)),
+    );
+  }
+
+  String _formatDate(DateTime dateTime) {
+    return [
+      dateTime.year.toString().padLeft(4, '0'),
+      dateTime.month.toString().padLeft(2, '0'),
+      dateTime.day.toString().padLeft(2, '0'),
+    ].join('-');
+  }
+
+  String _formatTime(DateTime dateTime) {
+    return [
+      dateTime.hour.toString().padLeft(2, '0'),
+      dateTime.minute.toString().padLeft(2, '0'),
+      '00',
+    ].join(':');
+  }
+
   String _formatPrice(double pricePerKwh) {
     if (pricePerKwh <= 0) return 'Price unavailable';
     return '${pricePerKwh.toStringAsFixed(2)} / kWh';
@@ -856,9 +930,11 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       if (_activeChargingSession == null) {
-        final session = await _openChargingVerification();
+        final verified = await Navigator.of(
+          context,
+        ).push(ChargingVerificationRoute());
 
-        if (session == null) {
+        if (verified == null) {
           if (mounted) {
             setState(() {
               _isSessionLoading = false;
@@ -866,6 +942,8 @@ class _MapScreenState extends State<MapScreen> {
           }
           return;
         }
+
+        final session = await _chargingSessionService.startSession();
 
         if (!mounted) return;
         setState(() {
@@ -876,6 +954,10 @@ class _MapScreenState extends State<MapScreen> {
         _showSnackBar('Charging session started.');
         await _loadSessionHistory();
       } else {
+        await _chargingSessionService.finishSession(
+          sessionId: _activeChargingSession!.id,
+        );
+
         if (!mounted) return;
         setState(() {
           _activeChargingSession = null;
@@ -898,10 +980,6 @@ class _MapScreenState extends State<MapScreen> {
         });
       }
     }
-  }
-
-  Future<ChargingSession?> _openChargingVerification() async {
-    return Navigator.of(context).push(ChargingVerificationRoute());
   }
 
   @override
@@ -1139,63 +1217,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
-class ActiveChargingCard extends StatelessWidget {
-  const ActiveChargingCard({super.key, required this.progress});
-
-  final ChargingSessionProgress progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      elevation: 8,
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.bolt, color: colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Charging in progress',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: progress.progressPercent / 100,
-              minHeight: 8,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${progress.estimatedEnergyKwh.toStringAsFixed(2)} kWh charged',
-              style: const TextStyle(fontSize: 14),
-            ),
-            Text(
-              'Estimated cost: ₺${progress.estimatedCost.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 14),
-            ),
-            Text(
-              'Elapsed time: ${progress.elapsedMinutes} min',
-              style: const TextStyle(fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _NotificationBellButton extends StatelessWidget {
   const _NotificationBellButton({required this.onPressed});
 
@@ -1251,6 +1272,13 @@ class _NotificationBellButton extends StatelessWidget {
       },
     );
   }
+}
+
+class _ReservationSlot {
+  const _ReservationSlot({required this.start, required this.end});
+
+  final DateTime start;
+  final DateTime end;
 }
 
 class _VehiclePickerButton extends StatelessWidget {
@@ -1462,42 +1490,6 @@ class _SessionHistoryChip extends StatelessWidget {
   }
 }
 
-class _MiniSessionHistoryItem extends StatelessWidget {
-  const _MiniSessionHistoryItem({required this.session});
-
-  final ChargingSession session;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          Icon(Icons.ev_station, size: 18, color: colorScheme.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Session #${session.id}',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ),
-          Text(
-            session.endTime ?? session.status.toUpperCase(),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SessionHistoryTile extends StatelessWidget {
   const _SessionHistoryTile({required this.session});
 
@@ -1523,10 +1515,9 @@ class _SessionHistoryTile extends StatelessWidget {
         ),
         subtitle: Text(
           [
-            'Start: ${session.startTime ?? '-'}',
-            'End: ${session.endTime ?? '-'}',
-            if (session.totalCost != null)
-              'Cost: ${session.totalCost!.toStringAsFixed(2)} TL',
+            'Start: ${session.startTime}',
+            'End: ${session.endTime}',
+            'Cost: ${session.totalCost.toStringAsFixed(2)} TL',
           ].join('\n'),
         ),
         isThreeLine: true,
@@ -1562,7 +1553,8 @@ class _SessionHistorySheetContent extends StatelessWidget {
             Expanded(
               child: ListView.separated(
                 itemCount: sessions.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   return _SessionHistoryTile(session: sessions[index]);
                 },
