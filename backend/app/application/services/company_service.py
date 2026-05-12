@@ -58,12 +58,14 @@ class CompanyService:
             company = self.uow.companies.get(company_id)
             if not company:
                 raise ValueError("Company not found")
-            self.uow.companies.delete(company)
+            company.is_active = False
+            self.uow.companies.update(company)
+            self.uow.company_members.deactivate_by_company_id(company_id)
+            self.uow.stations.close_by_company_id(company_id)
             self.uow.commit()
     
     def update_company_status(self, company_id: int, is_active: bool) -> CompanyEntity:
         validate_company_status(is_active)
-
         with self.uow:
             company = self.uow.companies.get(company_id)
             if not company:

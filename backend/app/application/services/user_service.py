@@ -35,7 +35,8 @@ class UserService:
             user = self.uow.users.get_by_email(email)
             if not user or not verify_password(password, user.password_hash):
                 return None
-
+            if not user.is_active:
+                raise ValueError("User account is deactivated")
             access_token = self._create_session(user)
             self.uow.commit()
 
@@ -105,6 +106,9 @@ class UserService:
                 raise ValueError("User not found")
             user.is_active = False
             self.uow.users.update(user)
+            self.uow.vehicles.deactivate_by_user_id(user_id)
+            self.uow.company_members.deactivate_by_user_id(user_id)
+            self.uow.reservations.delete_upcoming_by_user_id(user_id)
             self.uow.commit()
 
 

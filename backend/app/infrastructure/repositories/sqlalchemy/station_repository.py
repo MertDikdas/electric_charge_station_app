@@ -96,3 +96,12 @@ class SqlAlchemyStationRepository(
             .all()
         )
         return [self.to_entity(model) for model in models]
+    
+    def close_by_company_id(self, company_id: int) -> None:
+        self.session.query(StationModel).filter(
+            StationModel.company_id == company_id, 
+            StationModel.status != 'CLOSED',
+        ).update(
+            {StationModel.status: 'CLOSED'},
+            synchronize_session=False,
+        )

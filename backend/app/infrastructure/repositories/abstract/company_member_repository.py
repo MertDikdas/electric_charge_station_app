@@ -16,3 +16,11 @@ class AbstractCompanyMemberRepository(AbstractRepository[CompanyMemberEntity]):
     @abstractmethod
     def get_all_active(self) -> list[CompanyMemberEntity]:
         raise NotImplementedError
+    
+    @abstractmethod
+    def deactivate_by_user_id(self, user_id: int) -> None:
+        raise NotImplementedError
+    
+    @abstractmethod
+    def deactivate_by_company_id(self, company_id: int) -> None:
+        raise NotImplementedError

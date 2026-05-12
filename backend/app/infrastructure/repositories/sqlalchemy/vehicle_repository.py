@@ -76,3 +76,12 @@ class SqlAlchemyVehicleRepository(
         if model:
             return self.to_entity(model)
         return None
+    
+    def deactivate_by_user_id(self, user_id: int) -> None:
+        self.session.query(VehicleModel).filter(
+            VehicleModel.user_id == user_id,
+            VehicleModel.is_active.is_(True),
+        ).update(
+            {VehicleModel.is_active: False},
+            synchronize_session=False,
+        )

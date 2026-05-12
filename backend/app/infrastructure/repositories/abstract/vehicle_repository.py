@@ -17,3 +17,7 @@ class AbstractVehicleRepository(AbstractRepository[VehicleEntity]):
     @abstractmethod
     def get_by_id(self, vehicle_id: int) -> VehicleEntity | None:
         raise NotImplementedError
+    
+    @abstractmethod
+    def deactivate_by_user_id(self, user_id: int) -> None:
+        raise NotImplementedError
