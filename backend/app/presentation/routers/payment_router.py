@@ -50,7 +50,7 @@ def get_my_payments(
     service: PaymentService = Depends(get_payment_service),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
-    return service.get_user_payments(current_user.id)
+    return service.get_user_payments_with_coupon_info(current_user.id)
 
 
 @router.get("/status/{status}", response_model=List[PaymentResponse])

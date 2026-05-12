@@ -46,6 +46,47 @@ class PaymentService:
             if not self.uow.users.get(user_id):
                 raise LookupError("User not found")
             return self.uow.payments.list_by_user_id(user_id)
+        
+    def get_user_payments_with_coupon_info(self, user_id: int) -> list[dict]:
+        with self.uow:
+            if not self.uow.users.get(user_id):
+                raise LookupError("User not found")
+
+            payments = self.uow.payments.list_by_user_id(user_id)
+            response = []
+
+            for payment in payments:
+                coupon_code = None
+                discount_amount = 0.0
+                final_amount = payment.amount
+
+                if payment.coupon_id is not None:
+                    coupon = self.uow.coupons.get(payment.coupon_id)
+
+                    if coupon is not None:
+                        coupon_code = coupon.code
+                        discount_amount = calculate_coupon_discount(
+                            coupon,
+                            payment.amount,
+                        )
+                        final_amount = round(payment.amount - discount_amount, 2)
+
+                response.append(
+                    {
+                        "id": payment.id,
+                        "user_id": payment.user_id,
+                        "reservation_id": payment.reservation_id,
+                        "amount": payment.amount,
+                        "status": payment.status,
+                        "payment_date": payment.payment_date,
+                        "coupon_id": payment.coupon_id,
+                        "coupon_code": coupon_code,
+                        "discount_amount": discount_amount,
+                        "final_amount": final_amount,
+                    }
+                )
+
+            return response
 
     def get_payments_by_status(self, status: str) -> List[PaymentEntity]:
         with self.uow:

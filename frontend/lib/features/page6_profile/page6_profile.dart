@@ -209,42 +209,147 @@ class PaymentsScreen extends StatefulWidget {
 class _PaymentsScreenState extends State<PaymentsScreen> {
   final _paymentService = PaymentService();
   final _couponService = CouponService();
-  final Map<int, CouponApplyResult> _appliedCoupons = {};
   late Future<List<Payment>> _paymentsFuture = _loadPayments();
+  late Future<List<Coupon>> _couponsFuture = _loadCoupons();
   bool _isProcessing = false;
 
-  Future<List<Payment>> _loadPayments() async {
-    final payments = await _paymentService.getMyPayments();
+  bool _isPaid(Payment payment) {
+    final status = payment.status.toUpperCase();
 
-    final appliedCoupons = <int, CouponApplyResult>{};
+    return status == 'PAID' ||
+        status == 'COMPLETED' ||
+        status == 'SUCCESS' ||
+        status == 'SUCCEEDED';
+  }
 
-    for (final payment in payments) {
-      if (payment.couponId == null) continue;
+  Future<List<Coupon>> _loadCoupons() {
+    return _couponService.getMyCoupons();
+  }
 
-      try {
-        final coupon = await _couponService.getCoupon(payment.couponId!);
+  Future<void> _refreshPaymentsAndCoupons() async {
+    setState(() {
+      _paymentsFuture = _loadPayments();
+      _couponsFuture = _loadCoupons();
+    });
 
-        final preview = await _couponService.previewCoupon(
-          paymentId: payment.id,
-          code: coupon.code,
-          orderAmount: payment.amount,
-        );
+    await Future.wait([_paymentsFuture, _couponsFuture]);
+  }
 
-        appliedCoupons[payment.id] = preview;
-      } catch (_) {
-        // Kupon silindiyse veya preview hata verirse ödeme yine normal gösterilsin.
-      }
-    }
+  Widget _buildPaymentList(
+    List<Payment> payments, {
+    required String emptyTitle,
+    required String emptySubtitle,
+  }) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: payments.map(_buildPaymentCard).toList(),
+    );
+  }
 
-    if (mounted) {
-      setState(() {
-        _appliedCoupons
-          ..clear()
-          ..addAll(appliedCoupons);
-      });
-    }
+  Widget _buildPaymentCard(Payment payment) {
+    final canPay = _canPay(payment);
 
-    return payments;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Builder(
+                builder: (context) {
+                  final hasDiscount =
+                      payment.couponId != null && payment.discountAmount > 0;
+
+                  if (!hasDiscount) {
+                    return Text(_formatAmount(payment.amount));
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatAmount(payment.finalAmount),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        'Eski tutar: ${_formatAmount(payment.amount)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              subtitle: Text(
+                'Status: ${payment.status}\n'
+                'Reservation ID: ${payment.reservationId}'
+                '${payment.couponCode == null ? '' : '\nCoupon: ${payment.couponCode}'}'
+                '${payment.discountAmount <= 0 ? '' : '\nDiscount: ${_formatAmount(payment.discountAmount)}'}',
+              ),
+              isThreeLine: true,
+            ),
+            const SizedBox(height: 8),
+
+            if (canPay)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: !_isProcessing
+                          ? () {
+                              if (payment.couponId == null) {
+                                _showCouponDialog(payment);
+                              } else {
+                                _removeCoupon(payment);
+                              }
+                            }
+                          : null,
+                      icon: Icon(
+                        payment.couponId == null
+                            ? Icons.confirmation_number_outlined
+                            : Icons.remove_circle_outline,
+                      ),
+                      label: Text(
+                        payment.couponId == null
+                            ? 'Kupon Ekle'
+                            : 'Kuponu Çıkart',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: !_isProcessing
+                          ? () => _completePayment(payment.id)
+                          : null,
+                      icon: const Icon(Icons.payment_outlined),
+                      label: Text(
+                        _isProcessing ? 'Processing' : 'Make payment',
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Align(
+                alignment: Alignment.centerRight,
+                child: Chip(
+                  avatar: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Paid'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<List<Payment>> _loadPayments() {
+    return _paymentService.getMyPayments();
   }
 
   Future<void> _completePayment(int paymentId) async {
@@ -285,7 +390,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       if (!mounted) return;
 
       setState(() {
-        _appliedCoupons.remove(payment.id);
         _paymentsFuture = _loadPayments();
       });
 
@@ -334,12 +438,12 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Kupon Önizleme'),
+            title: const Text('Coupon Preview'),
             content: Text(
-              'Kupon kodu: $code\n'
-              'İlk tutar: ${payment.amount.toStringAsFixed(2)} TL\n'
-              'İndirim: ${preview.discountAmount.toStringAsFixed(2)} TL\n'
-              'Yeni tutar: ${preview.finalAmount.toStringAsFixed(2)} TL',
+              'Coupon Code: $code\n'
+              'First Amount: ${payment.amount.toStringAsFixed(2)} TL\n'
+              'Discount: ${preview.discountAmount.toStringAsFixed(2)} TL\n'
+              'New Amount: ${preview.finalAmount.toStringAsFixed(2)} TL',
             ),
             actions: [
               TextButton(
@@ -357,7 +461,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
       if (shouldApply != true) return;
 
-      final appliedCoupon = await _couponService.applyCoupon(
+      await _couponService.applyCoupon(
         paymentId: payment.id,
         code: code,
         orderAmount: payment.amount,
@@ -366,7 +470,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       if (!mounted) return;
 
       setState(() {
-        _appliedCoupons[payment.id] = appliedCoupon;
         _paymentsFuture = _loadPayments();
       });
 
@@ -397,18 +500,160 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     return '${amount.toStringAsFixed(2)} TL';
   }
 
+  Widget _buildCouponCard(Coupon coupon) {
+    final isUsable = _isCouponUsable(coupon);
+
+    return Card(
+      child: ListTile(
+        leading: Icon(
+          isUsable
+              ? Icons.confirmation_number
+              : Icons.confirmation_number_outlined,
+        ),
+        title: Text(coupon.code),
+        subtitle: Text(
+          'Status: ${_couponStatus(coupon)}\n'
+          'Discount: ${_formatCouponDiscount(coupon)}\n'
+          'Minimum Amount: ${_formatAmount(coupon.minOrderAmount)}\n'
+          'Validity Date: ${_formatCouponDate(coupon.validFrom)} - ${_formatCouponDate(coupon.validUntil)}\n'
+          'Usage: ${coupon.usedCount}/${coupon.usageLimit ?? '∞'}',
+        ),
+        isThreeLine: true,
+        trailing: IconButton(
+          tooltip: 'Kodu kopyala',
+          icon: const Icon(Icons.copy),
+          onPressed: () => _copyCouponCode(coupon.code),
+        ),
+      ),
+    );
+  }
+
+  bool _isCouponExpired(Coupon coupon) {
+    final validUntil = DateTime.tryParse(coupon.validUntil);
+    if (validUntil == null) return false;
+
+    return validUntil.isBefore(DateTime.now());
+  }
+
+  bool _isCouponNotStarted(Coupon coupon) {
+    final validFrom = DateTime.tryParse(coupon.validFrom);
+    if (validFrom == null) return false;
+
+    return validFrom.isAfter(DateTime.now());
+  }
+
+  bool _isCouponUsedUp(Coupon coupon) {
+    final usageLimit = coupon.usageLimit;
+    if (usageLimit == null) return false;
+
+    return coupon.usedCount >= usageLimit;
+  }
+
+  bool _isCouponUsable(Coupon coupon) {
+    return coupon.isActive &&
+        !_isCouponExpired(coupon) &&
+        !_isCouponNotStarted(coupon) &&
+        !_isCouponUsedUp(coupon);
+  }
+
+  String _couponStatus(Coupon coupon) {
+    if (!coupon.isActive) return 'Pasif';
+    if (_isCouponNotStarted(coupon)) return 'Not started';
+    if (_isCouponExpired(coupon)) return 'Expired';
+    if (_isCouponUsedUp(coupon)) return 'Usage rights have expired.';
+
+    return 'Aktif';
+  }
+
+  String _formatCouponDiscount(Coupon coupon) {
+    if (coupon.discountType.toUpperCase() == 'PERCENTAGE') {
+      return '%${coupon.discountValue.toStringAsFixed(0)}';
+    }
+
+    return _formatAmount(coupon.discountValue);
+  }
+
+  String _formatCouponDate(String value) {
+    final date = DateTime.tryParse(value);
+    if (date == null) return value;
+
+    return '${date.day.toString().padLeft(2, '0')}.'
+        '${date.month.toString().padLeft(2, '0')}.'
+        '${date.year}';
+  }
+
+  Future<void> _copyCouponCode(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Kupon kodu kopyalandı')));
+  }
+
+  Widget _buildCouponsTab() {
+    return FutureBuilder<List<Coupon>>(
+      future: _couponsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _MessageCard(
+                icon: Icons.error_outline,
+                title: 'Coupons can\'t uploaded.',
+                subtitle: snapshot.error.toString(),
+              ),
+            ],
+          );
+        }
+
+        final coupons = snapshot.data ?? [];
+
+        if (coupons.isEmpty) {
+          return ListView(
+            padding: EdgeInsets.all(16),
+            children: [
+              _MessageCard(
+                icon: Icons.confirmation_number_outlined,
+                title: 'You don\'t have any coupons',
+                subtitle: 'Your coupon\'s shown here.',
+              ),
+            ],
+          );
+        }
+
+        coupons.sort((a, b) {
+          final aUsable = _isCouponUsable(a);
+          final bUsable = _isCouponUsable(b);
+
+          if (aUsable == bUsable) {
+            return a.code.compareTo(b.code);
+          }
+
+          return aUsable ? -1 : 1;
+        });
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: coupons.map(_buildCouponCard).toList(),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const AppAppBar(title: 'Payments'),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {
-            setState(() {
-              _paymentsFuture = _loadPayments();
-            });
-            await _paymentsFuture;
-          },
+          onRefresh: _refreshPaymentsAndCoupons,
           child: FutureBuilder<List<Payment>>(
             future: _paymentsFuture,
             builder: (context, snapshot) {
@@ -431,141 +676,53 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
               final payments = snapshot.data ?? [];
 
-              if (payments.isEmpty) {
-                return ListView(
-                  padding: EdgeInsets.all(16),
+              final unpaidPayments = payments
+                  .where((payment) => !_isPaid(payment))
+                  .toList();
+              final paidPayments = payments.where(_isPaid).toList();
+
+              return DefaultTabController(
+                length: 3,
+                child: Column(
                   children: [
-                    _MessageCard(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'There aren\'t any payments.',
-                      subtitle: 'You can see your payments here.',
-                    ),
-                  ],
-                );
-              }
-
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    'Ödemelerim',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 16),
-                  ...payments.map((payment) {
-                    final canPay = _canPay(payment);
-
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.receipt_long_outlined),
-                              title: Builder(
-                                builder: (context) {
-                                  final hasCoupon = payment.couponId != null;
-                                  final appliedCoupon = hasCoupon
-                                      ? _appliedCoupons[payment.id]
-                                      : null;
-
-                                  if (!hasCoupon || appliedCoupon == null) {
-                                    return Text(
-                                      '${payment.amount.toStringAsFixed(2)} TL',
-                                    );
-                                  }
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${appliedCoupon.finalAmount.toStringAsFixed(2)} TL',
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleMedium,
-                                      ),
-                                      Text(
-                                        'Eski tutar: ${payment.amount.toStringAsFixed(2)} TL',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              decoration:
-                                                  TextDecoration.lineThrough,
-                                            ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                              subtitle: Builder(
-                                builder: (context) {
-                                  final hasCoupon = payment.couponId != null;
-                                  final appliedCoupon = hasCoupon
-                                      ? _appliedCoupons[payment.id]
-                                      : null;
-
-                                  return Text(
-                                    'Status: ${payment.status}\n'
-                                    'Reservation ID: ${payment.reservationId}'
-                                    '${hasCoupon ? '\nCoupon ID: ${payment.couponId}' : ''}'
-                                    '${appliedCoupon == null ? '' : '\nDiscount: ${appliedCoupon.discountAmount.toStringAsFixed(2)} TL'}',
-                                  );
-                                },
-                              ),
-                              isThreeLine: true,
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: !_isProcessing && canPay
-                                        ? () {
-                                            if (payment.couponId == null) {
-                                              _showCouponDialog(payment);
-                                            } else {
-                                              _removeCoupon(payment);
-                                            }
-                                          }
-                                        : null,
-                                    icon: Icon(
-                                      payment.couponId == null
-                                          ? Icons.confirmation_number_outlined
-                                          : Icons.remove_circle_outline,
-                                    ),
-                                    label: Text(
-                                      payment.couponId == null
-                                          ? 'Kupon Ekle'
-                                          : 'Kuponu Çıkart',
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: FilledButton.icon(
-                                    onPressed: canPay && !_isProcessing
-                                        ? () => _completePayment(payment.id)
-                                        : null,
-                                    icon: const Icon(Icons.payment_outlined),
-                                    label: Text(
-                                      _isProcessing && canPay
-                                          ? 'Processing'
-                                          : 'Make payment',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'My Payments',
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
                       ),
-                    );
-                  }),
-                ],
+                    ),
+                    TabBar(
+                      isScrollable: true,
+                      tabs: [
+                        Tab(text: 'Unpaid (${unpaidPayments.length})'),
+                        Tab(text: 'Paid (${paidPayments.length})'),
+                        const Tab(text: 'My Coupons'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _buildPaymentList(
+                            unpaidPayments,
+                            emptyTitle: 'There aren\'t any unpaid payments',
+                            emptySubtitle: 'Your payments shown here.',
+                          ),
+                          _buildPaymentList(
+                            paidPayments,
+                            emptyTitle: 'There aren\'t any paid payments',
+                            emptySubtitle:
+                                'Your completed payments shown here.',
+                          ),
+                          _buildCouponsTab(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
           ),

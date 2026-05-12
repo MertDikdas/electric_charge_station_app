@@ -32,6 +32,10 @@ class PaymentResponse(BaseModel):
     payment_date: Optional[datetime]
     coupon_id: Optional[int]
 
+    coupon_code: Optional[str] = None
+    discount_amount: float = 0.0
+    final_amount: float
+
 
 class PaymentListResponse(BaseModel):
     total: int

@@ -7,7 +7,10 @@ class Payment {
     required this.status,
     this.paymentDate,
     this.couponId,
-  });
+    this.couponCode,
+    this.discountAmount = 0,
+    double? finalAmount,
+  }) : finalAmount = finalAmount ?? amount;
 
   final int id;
   final int userId;
@@ -16,16 +19,30 @@ class Payment {
   final String status;
   final String? paymentDate;
   final int? couponId;
+  final String? couponCode;
+  final double discountAmount;
+  final double finalAmount;
 
   factory Payment.fromJson(Map<String, dynamic> json) {
+    final amount = _asDouble(json['amount']);
+
     return Payment(
       id: _asInt(json['id']),
       userId: _asInt(json['user_id'] ?? json['userId']),
       reservationId: _asInt(json['reservation_id'] ?? json['reservationId']),
-      amount: _asDouble(json['amount']),
+      amount: amount,
       status: (json['status'] ?? '').toString(),
-      paymentDate: _asNullableString(json['payment_date'] ?? json['paymentDate']),
+      paymentDate: _asNullableString(
+        json['payment_date'] ?? json['paymentDate'],
+      ),
       couponId: _asNullableInt(json['coupon_id'] ?? json['couponId']),
+      couponCode: _asNullableString(json['coupon_code'] ?? json['couponCode']),
+      discountAmount: _asDouble(
+        json['discount_amount'] ?? json['discountAmount'] ?? 0,
+      ),
+      finalAmount: _asDouble(
+        json['final_amount'] ?? json['finalAmount'] ?? amount,
+      ),
     );
   }
 
@@ -58,6 +75,7 @@ class Payment {
 
   static String? _asNullableString(Object? value) {
     if (value == null) return null;
-    return value.toString();
+    final text = value.toString();
+    return text.isEmpty ? null : text;
   }
 }
