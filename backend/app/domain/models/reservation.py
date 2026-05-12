@@ -1,4 +1,5 @@
 from datetime import date, time
+from typing import Optional
 from dataclasses import dataclass
 
 from app.domain.models.base import BaseEntity
@@ -11,7 +12,8 @@ class ReservationEntity(BaseEntity):
     charger_id: int
     date: date
     start_time: time
-    end_time: time
+    end_time: Optional[time] = None
+    duration_minutes: int = 120
     status: str = "PENDING"
 
 

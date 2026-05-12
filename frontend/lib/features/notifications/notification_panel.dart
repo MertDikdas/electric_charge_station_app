@@ -233,7 +233,7 @@ class _NotificationIcon extends StatelessWidget {
     final color = switch (normalized) {
       'WARNING' => Colors.orange,
       'ERROR' => colorScheme.error,
-      'SUCCESS' => Colors.green,
+      'SUCCESS' => colorScheme.primary,
       _ => colorScheme.primary,
     };
 

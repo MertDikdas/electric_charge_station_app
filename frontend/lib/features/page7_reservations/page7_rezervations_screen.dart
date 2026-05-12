@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_snackbar.dart';
 import '../../data/api/token_storage.dart';
 import '../../data/models/charger.dart';
 import '../../data/models/reservation.dart';
@@ -110,11 +111,11 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
       );
       if (!mounted) return;
       _didCancelReservation = true;
-      _showSnackBar('Reservation cancelled successfully.');
+      AppSnackBar.showSuccess(context, 'Reservation cancelled successfully.');
       await _refreshReservations();
     } catch (error) {
       if (!mounted) return;
-      _showSnackBar(_friendlyCancelError(error));
+      AppSnackBar.showError(context, _friendlyCancelError(error));
     } finally {
       if (mounted) {
         setState(() {
@@ -135,10 +136,10 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     return 'Reservation could not be cancelled. Please try again.';
   }
 
+  // Deprecated: Use AppSnackBar service instead
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    // This method is kept for backward compatibility but should not be used
+    AppSnackBar.showInfo(context, message);
   }
 
   @override

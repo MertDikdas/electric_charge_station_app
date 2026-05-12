@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/app_snackbar.dart';
 import '../../data/api/token_storage.dart';
 import '../../data/models/user.dart';
 import '../../data/models/vehicle.dart';
@@ -46,10 +47,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppAppBar(
         title: 'Profile',
         actions: [
-          TextButton.icon(
-            onPressed: _logout,
+          IconButton(
             icon: const Icon(Icons.logout),
-            label: const Text('Log out'),
+            onPressed: _logout,
+            tooltip: 'Logout',
           ),
         ],
       ),
@@ -487,9 +488,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.showInfo(context, message);
   }
 
   bool _canPay(Payment payment) {
@@ -776,18 +775,13 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Amount added.')));
+      AppSnackBar.showSuccess(context, 'Amount added.');
 
       Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } finally {
+      AppSnackBar.showError(context, error.toString());
       if (mounted) {
         setState(() {
           _isSaving = false;
@@ -936,9 +930,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.showInfo(context, message);
   }
 
   String? _required(String? value) {

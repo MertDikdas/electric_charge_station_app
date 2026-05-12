@@ -2,7 +2,10 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.application.services.reservation_service import ReservationService
+from app.application.services.reservation_service import (
+    ReservationService,
+    ReservationConflictError,
+)
 from app.core.dependencies import (
     AuthenticatedUser,
     get_admin,
@@ -29,6 +32,8 @@ def create_reservation(
         return service.create_reservation(reservation_entity, current_user.id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ReservationConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

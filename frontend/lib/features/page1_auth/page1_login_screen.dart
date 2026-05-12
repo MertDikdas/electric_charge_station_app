@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_snackbar.dart';
 import '../../core/main_navigation_shell.dart';
 import '../../data/services/auth_service.dart';
 import '../page2_3_4_sign_up/page3_signup_user_page.dart';
@@ -72,9 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.showError(context, message);
   }
 
   @override

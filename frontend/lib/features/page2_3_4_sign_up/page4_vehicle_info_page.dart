@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/app_snackbar.dart';
 import '../../core/main_navigation_shell.dart';
 import '../../data/models/vehicle.dart';
 import '../../data/services/auth_service.dart';
@@ -109,11 +110,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     }
 
     if (_vehicles.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Arac ekleyin veya Skip for Now ile devam edin'),
-        ),
-      );
+      AppSnackBar.showWarning(context, 'Arac ekleyin veya Skip for Now ile devam edin');
       return;
     }
 
@@ -149,14 +146,11 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            skippedVehicleInfo
-                ? 'Uyelik arac bilgisi olmadan tamamlandi'
-                : 'Uyelik ve arac bilgileri kaydedildi',
-          ),
-        ),
+      AppSnackBar.showSuccess(
+        context,
+        skippedVehicleInfo
+            ? 'Uyelik arac bilgisi olmadan tamamlandi'
+            : 'Uyelik ve arac bilgileri kaydedildi',
       );
 
       Navigator.of(context).pushAndRemoveUntil(
@@ -165,10 +159,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } finally {
+      AppSnackBar.showError(context, error.toString());
       if (mounted) {
         setState(() {
           _isSubmitting = false;
