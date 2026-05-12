@@ -1,7 +1,11 @@
-from sqlalchemy import CheckConstraint, Column, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Time, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, Time, UniqueConstraint, func
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.infrastructure.database.database import Base
+
+SYSTEM_LOG_EVENT_TYPES = ["LOGIN_SUCCESS", "LOGIN_FAILED", "REGISTER_SUCCESS", "REGISTER_FAILED", "BYPASS_LOGIN", "LOGOUT", "UNAUTHORIZED_ACCESS", "USER_DEACTIVATED", "VEHICLE_CREATED", "VEHICLE_DEACTIVATED", "COMPANY_CREATED", "COMPANY_UPDATED", "COMPANY_DEACTIVATED", "COMPANY_MEMBER_ADDED", "COMPANY_MEMBER_UPDATED", "COMPANY_MEMBER_DEACTIVATED", "STATION_CREATED", "STATION_UPDATED", "STATION_DEACTIVATED", "CHARGER_CREATED", "CHARGER_UPDATED", "CHARGER_STATUS_UPDATED", "CHARGER_DEACTIVATED", "RESERVATION_CREATED", "RESERVATION_CANCELLED", "RESERVATION_EXPIRED", "RESERVATION_COMPLETED", "PAYMENT_COMPLETED", "PAYMENT_FAILED", "PAYMENT_REFUNDED", "CHARGING_SESSION_STARTED", "CHARGING_SESSION_FINISHED", "CHARGING_SESSION_EXPIRED", "CHARGING_SESSION_CANCELLED", "ADMIN_ACTION", "MANAGER_ACTION", "OPERATOR_ACTION"]
+
+SYSTEM_LOG_EVENT_TYPES_SQL = ", ".join(f"'{event}'" for event in SYSTEM_LOG_EVENT_TYPES)
 
 class User(Base):
     __tablename__ = "users"
@@ -9,7 +13,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     surname = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, unique=True, index=True)
+    is_active = Column(Boolean, nullable=False, default=True)
     password_hash = Column(String, nullable=False)
     balance = Column(Float, default=0.0)
     role = Column(String, nullable=False, default="USER")
@@ -29,7 +34,6 @@ class User(Base):
     sessions = relationship("UserSession", back_populates="user")
     company_members = relationship("CompanyMember", back_populates="user")
 
-
 class Company(Base):
     __tablename__ = "companies"
 
@@ -43,7 +47,6 @@ class Company(Base):
 
     stations = relationship("Station", back_populates="company")
     members = relationship("CompanyMember", back_populates="company")
-
 
 class CompanyMember(Base):
     __tablename__ = "company_members"
@@ -65,7 +68,6 @@ class CompanyMember(Base):
     company = relationship("Company", back_populates="members")
     user = relationship("User", back_populates="company_members")
 
-
 class UserSession(Base):
     __tablename__ = "user_sessions"
 
@@ -78,7 +80,6 @@ class UserSession(Base):
 
     user = relationship("User", back_populates="sessions")
 
-
 class Vehicle(Base):
     __tablename__ = "vehicles"
 
@@ -86,6 +87,8 @@ class Vehicle(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     plate = Column(String, nullable=False, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    name = Column(String, nullable=False)
+    brand = Column(String, nullable=False)
     model = Column(String, nullable=False)
     current_type = Column(String, nullable=False)
     connector_type = Column(String, nullable=False)
@@ -106,6 +109,7 @@ class Station(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    name = Column(String, nullable=False)
     longitude = Column(Float, nullable=False)
     latitude = Column(Float, nullable=False)
     address = Column(String, nullable=False)
@@ -119,6 +123,7 @@ class Station(Base):
     )
     chargers = relationship("Charger", back_populates="station")
     company = relationship("Company", back_populates="stations")
+    reservations = relationship("Reservation", back_populates="station")
 
 class Charger(Base):
     __tablename__ = "chargers"
@@ -147,6 +152,7 @@ class Reservation(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     vehicle_id = Column(Integer, ForeignKey("vehicles.id"), index=True, nullable=False)
+    station_id = Column(Integer, ForeignKey("stations.id"), index=True, nullable=False)
     charger_id = Column(Integer, ForeignKey("chargers.id"), index=True, nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
@@ -161,6 +167,7 @@ class Reservation(Base):
     user = relationship("User", back_populates="reservations")
     vehicle = relationship("Vehicle", back_populates="reservations")
     charger = relationship("Charger", back_populates="reservations")
+    station = relationship("Station", back_populates="reservations")
     charging_session = relationship("ChargingSession", back_populates="reservation", uselist=False)
 
 class ChargingSession(Base):
@@ -250,3 +257,55 @@ class Payment(Base):
     user = relationship("User", back_populates="payments")
     charging_session = relationship("ChargingSession", back_populates="payment")
     coupon = relationship("Coupon")
+
+class SystemLog(Base):
+    __tablename__ = "system_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    event_type = Column(String, nullable=False, index=True)
+    status = Column(String, nullable=False, default="SUCCESS", index=True)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    station_id = Column(Integer, ForeignKey("stations.id"), nullable=True, index=True)
+    charger_id = Column(Integer, ForeignKey("chargers.id"), nullable=True, index=True)
+    reservation_id = Column(Integer, ForeignKey("reservations.id"), nullable=True, index=True)
+    payment_id = Column(Integer, ForeignKey("payments.id"), nullable=True, index=True)
+    charging_session_id = Column(Integer, ForeignKey("charging_sessions.reservation_id"), nullable=True, index=True)
+
+    entity_type = Column(String, nullable=True, index=True)
+    entity_id = Column(Integer, nullable=True, index=True)
+
+    actor_email = Column(String, nullable=True)
+    actor_role = Column(String, nullable=True)
+
+    message = Column(Text, nullable=True)
+    ip_address = Column(String, nullable=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('SUCCESS', 'FAILED', 'WARNING')",
+            name="check_system_log_status",
+        ),
+        CheckConstraint(
+            f"event_type IN ({SYSTEM_LOG_EVENT_TYPES_SQL})",
+            name="check_system_log_event_type",
+        ),
+    )
+
+    user = relationship("User")
+    company = relationship("Company")
+    station = relationship("Station")
+    charger = relationship("Charger")
+    reservation = relationship("Reservation")
+    payment = relationship("Payment")
+    charging_session = relationship("ChargingSession")
+
