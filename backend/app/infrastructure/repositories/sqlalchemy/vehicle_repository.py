@@ -18,6 +18,8 @@ class SqlAlchemyVehicleRepository(
         return VehicleModel(
             id=entity.id,
             user_id=entity.user_id,
+            name =entity.name,
+            brand=entity.brand,
             model=entity.model,
             plate=entity.plate,
             max_charging_power=entity.max_charging_power,
@@ -31,6 +33,8 @@ class SqlAlchemyVehicleRepository(
         return VehicleEntity(
             id=model.id,
             user_id=model.user_id,
+            name = model.name,
+            brand=model.brand,
             model=model.model,
             plate=model.plate,
             max_charging_power=model.max_charging_power,
@@ -52,6 +56,8 @@ class SqlAlchemyVehicleRepository(
         model = self.session.query(VehicleModel).get(vehicle.id)
         if model:
             model.user_id = vehicle.user_id
+            model.name = vehicle.name
+            model.brand = vehicle.brand
             model.model = vehicle.model
             model.plate = vehicle.plate
             model.max_charging_power = vehicle.max_charging_power

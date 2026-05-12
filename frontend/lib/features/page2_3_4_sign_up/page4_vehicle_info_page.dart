@@ -127,7 +127,8 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           await _vehicleService.createVehicle(
             VehicleInput(
               userId: user.id,
-              model: '${vehicle.brand} ${vehicle.model}'.trim(),
+              name: '${vehicle.brand} ${vehicle.model}'.trim(),
+              brand: vehicle.brand,
               plate: vehicle.licensePlate,
               maxChargingPower: double.parse(vehicle.chargingPower),
               batteryCapacity: double.parse(vehicle.chargingPower),

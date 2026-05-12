@@ -3,6 +3,7 @@ import 'charger.dart';
 class Station {
   const Station({
     required this.id,
+    required this.name,
     required this.address,
     required this.companyId,
     required this.latitude,
@@ -12,6 +13,7 @@ class Station {
   });
 
   final int id;
+  final String name;
   final String address;
   final int companyId;
   final double latitude;
@@ -22,6 +24,7 @@ class Station {
   factory Station.fromJson(Map<String, dynamic> json) {
     return Station(
       id: _asInt(json['id']),
+      name: (json['name'] ?? '').toString(),
       address: (json['address'] ?? '').toString(),
       companyId: _asInt(json['company_id'] ?? json['companyId']),
       latitude: _asDouble(json['latitude']),
@@ -35,6 +38,7 @@ class Station {
 
   Map<String, dynamic> toJson() {
     return {
+      'name': name,
       'address': address,
       'company_id': companyId,
       'latitude': latitude,

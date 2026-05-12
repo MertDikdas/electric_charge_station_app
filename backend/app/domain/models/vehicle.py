@@ -6,6 +6,8 @@ from app.domain.models.base import BaseEntity
 @dataclass
 class VehicleEntity(BaseEntity):
     user_id: int
+    name: str
+    brand: str
     model: str
     plate: str
     max_charging_power: float

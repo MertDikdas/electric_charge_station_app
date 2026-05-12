@@ -20,6 +20,7 @@ class SqlAlchemyStationRepository(
     def to_model(self, entity: StationEntity) -> StationModel:
         return StationModel(
             id=entity.id,
+            name=entity.name,
             address=entity.address,
             company_id=entity.company_id,
             latitude=entity.latitude,
@@ -31,6 +32,7 @@ class SqlAlchemyStationRepository(
     def to_entity(self, model: StationModel) -> StationEntity:
         return StationEntity(
             id=model.id,
+            name=model.name,
             address=model.address,
             company_id=model.company_id,
             latitude=model.latitude,
@@ -78,6 +80,7 @@ class SqlAlchemyStationRepository(
     def update(self, station: StationEntity) -> None:
         model = self.session.get(StationModel, station.id)
         if model:
+            model.name = station.name
             model.address = station.address
             model.company_id = station.company_id
             model.latitude = station.latitude

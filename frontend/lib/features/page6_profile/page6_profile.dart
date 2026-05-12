@@ -656,6 +656,8 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
 
 class _VehicleScreenState extends State<VehicleScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _brandController = TextEditingController();
+  final _modelController = TextEditingController();
   final _nameController = TextEditingController();
   final _plateController = TextEditingController();
   final _connectorController = TextEditingController(text: 'Type 2');
@@ -671,6 +673,8 @@ class _VehicleScreenState extends State<VehicleScreen> {
 
   @override
   void dispose() {
+    _brandController.dispose();
+    _modelController.dispose();
     _nameController.dispose();
     _plateController.dispose();
     _connectorController.dispose();
@@ -703,7 +707,9 @@ class _VehicleScreenState extends State<VehicleScreen> {
       await _vehicleService.createVehicle(
         VehicleInput(
           userId: userId,
-          model: _nameController.text.trim(),
+          name: _nameController.text.trim(),
+          brand: _brandController.text.trim(),
+          model: _modelController.text.trim(),
           plate: _plateController.text.trim().toUpperCase(),
           maxChargingPower: double.parse(_maxPowerController.text.trim()),
           batteryCapacity: double.parse(_batteryCapacityController.text.trim()),
@@ -713,6 +719,8 @@ class _VehicleScreenState extends State<VehicleScreen> {
       );
 
       _nameController.clear();
+      _brandController.clear();
+      _modelController.clear();
       _plateController.clear();
       _maxPowerController.clear();
       _batteryCapacityController.clear();
@@ -781,6 +789,24 @@ class _VehicleScreenState extends State<VehicleScreen> {
               key: _formKey,
               child: Column(
                 children: [
+                  TextFormField(
+                    controller: _brandController,
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle Brand',
+                      prefixIcon: Icon(Icons.directions_car),
+                    ),
+                    validator: _required,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _modelController,
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle Model',
+                      prefixIcon: Icon(Icons.directions_car),
+                    ),
+                    validator: _required,
+                  ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(
