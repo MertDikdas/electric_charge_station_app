@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.application.services.user_service import UserService
 from app.core.dependencies import (
@@ -21,6 +22,7 @@ from app.schemas.vehicle import Vehicle
 from app.schemas.reservation import Reservation
 from app.schemas.charging_session import ChargingSession
 from app.infrastructure.database.tables import CompanyMember as CompanyMemberModel
+from app.infrastructure.database.database import get_db
 
 from app.core.security import hash_password
 
@@ -97,12 +99,31 @@ def delete_user(
 @router.get("/me", response_model=User)
 def get_current_user_info(
     service: UserService = Depends(get_user_service),
-    current_user: AuthenticatedUser = Depends(get_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     user = service.get_user(current_user.id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+    member = (
+        db.query(CompanyMemberModel)
+        .filter(
+            CompanyMemberModel.user_id == current_user.id,
+            CompanyMemberModel.is_active == True,
+        )
+        .first()
+    )
+    user_data = {
+        "id": user.id,
+        "name": user.name,
+        "surname": user.surname,
+        "email": user.email,
+        "balance": user.balance,
+        "role": user.role,
+        "company_id": member.company_id if member else None,
+        "membership_role": member.role if member else None,
+    }
+    return user_data
 
 @router.patch("/admin/{user_id}", status_code=204)
 def delete_user(

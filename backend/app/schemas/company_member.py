@@ -4,7 +4,12 @@ from pydantic import BaseModel
 from app.schemas.user import User
 
 
-CompanyMemberRole = Literal["STATION_MANAGER", "STATION_OPERATOR"]
+CompanyMemberRole = Literal[
+    "COMPANY_MANAGER",
+    "COMPANY_OPERATOR",
+    "STATION_MANAGER",
+    "STATION_OPERATOR",
+]
 
 
 class CompanyMemberCreate(BaseModel):

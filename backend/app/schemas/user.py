@@ -1,8 +1,8 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-UserRole = Literal["USER", "ADMIN"]
+UserRole = Literal["USER", "COMPANY_MANAGER", "COMPANY_OPERATOR", "ADMIN", "STATION_MANAGER", "STATION_OPERATOR"]
 
 class UserBase(BaseModel):
     name: str
@@ -34,6 +34,8 @@ class UserCreate(BaseModel):
 class User(UserBase):
     id: int
     role: UserRole = "USER"
+    company_id: Optional[int] = None
+    membership_role: Optional[str] = None
     
     class Config:
         from_attributes = True

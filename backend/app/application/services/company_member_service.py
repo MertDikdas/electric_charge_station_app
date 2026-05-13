@@ -27,6 +27,9 @@ class CompanyMemberService:
             if member:
                 raise ValueError("User is already a member of this company")
             new_member = self.uow.company_members.add(company_member)
+            if company_member.is_active:
+                user.role = company_member.role
+                self.uow.users.update(user)
             self.uow.commit()
             return new_member
 
@@ -56,6 +59,8 @@ class CompanyMemberService:
                 member.role = normalized_role
                 member.is_active = is_active
                 updated_member = self.uow.company_members.update(member)
+                user.role = normalized_role if is_active else "USER"
+                self.uow.users.update(user)
                 self.uow.commit()
                 return updated_member
 
@@ -67,6 +72,9 @@ class CompanyMemberService:
                     is_active=is_active,
                 )
             )
+            if is_active:
+                user.role = normalized_role
+                self.uow.users.update(user)
             self.uow.commit()
             return new_member
         
@@ -84,6 +92,10 @@ class CompanyMemberService:
                 raise ValueError("Cannot activate member of inactive company")
             member.is_active = is_active
             updated_member = self.uow.company_members.update(member)
+            user = self.uow.users.get(member.user_id)
+            if user:
+                user.role = member.role if is_active else "USER"
+                self.uow.users.update(user)
             self.uow.commit()
             return updated_member
         
@@ -121,6 +133,10 @@ class CompanyMemberService:
                 raise ValueError("Company member not found")
             member.role = normalized_role
             updated_member = self.uow.company_members.update(member)
+            user = self.uow.users.get(member.user_id)
+            if user and member.is_active:
+                user.role = normalized_role
+                self.uow.users.update(user)
             self.uow.commit()
             return updated_member
         

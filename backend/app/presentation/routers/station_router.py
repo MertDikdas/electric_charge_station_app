@@ -112,7 +112,7 @@ def get_stations_by_company_id(
 def get_my_company_stations(
     service: StationService = Depends(get_station_service),
     member: CompanyMember = Depends(get_current_company_member),
-    current_user: AuthenticatedUser = Depends(get_station_manager),
+    current_user: AuthenticatedUser = Depends(get_company_member),
 ):
     try:
         return service.get_stations_by_company_id(member.company_id)
@@ -126,7 +126,7 @@ def get_my_company_monthly_revenue(
     month: int = Query(..., ge=1, le=12),
     service: StationService = Depends(get_station_service),
     member: CompanyMember = Depends(get_current_company_member),
-    current_user: AuthenticatedUser = Depends(get_station_manager),
+    current_user: AuthenticatedUser = Depends(get_company_member),
 ):
     try:
         revenue = service.get_company_monthly_revenue(member.company_id, year, month)
@@ -139,7 +139,7 @@ def get_my_company_monthly_revenue(
 def get_my_company_station_usage_counts(
     service: StationService = Depends(get_station_service),
     member: CompanyMember = Depends(get_current_company_member),
-    current_user: AuthenticatedUser = Depends(get_station_manager),
+    current_user: AuthenticatedUser = Depends(get_company_member),
 ):
     try:
         return service.get_company_station_usage_counts(member.company_id)
@@ -153,7 +153,7 @@ def get_station_monthly_revenue(
     year: int = Query(..., ge=2000),
     month: int = Query(..., ge=1, le=12),
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_station_manager),
+    current_user: AuthenticatedUser = Depends(get_company_member),
     membership_check: AuthenticatedUser = Depends(ensure_same_company),
 ):
     try:
@@ -212,7 +212,7 @@ def update_station_status(
     station_id: int,
     status_update: StationStatusUpdate,
     service: StationService = Depends(get_station_service),
-    current_user: AuthenticatedUser = Depends(get_company_member),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
     membership_check: AuthenticatedUser = Depends(ensure_same_company),
 ):
     try:

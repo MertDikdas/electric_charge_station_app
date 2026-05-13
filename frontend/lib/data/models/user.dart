@@ -6,6 +6,8 @@ class AppUser {
     required this.mail,
     required this.balance,
     this.role = 'USER',
+    this.companyId,
+    this.membershipRole,
   });
 
   final int id;
@@ -14,9 +16,18 @@ class AppUser {
   final String mail;
   final double balance;
   final String role;
+  final int? companyId;
+  final String? membershipRole;
 
   String get fullName =>
       [name, surname].where((part) => part.isNotEmpty).join(' ');
+
+  String get effectiveRole {
+    if (companyId != null && (membershipRole?.isNotEmpty ?? false)) {
+      return membershipRole!;
+    }
+    return role;
+  }
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
@@ -26,6 +37,9 @@ class AppUser {
       mail: (json['mail'] ?? json['email'] ?? '').toString(),
       balance: _asDouble(json['balance']),
       role: (json['role'] ?? 'USER').toString(),
+      companyId: _nullableInt(json['company_id'] ?? json['companyId']),
+      membershipRole: (json['membership_role'] ?? json['membershipRole'])
+          ?.toString(),
     );
   }
 
@@ -46,6 +60,13 @@ class AppUser {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static int? _nullableInt(Object? value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   static double _asDouble(Object? value) {

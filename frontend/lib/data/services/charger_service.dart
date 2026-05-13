@@ -10,7 +10,7 @@ class ChargerService {
 
   Future<Charger> createCharger(Charger charger) async {
     return Charger.fromJson(
-      parseObject(await _apiClient.post('/chargers/', body: charger.toJson())),
+      parseObject(await _apiClient.post('/chargers', body: charger.toJson())),
     );
   }
 
@@ -40,7 +40,7 @@ class ChargerService {
     return Charger.fromJson(
       parseObject(
         await _apiClient.patch(
-          '/chargers/status/$chargerId',
+          '/chargers/$chargerId/status',
           body: {'status': status},
         ),
       ),

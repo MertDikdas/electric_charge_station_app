@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.application.services.charger_service import ChargerService
 from app.application.services.reservation_service import ReservationService
@@ -28,6 +29,8 @@ from app.schemas.charger import (
 )
 from app.schemas.reservation import Reservation
 from app.infrastructure.database.tables import CompanyMember
+from app.infrastructure.database.database import get_db
+from app.infrastructure.database.tables import Station
 
 router = APIRouter()
 
@@ -41,6 +44,24 @@ def create_charger(
     membership_check: CompanyMember = Depends(ensure_same_company),
 ):
     charger_entity = ChargerEntity(station_id=station_id, **charger.model_dump())
+    return service.create_charger(charger_entity)
+
+
+@router.post("", response_model=Charger, status_code=201)
+def create_charger_from_body(
+    charger: ChargerCreate,
+    service: ChargerService = Depends(get_charger_service),
+    member: CompanyMember = Depends(get_current_company_member),
+    _current_user: AuthenticatedUser = Depends(get_station_manager),
+    db: Session = Depends(get_db),
+):
+    station = db.query(Station).filter(Station.id == charger.station_id).first()
+    if station is None:
+        raise HTTPException(status_code=404, detail="Station not found")
+    if station.company_id != member.company_id:
+        raise HTTPException(status_code=403, detail="Company membership required")
+
+    charger_entity = ChargerEntity(**charger.model_dump())
     return service.create_charger(charger_entity)
 
 
@@ -94,6 +115,23 @@ def delete_charger(
 
 @router.patch("/status/{charger_id}", response_model=Charger)
 def update_charger_status(
+    charger_id: int,
+    status_update: ChargerStatusUpdate,
+    service: ChargerService = Depends(get_charger_service),
+    _current_user: AuthenticatedUser = Depends(get_company_member),
+    membership_check: CompanyMember = Depends(ensure_same_company_for_charger),
+):
+    try:
+        charger = service.update_charger_status(charger_id, status_update.status)
+        if not charger:
+            raise HTTPException(status_code=404, detail="Charger not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return charger
+
+
+@router.patch("/{charger_id}/status", response_model=Charger)
+def update_charger_status_alias(
     charger_id: int,
     status_update: ChargerStatusUpdate,
     service: ChargerService = Depends(get_charger_service),

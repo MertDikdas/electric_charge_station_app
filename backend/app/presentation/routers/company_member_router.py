@@ -36,6 +36,27 @@ def add_or_update_my_company_member(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+
+@company_router.post("", response_model=CompanyMember, status_code=201)
+def add_company_member_for_my_company(
+    member: CompanyMemberCreate,
+    service: CompanyMemberService = Depends(get_company_member_service),
+    current_member: CompanyMemberModel = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
+):
+    if member.company_id != current_member.company_id:
+        raise HTTPException(status_code=403, detail="Cannot manage another company")
+
+    try:
+        return service.add_or_update_member_for_company(
+            company_id=current_member.company_id,
+            user_id=member.user_id,
+            role=member.role,
+            is_active=member.is_active,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
 @router.post("/", response_model=CompanyMember, status_code=201)
 def add_company_member(
     member: CompanyMemberCreate,

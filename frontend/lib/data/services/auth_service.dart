@@ -76,6 +76,10 @@ class AuthService {
     }
   }
 
+  Future<AppUser> getCurrentUser() async {
+    return AppUser.fromJson(parseObject(await _apiClient.get('/users/me')));
+  }
+
   (String, String) _splitName(String fullName) {
     final parts = fullName.trim().split(RegExp(r'\s+'));
     if (parts.length <= 1) {

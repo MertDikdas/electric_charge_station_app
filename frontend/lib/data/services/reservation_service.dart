@@ -41,6 +41,13 @@ class ReservationService {
     );
   }
 
+  Future<List<Reservation>> getCompanyChargerReservations(int chargerId) async {
+    return parseList(
+      await _apiClient.get('/reservations/$chargerId'),
+      Reservation.fromJson,
+    );
+  }
+
   Future<Reservation> getReservation(int reservationId) async {
     return Reservation.fromJson(
       parseObject(await _apiClient.get('/reservations/my/$reservationId')),

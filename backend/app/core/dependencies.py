@@ -34,9 +34,14 @@ from app.application.services.company_service import CompanyService
 security = HTTPBearer(auto_error=False)
 
 USER_ROLE = "USER"
+COMPANY_MANAGER_ROLE = "COMPANY_MANAGER"
+COMPANY_OPERATOR_ROLE = "COMPANY_OPERATOR"
 STATION_MANAGER_ROLE = "STATION_MANAGER"
 STATION_OPERATOR_ROLE = "STATION_OPERATOR"
 ADMIN_ROLE = "ADMIN"
+MANAGER_ROLES = {COMPANY_MANAGER_ROLE, STATION_MANAGER_ROLE}
+OPERATOR_ROLES = {COMPANY_OPERATOR_ROLE, STATION_OPERATOR_ROLE}
+COMPANY_STAFF_ROLES = MANAGER_ROLES | OPERATOR_ROLES
 
 TURKEY_TZ = ZoneInfo("Europe/Istanbul")
 
@@ -53,7 +58,7 @@ class AuthenticatedUser:
 
     @property
     def is_staff(self) -> bool:
-        return self.role in {ADMIN_ROLE, STATION_MANAGER_ROLE, STATION_OPERATOR_ROLE}
+        return self.role in {ADMIN_ROLE, *COMPANY_STAFF_ROLES}
 
 
 def get_current_user(
@@ -121,8 +126,8 @@ def get_station_manager(
     member: CompanyMember = Depends(get_current_company_member),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> AuthenticatedUser:
-    if member.role != STATION_MANAGER_ROLE:
-        raise HTTPException(status_code=403, detail="Station manager role required")
+    if current_user.role != ADMIN_ROLE and member.role not in MANAGER_ROLES:
+        raise HTTPException(status_code=403, detail="Company manager role required")
     return current_user
 
 
@@ -131,16 +136,16 @@ def get_station_operator(
     member: CompanyMember = Depends(get_current_company_member),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> AuthenticatedUser:
-    if member.role not in {STATION_MANAGER_ROLE, STATION_OPERATOR_ROLE}:
-        raise HTTPException(status_code=403, detail="Station operator role required")
+    if current_user.role != ADMIN_ROLE and member.role not in COMPANY_STAFF_ROLES:
+        raise HTTPException(status_code=403, detail="Company operator role required")
     return current_user
 
 def get_company_member(
     member: CompanyMember = Depends(get_current_company_member),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> AuthenticatedUser:
-    if member.role not in {STATION_MANAGER_ROLE, STATION_OPERATOR_ROLE}:
-        raise HTTPException(status_code=403, detail="Station staff role required")
+    if current_user.role != ADMIN_ROLE and member.role not in COMPANY_STAFF_ROLES:
+        raise HTTPException(status_code=403, detail="Company staff role required")
     return current_user
 
 def ensure_same_company(
@@ -152,9 +157,10 @@ def ensure_same_company(
     if station is None:
         raise HTTPException(status_code=404, detail="Station not found")
     member = (
-        db.query(CompanyMember).filter(CompanyMember.company_id == station.company_id, CompanyMember.user_id == current_user.id).first())
+        db.query(CompanyMember).filter(CompanyMember.company_id == station.company_id, CompanyMember.user_id == current_user.id, CompanyMember.is_active == True).first())
     if member is None:
         raise HTTPException(status_code=403, detail="Company membership required")
+    return member
 
 def ensure_same_company_for_charger(
     charger_id: int,
@@ -168,7 +174,7 @@ def ensure_same_company_for_charger(
     if station is None:
         raise HTTPException(status_code=404, detail="Station not found")
     member = (
-        db.query(CompanyMember).filter(CompanyMember.company_id == station.company_id, CompanyMember.user_id == current_user.id).first())
+        db.query(CompanyMember).filter(CompanyMember.company_id == station.company_id, CompanyMember.user_id == current_user.id, CompanyMember.is_active == True).first())
     if member is None:
         raise HTTPException(status_code=403, detail="Company membership required")
     return member

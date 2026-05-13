@@ -79,6 +79,17 @@ class StationService {
     return _apiClient.delete('/stations/$stationId');
   }
 
+  Future<Station> updateStationStatus(int stationId, String status) async {
+    return Station.fromJson(
+      parseObject(
+        await _apiClient.patch(
+          '/stations/$stationId/status',
+          body: {'status': status},
+        ),
+      ),
+    );
+  }
+
   Future<List<Station>> getNearbyStations({
     required double latitude,
     required double longitude,

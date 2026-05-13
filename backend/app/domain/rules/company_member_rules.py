@@ -1,7 +1,12 @@
 from app.domain.models.company_member import CompanyMemberEntity
 
 
-ALLOWED_COMPANY_MEMBER_ROLES = {"STATION_MANAGER", "STATION_OPERATOR"}
+ALLOWED_COMPANY_MEMBER_ROLES = {
+    "COMPANY_MANAGER",
+    "COMPANY_OPERATOR",
+    "STATION_MANAGER",
+    "STATION_OPERATOR",
+}
 
 
 def _validate_positive_int(value: int, field_name: str) -> None:

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/main_navigation_shell.dart';
 import '../../data/services/auth_service.dart';
+import '../admin_panel/admin_panel_shell.dart';
+import '../company_panel/company_panel_shell.dart';
 import '../page2_3_4_sign_up/page3_signup_user_page.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -28,10 +30,28 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _continueToApp() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
-    );
+  Future<void> _continueToApp() async {
+    final user = await _authService.getCurrentUser();
+    if (!mounted) return;
+
+    final Widget destination = switch (user.effectiveRole) {
+      'ADMIN' => const AdminPanelShell(),
+      'COMPANY_MANAGER' ||
+      'COMPANY_OPERATOR' ||
+      'STATION_MANAGER' ||
+      'STATION_OPERATOR' when user.companyId != null => CompanyPanelShell(
+        currentUser: user,
+      ),
+      'COMPANY_MANAGER' ||
+      'COMPANY_OPERATOR' ||
+      'STATION_MANAGER' ||
+      'STATION_OPERATOR' => const _UnauthorizedCompanyPanel(),
+      _ => const MainNavigationShell(),
+    };
+
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute<void>(builder: (_) => destination));
   }
 
   void _openSignupFlow() {
@@ -59,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
         rememberMe: _rememberMe,
       );
       if (!mounted) return;
-      _continueToApp();
+      await _continueToApp();
     } catch (error) {
       if (!mounted) return;
       _showError(error.toString());
@@ -212,10 +232,40 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
                 TextButton(
-                  onPressed: _isLoading ? null : _continueToApp,
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const MainNavigationShell(),
+                            ),
+                          );
+                        },
                   child: const Text('Continue as Guest \u2192'),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnauthorizedCompanyPanel extends StatelessWidget {
+  const _UnauthorizedCompanyPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFFF4F6FA),
+      body: SafeArea(
+        child: Center(
+          child: Card(
+            child: ListTile(
+              leading: Icon(Icons.lock_outline),
+              title: Text('Company access unavailable'),
+              subtitle: Text('This account has no active company membership.'),
             ),
           ),
         ),

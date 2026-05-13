@@ -21,7 +21,7 @@ class User(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "role IN ('USER', 'ADMIN')",
+            "role IN ('USER', 'COMPANY_MANAGER', 'COMPANY_OPERATOR', 'ADMIN', 'STATION_MANAGER', 'STATION_OPERATOR')",
             name="check_user_role",
         ),
     )
@@ -60,7 +60,7 @@ class CompanyMember(Base):
     __table_args__ = (
         UniqueConstraint("company_id", "user_id", name="uq_company_member"),
         CheckConstraint(
-            "role IN ('STATION_MANAGER', 'STATION_OPERATOR')",
+            "role IN ('COMPANY_MANAGER', 'COMPANY_OPERATOR', 'STATION_MANAGER', 'STATION_OPERATOR')",
             name="check_company_member_role",
         ),
     )
