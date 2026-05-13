@@ -109,8 +109,11 @@ class _ReservationTimeSelectionScreenState
         return Scaffold(
           appBar: const AppAppBar(title: 'Select Reservation Time'),
           bottomNavigationBar: _ConfirmBar(
-            canConfirm: state.selectedSlot != null && !state.isConfirming,
+            canConfirm: state.hasValidRange && !state.isConfirming,
             isConfirming: state.isConfirming,
+            selectedStart: state.selectedStart,
+            selectedEnd: state.selectedEnd,
+            duration: state.selectedDuration,
             onPressed: _confirmReservation,
           ),
           body: SafeArea(
@@ -123,7 +126,8 @@ class _ReservationTimeSelectionScreenState
                     station: widget.station,
                     charger: widget.charger,
                     vehicle: widget.vehicle,
-                    selectedSlot: state.selectedSlot,
+                    selectedStart: state.selectedStart,
+                    selectedEnd: state.selectedEnd,
                   ),
                   const SizedBox(height: 16),
                   _DateSelector(
@@ -149,7 +153,7 @@ class _ReservationTimeSelectionScreenState
                   else
                     _SlotGrid(
                       slots: state.slots,
-                      selectedSlot: state.selectedSlot,
+                      controller: _controller,
                       onSlotPressed: _controller.selectSlot,
                     ),
                 ],
@@ -167,13 +171,15 @@ class _ReservationSummary extends StatelessWidget {
     required this.station,
     required this.charger,
     required this.vehicle,
-    this.selectedSlot,
+    this.selectedStart,
+    this.selectedEnd,
   });
 
   final Station station;
   final Charger charger;
   final Vehicle vehicle;
-  final ReservationSlot? selectedSlot;
+  final DateTime? selectedStart;
+  final DateTime? selectedEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -251,26 +257,33 @@ class _ReservationSummary extends StatelessWidget {
                 vehicle.plate,
               ].where((value) => value.trim().isNotEmpty).join(' | '),
             ),
-            if (selectedSlot != null) ...[
+            if (selectedStart != null) ...[
               const SizedBox(height: 8),
               _SummaryRow(
                 icon: Icons.schedule,
                 label: 'Start time',
-                value: _formatTime(selectedSlot!.start),
+                value: _formatTime(selectedStart!),
               ),
+            ],
+            if (selectedEnd != null) ...[
               const SizedBox(height: 8),
               _SummaryRow(
                 icon: Icons.av_timer,
                 label: 'End time',
-                value: _formatTime(selectedSlot!.end),
+                value: _formatTime(selectedEnd!),
               ),
               const SizedBox(height: 8),
               _SummaryRow(
                 icon: Icons.timelapse,
                 label: 'Duration',
-                value: _formatDuration(
-                  selectedSlot!.end.difference(selectedSlot!.start),
-                ),
+                value: _formatDuration(selectedEnd!.difference(selectedStart!)),
+              ),
+            ] else if (selectedStart != null) ...[
+              const SizedBox(height: 8),
+              _SummaryRow(
+                icon: Icons.touch_app_outlined,
+                label: 'End time',
+                value: 'Select an end time',
               ),
             ],
           ],
@@ -289,8 +302,11 @@ class _ReservationSummary extends StatelessWidget {
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
+    if (hours == 0) {
+      return '$minutes minutes';
+    }
     if (minutes == 0) {
-      return '$hours hours';
+      return hours == 1 ? '1 hour' : '$hours hours';
     }
     return '$hours h $minutes min';
   }
@@ -382,12 +398,12 @@ class _DateSelector extends StatelessWidget {
 class _SlotGrid extends StatelessWidget {
   const _SlotGrid({
     required this.slots,
-    required this.selectedSlot,
+    required this.controller,
     required this.onSlotPressed,
   });
 
   final List<ReservationSlot> slots;
-  final ReservationSlot? selectedSlot;
+  final ReservationTimeSelectionController controller;
   final ValueChanged<ReservationSlot> onSlotPressed;
 
   @override
@@ -414,7 +430,10 @@ class _SlotGrid extends StatelessWidget {
         final slot = slots[index];
         return ReservationSlotTile(
           slot: slot,
-          isSelected: selectedSlot?.start == slot.start,
+          isStart: controller.isSelectedStart(slot),
+          isEnd: controller.isSelectedEnd(slot),
+          isInsideRange: controller.isInsideSelectedRange(slot),
+          isSelectable: controller.isSelectable(slot),
           onPressed: () => onSlotPressed(slot),
         );
       },
@@ -426,29 +445,40 @@ class ReservationSlotTile extends StatelessWidget {
   const ReservationSlotTile({
     super.key,
     required this.slot,
-    required this.isSelected,
+    required this.isStart,
+    required this.isEnd,
+    required this.isInsideRange,
+    required this.isSelectable,
     required this.onPressed,
   });
 
   final ReservationSlot slot;
-  final bool isSelected;
+  final bool isStart;
+  final bool isEnd;
+  final bool isInsideRange;
+  final bool isSelectable;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final disabled = !slot.isAvailable;
+    final disabled = !isSelectable;
+    final selected = isStart || isEnd;
     final background = disabled
         ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
-        : isSelected
+        : selected
         ? colorScheme.primary
+        : isInsideRange
+        ? colorScheme.primaryContainer.withValues(alpha: 0.55)
         : colorScheme.surfaceContainerLow;
     final foreground = disabled
         ? colorScheme.onSurfaceVariant.withValues(alpha: 0.45)
-        : isSelected
+        : selected
         ? colorScheme.onPrimary
+        : isInsideRange
+        ? colorScheme.onPrimaryContainer
         : colorScheme.onSurface;
-    final borderColor = isSelected
+    final borderColor = selected || isInsideRange
         ? colorScheme.primary
         : colorScheme.outlineVariant.withValues(alpha: 0.6);
 
@@ -488,11 +518,17 @@ class _ConfirmBar extends StatelessWidget {
   const _ConfirmBar({
     required this.canConfirm,
     required this.isConfirming,
+    required this.selectedStart,
+    required this.selectedEnd,
+    required this.duration,
     required this.onPressed,
   });
 
   final bool canConfirm;
   final bool isConfirming;
+  final DateTime? selectedStart;
+  final DateTime? selectedEnd;
+  final Duration? duration;
   final VoidCallback onPressed;
 
   @override
@@ -508,18 +544,103 @@ class _ConfirmBar extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: FilledButton.icon(
-            onPressed: canConfirm ? onPressed : null,
-            icon: isConfirming
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.check_circle_outline),
-            label: Text(isConfirming ? 'Confirming...' : 'Confirm Reservation'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _RangeSummaryText(
+                      label: 'Start',
+                      value: selectedStart == null
+                          ? '-'
+                          : _formatTime(selectedStart!),
+                    ),
+                  ),
+                  Expanded(
+                    child: _RangeSummaryText(
+                      label: 'End',
+                      value: selectedEnd == null
+                          ? '-'
+                          : _formatTime(selectedEnd!),
+                    ),
+                  ),
+                  Expanded(
+                    child: _RangeSummaryText(
+                      label: 'Duration',
+                      value: duration == null
+                          ? '-'
+                          : _formatDuration(duration!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: canConfirm ? onPressed : null,
+                  icon: isConfirming
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.check_circle_outline),
+                  label: Text(
+                    isConfirming ? 'Confirming...' : 'Confirm Reservation',
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  String _formatTime(DateTime dateTime) {
+    return [
+      dateTime.hour.toString().padLeft(2, '0'),
+      dateTime.minute.toString().padLeft(2, '0'),
+    ].join(':');
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    if (hours == 0) return '$minutes min';
+    if (minutes == 0) return hours == 1 ? '1 hour' : '$hours hours';
+    return '${hours}h ${minutes}m';
+  }
+}
+
+class _RangeSummaryText extends StatelessWidget {
+  const _RangeSummaryText({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(
+            context,
+          ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+      ],
     );
   }
 }

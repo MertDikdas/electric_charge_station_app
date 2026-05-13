@@ -49,20 +49,32 @@ def validate_reservation_conflicts(reservation: Reservation, existing_reservatio
             if (reservation.start_time < existing.end_time and reservation.end_time > existing.start_time):
                 raise ValueError("Reservation conflicts with an existing reservation for the same charger")
 
-def validate_reservation_duration(reservation: Reservation, expected_minutes: int = 120) -> None:
-    """Checks whether the reservation duration matches the fixed allowed duration."""
+def validate_reservation_duration(
+    reservation: Reservation,
+    min_minutes: int = 15,
+    max_minutes: int = 120,
+) -> None:
+    """Checks whether the reservation duration is within the allowed range."""
     if reservation.end_time is None:
         raise ValueError("Reservation end_time is required")
     start_at = datetime.combine(reservation.date, reservation.start_time)
     end_at = datetime.combine(reservation.date, reservation.end_time)
     duration = end_at - start_at
-    if duration != timedelta(minutes=expected_minutes):
-        raise ValueError("Reservation duration must be exactly 2 hours")
+    if duration < timedelta(minutes=min_minutes):
+        raise ValueError("Reservation duration must be at least 15 minutes")
+    if duration > timedelta(minutes=max_minutes):
+        raise ValueError("Reservation duration cannot exceed 2 hours")
+    if duration.total_seconds() % (15 * 60) != 0:
+        raise ValueError("Reservation duration must align to 15-minute slots")
 
 def validate_reservation_slot_interval(reservation: Reservation, interval_minutes: int = 15) -> None:
-    """Checks whether the reservation start time aligns to the slot interval."""
+    """Checks whether the reservation range aligns to the slot interval."""
     if reservation.start_time.minute % interval_minutes != 0 or reservation.start_time.second != 0:
         raise ValueError("Reservation start_time must align to 15-minute slots")
+    if reservation.end_time is None:
+        raise ValueError("Reservation end_time is required")
+    if reservation.end_time.minute % interval_minutes != 0 or reservation.end_time.second != 0:
+        raise ValueError("Reservation end_time must align to 15-minute slots")
 
 def ensure_reservation_not_in_past(reservation: Reservation) -> None:
     """Checks whether the reservation is not in the past."""

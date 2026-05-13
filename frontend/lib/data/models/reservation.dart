@@ -85,10 +85,12 @@ class ReservationInput {
       if (stationId != null) 'station_id': stationId,
       'vehicle_id': vehicleId,
       'charger_id': chargerId,
-      'date': date,
+      if (!_isIsoDateTime(startTime)) 'date': date,
       'start_time': startTime,
       if (endTime != null) 'end_time': endTime,
       'status': status,
     };
   }
+
+  bool _isIsoDateTime(String value) => value.contains('T');
 }

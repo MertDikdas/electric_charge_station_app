@@ -27,7 +27,8 @@ class ReservationTimeSelectionState {
   const ReservationTimeSelectionState({
     required this.selectedDate,
     this.slots = const [],
-    this.selectedSlot,
+    this.selectedStart,
+    this.selectedEnd,
     this.isLoadingSlots = false,
     this.isConfirming = false,
     this.errorMessage,
@@ -35,16 +36,28 @@ class ReservationTimeSelectionState {
 
   final DateTime selectedDate;
   final List<ReservationSlot> slots;
-  final ReservationSlot? selectedSlot;
+  final DateTime? selectedStart;
+  final DateTime? selectedEnd;
   final bool isLoadingSlots;
   final bool isConfirming;
   final String? errorMessage;
 
+  bool get hasValidRange => selectedStart != null && selectedEnd != null;
+
+  Duration? get selectedDuration {
+    final start = selectedStart;
+    final end = selectedEnd;
+    if (start == null || end == null) return null;
+    return end.difference(start);
+  }
+
   ReservationTimeSelectionState copyWith({
     DateTime? selectedDate,
     List<ReservationSlot>? slots,
-    ReservationSlot? selectedSlot,
-    bool clearSelectedSlot = false,
+    DateTime? selectedStart,
+    DateTime? selectedEnd,
+    bool clearSelection = false,
+    bool clearSelectedEnd = false,
     bool? isLoadingSlots,
     bool? isConfirming,
     String? errorMessage,
@@ -53,9 +66,12 @@ class ReservationTimeSelectionState {
     return ReservationTimeSelectionState(
       selectedDate: selectedDate ?? this.selectedDate,
       slots: slots ?? this.slots,
-      selectedSlot: clearSelectedSlot
+      selectedStart: clearSelection
           ? null
-          : selectedSlot ?? this.selectedSlot,
+          : selectedStart ?? this.selectedStart,
+      selectedEnd: clearSelection || clearSelectedEnd
+          ? null
+          : selectedEnd ?? this.selectedEnd,
       isLoadingSlots: isLoadingSlots ?? this.isLoadingSlots,
       isConfirming: isConfirming ?? this.isConfirming,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
@@ -65,7 +81,9 @@ class ReservationTimeSelectionState {
 
 class ReservationTimeSelectionController
     extends Stream<ReservationTimeSelectionState> {
-  static const Duration reservationDuration = Duration(hours: 2);
+  static const Duration slotInterval = Duration(minutes: 15);
+  static const Duration minReservationDuration = Duration(minutes: 15);
+  static const Duration maxReservationDuration = Duration(hours: 2);
 
   ReservationTimeSelectionController({
     required this.station,
@@ -123,21 +141,16 @@ class ReservationTimeSelectionController
         selectedDate: _state.selectedDate,
         reservations: reservations,
       );
-      final selectedSlot = _state.selectedSlot;
-      final stillAvailable =
-          selectedSlot != null &&
-          slots.any(
-            (slot) =>
-                slot.start == selectedSlot.start &&
-                slot.end == selectedSlot.end &&
-                slot.isAvailable,
-          );
+      final stillAvailable = _isRangeAvailable(
+        slots,
+        _state.selectedStart,
+        _state.selectedEnd,
+      );
 
       _emit(
         _state.copyWith(
           slots: slots,
-          selectedSlot: stillAvailable ? selectedSlot : null,
-          clearSelectedSlot: !stillAvailable,
+          clearSelection: !stillAvailable,
           isLoadingSlots: false,
         ),
       );
@@ -163,20 +176,46 @@ class ReservationTimeSelectionController
     _emit(
       _state.copyWith(
         selectedDate: _dateOnly(date),
-        clearSelectedSlot: true,
+        clearSelection: true,
         clearError: true,
       ),
     );
   }
 
   void selectSlot(ReservationSlot slot) {
-    if (!slot.isAvailable) return;
-    _emit(_state.copyWith(selectedSlot: slot, clearError: true));
+    final selectedStart = _state.selectedStart;
+    if (selectedStart == null || _state.selectedEnd != null) {
+      if (!slot.isAvailable) return;
+      _emit(
+        _state.copyWith(
+          selectedStart: slot.start,
+          clearSelectedEnd: true,
+          clearError: true,
+        ),
+      );
+      return;
+    }
+
+    if (slot.start.isBefore(selectedStart) || slot.start == selectedStart) {
+      if (!slot.isAvailable) return;
+      _emit(
+        _state.copyWith(
+          selectedStart: slot.start,
+          clearSelectedEnd: true,
+          clearError: true,
+        ),
+      );
+      return;
+    }
+
+    if (!isValidEndSlot(slot)) return;
+    _emit(_state.copyWith(selectedEnd: slot.start, clearError: true));
   }
 
   Future<void> confirmReservation() async {
-    final slot = _state.selectedSlot;
-    if (slot == null || _state.isConfirming) return;
+    final start = _state.selectedStart;
+    final end = _state.selectedEnd;
+    if (start == null || end == null || _state.isConfirming) return;
 
     _emit(_state.copyWith(isConfirming: true, clearError: true));
 
@@ -186,8 +225,9 @@ class ReservationTimeSelectionController
           stationId: station.id,
           vehicleId: vehicle.id,
           chargerId: charger.id,
-          date: _formatDate(slot.start),
-          startTime: _formatTime(slot.start),
+          date: _formatDate(start),
+          startTime: start.toIso8601String(),
+          endTime: end.toIso8601String(),
         ),
       );
       _emit(_state.copyWith(isConfirming: false));
@@ -226,9 +266,7 @@ class ReservationTimeSelectionController
     final slots = <ReservationSlot>[];
     var start = opening;
     while (start.isBefore(closing)) {
-      final end = start.add(reservationDuration);
-      if (end.isAfter(closing)) break;
-
+      final end = start.add(slotInterval);
       final isPast = _isSameDate(selectedDate, now) && !start.isAfter(now);
       final isOccupied = occupiedRanges.any(
         (range) => start.isBefore(range.end) && end.isAfter(range.start),
@@ -236,14 +274,65 @@ class ReservationTimeSelectionController
       slots.add(
         ReservationSlot(
           start: start,
-          end: end,
+          end: start.add(slotInterval),
           isOccupied: isOccupied,
           isPast: isPast,
         ),
       );
-      start = start.add(const Duration(minutes: 15));
+      start = start.add(slotInterval);
     }
     return slots;
+  }
+
+  bool isValidEndSlot(ReservationSlot slot) {
+    final start = _state.selectedStart;
+    if (start == null) return false;
+    return _isRangeAvailable(_state.slots, start, slot.start);
+  }
+
+  bool isInsideSelectedRange(ReservationSlot slot) {
+    final start = _state.selectedStart;
+    final end = _state.selectedEnd;
+    if (start == null || end == null) return false;
+    return slot.start.isAfter(start) && slot.start.isBefore(end);
+  }
+
+  bool isSelectedStart(ReservationSlot slot) =>
+      slot.start == _state.selectedStart;
+
+  bool isSelectedEnd(ReservationSlot slot) => slot.start == _state.selectedEnd;
+
+  bool isSelectable(ReservationSlot slot) {
+    final start = _state.selectedStart;
+    if (start == null || _state.selectedEnd != null) return slot.isAvailable;
+    if (slot.start.isAfter(start)) return isValidEndSlot(slot);
+    return slot.isAvailable;
+  }
+
+  bool _isRangeAvailable(
+    List<ReservationSlot> slots,
+    DateTime? start,
+    DateTime? end,
+  ) {
+    if (start == null) return true;
+    if (end == null) {
+      return slots.any((slot) => slot.start == start && slot.isAvailable);
+    }
+    final duration = end.difference(start);
+    if (duration < minReservationDuration ||
+        duration > maxReservationDuration) {
+      return false;
+    }
+    if (duration.inMinutes % slotInterval.inMinutes != 0) return false;
+    final rangeSlots = slots.where(
+      (slot) =>
+          (slot.start == start || slot.start.isAfter(start)) &&
+          slot.start.isBefore(end),
+    );
+    if (rangeSlots.length != duration.inMinutes ~/ slotInterval.inMinutes) {
+      return false;
+    }
+    return rangeSlots.every((slot) => slot.isAvailable);
   }
 
   DateTime? _atTime(DateTime date, DateTime? time) {
@@ -268,15 +357,34 @@ class ReservationTimeSelectionController
   }
 
   String _friendlyCreateError(Object error) {
-    final message = error.toString().toLowerCase();
+    final rawMessage = error.toString();
+    final message = rawMessage.toLowerCase();
     if (message.contains('overlap') ||
         message.contains('conflict') ||
         message.contains('reserved') ||
         message.contains('occupied')) {
       return 'That slot was just reserved. Please choose another time.';
     }
+    if (message.contains('one reservation per day')) {
+      return 'You already have a reservation for this day.';
+    }
+    if (message.contains('exactly 2 hours')) {
+      return 'Backend is still using the old 2-hour-only reservation rule. Restart the backend server.';
+    }
+    if (message.contains('duration')) {
+      return rawMessage;
+    }
+    if (message.contains('charger is not available')) {
+      return 'This charger is not available right now.';
+    }
+    if (message.contains('station is not available')) {
+      return 'This station is not available right now.';
+    }
     if (message.contains('past')) {
       return 'That time has already passed. Please choose another slot.';
+    }
+    if (error is ApiException && error.message.trim().isNotEmpty) {
+      return error.message;
     }
     return 'Reservation could not be confirmed. Please try again.';
   }
@@ -307,13 +415,5 @@ class ReservationTimeSelectionController
       dateTime.month.toString().padLeft(2, '0'),
       dateTime.day.toString().padLeft(2, '0'),
     ].join('-');
-  }
-
-  static String _formatTime(DateTime dateTime) {
-    return [
-      dateTime.hour.toString().padLeft(2, '0'),
-      dateTime.minute.toString().padLeft(2, '0'),
-      '00',
-    ].join(':');
   }
 }

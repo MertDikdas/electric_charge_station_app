@@ -93,6 +93,8 @@ def get_current_user(
     user = SqlAlchemyUserRepository(db).get(session.user_id)
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Inactive account")
 
     return AuthenticatedUser(id=session.user_id, role=user.role or USER_ROLE)
 
