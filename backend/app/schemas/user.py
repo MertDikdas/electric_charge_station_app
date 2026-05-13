@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -51,8 +51,6 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: User
-    company: Optional[Company] = None
-    company_member: Optional[CompanyMember] = None
 
     class Config:
         from_attributes = True

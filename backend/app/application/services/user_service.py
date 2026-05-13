@@ -33,39 +33,14 @@ class UserService:
     def login_user(self, email: str, password: str) -> Optional[AuthResponseEntity]:
         with self.uow:
             user = self.uow.users.get_by_email(email)
-
             if not user or not verify_password(password, user.password_hash):
                 return None
-
-            #if not user.is_active:
-            #    return None
-
-            company = None
-            company_member = None
-
-            role = user.role.upper()
-
-            if role in ("STATION_MANAGER", "STATION_OPERATOR"):
-                company_member = self.uow.company_members.get_by_user_id(user.id)
-
-                if company_member is None or not company_member.is_active:
-                    return None
-
-                company = self.uow.companies.get_by_id(company_member.company_id)
-
-                if company is None or not company.is_active:
-                    return None
-
+            if not user.is_active:
+                raise ValueError("User account is deactivated")
             access_token = self._create_session(user)
-
             self.uow.commit()
 
-            return AuthResponseEntity(
-                access_token=access_token,
-                user=user,
-                company=company,
-                company_member=company_member,
-            )
+            return AuthResponseEntity(access_token=access_token, user=user)
 
     def logout_user(self, token: str) -> bool:
         with self.uow:

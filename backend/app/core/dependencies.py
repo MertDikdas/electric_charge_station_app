@@ -30,7 +30,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from app.infrastructure.database.tables import Charger, CompanyMember, Station
 from app.application.services.company_service import CompanyService
-from app.application.services.statistics_service import StatisticsService
 
 security = HTTPBearer(auto_error=False)
 
@@ -226,9 +225,4 @@ def get_company_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanySe
 
 def get_company_member_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanyMemberService:
     return CompanyMemberService(uow)
-
-def get_statistics_service(
-    uow: AbstractUnitOfWork = Depends(get_uow),
-) -> StatisticsService:
-    return StatisticsService(uow)
 

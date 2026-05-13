@@ -15,14 +15,6 @@ class AppUser {
   final double balance;
   final String role;
 
-  bool get isAdmin => role.toUpperCase() == 'ADMIN';
-
-  bool get isStationManager => role.toUpperCase() == 'STATION_MANAGER';
-
-  bool get isStationOperator => role.toUpperCase() == 'STATION_OPERATOR';
-
-  bool get isStationStaff => isStationManager || isStationOperator;
-
   String get fullName =>
       [name, surname].where((part) => part.isNotEmpty).join(' ');
 

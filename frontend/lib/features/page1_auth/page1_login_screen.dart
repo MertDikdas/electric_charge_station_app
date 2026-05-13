@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_snackbar.dart';
 import '../../core/main_navigation_shell.dart';
 import '../../data/services/auth_service.dart';
 import '../page2_3_4_sign_up/page3_signup_user_page.dart';
-import '../page8_admin_panel/admin_panel.dart';
-import '../page9_manager_panel/manager_panel.dart';
-import '../page10_operator_panel/operator_panel.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,33 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _continueAfterLogin(String role) {
-    final normalizedRole = role.toUpperCase();
-
-    Widget nextScreen;
-
-    switch (normalizedRole) {
-      case 'ADMIN':
-        nextScreen = const AdminPanelScreen();
-        break;
-
-      case 'STATION_MANAGER':
-        nextScreen = const StationManagerPanelScreen();
-        break;
-
-      case 'STATION_OPERATOR':
-        nextScreen = const StationOperatorPanelScreen();
-        break;
-
-      default:
-        nextScreen = const MainNavigationShell();
-    }
-
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute<void>(builder: (_) => nextScreen));
-  }
-
   void _continueToApp() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
@@ -73,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final identifier = _identifierController.text.trim();
     final password = _passwordController.text;
     if (identifier.isEmpty || password.isEmpty) {
-      _showError('Telefon/e-posta ve parola gerekli');
+      _showError('Phone/email and password are required');
       return;
     }
 
@@ -82,15 +53,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final user = await _authService.login(
+      await _authService.login(
         identifier: identifier,
         password: password,
         rememberMe: _rememberMe,
       );
-
       if (!mounted) return;
-
-      _continueAfterLogin(user!.role);
+      _continueToApp();
     } catch (error) {
       if (!mounted) return;
       _showError(error.toString());
@@ -104,9 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.showError(context, message);
   }
 
   @override
@@ -135,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Ho\u015f Geldin',
+                  'Welcome',
                   textAlign: TextAlign.center,
                   style: textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -144,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Gelece\u011fi \u015earj Et',
+                  'Charge the Future',
                   textAlign: TextAlign.center,
                   style: textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurfaceVariant,
@@ -169,8 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       tooltip: _obscurePassword
-                          ? 'Şifreyi göster'
-                          : 'Şifreyi gizle',
+                          ? 'Show password'
+                          : 'Hide password',
                       onPressed: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
@@ -197,10 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     Expanded(
                       child: Text('Remember me', style: textTheme.bodyMedium),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text('\u015eifremi Unuttum(deneme)'),
                     ),
                   ],
                 ),
@@ -250,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 32),
                 TextButton(
                   onPressed: _isLoading ? null : _continueToApp,
-                  child: const Text('Misafir Olarak Devam Et \u2192'),
+                  child: const Text('Continue as Guest \u2192'),
                 ),
               ],
             ),

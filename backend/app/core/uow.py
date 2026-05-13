@@ -15,7 +15,6 @@ from app.infrastructure.repositories import (
     AbstractVehicleRepository,
     AbstractCompanyRepository,
     AbstractCompanyMemberRepository,
-    AbstractStatisticsRepository,
     SqlAlchemyChargerRepository,
     SqlAlchemyChargingSessionRepository,
     SqlAlchemyCouponRepository,
@@ -28,7 +27,7 @@ from app.infrastructure.repositories import (
     SqlAlchemyVehicleRepository,
     SqlAlchemyCompanyRepository,
     SqlAlchemyCompanyMemberRepository,
-    SqlAlchemyStatisticsRepository,
+    
 )
 
 class AbstractUnitOfWork(ABC):
@@ -44,7 +43,7 @@ class AbstractUnitOfWork(ABC):
     payments: AbstractPaymentRepository
     companies: AbstractCompanyRepository
     company_members: AbstractCompanyMemberRepository
-    statistics: AbstractStatisticsRepository
+
     def __enter__(self):
         return self
 
@@ -78,7 +77,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self.payments = SqlAlchemyPaymentRepository(session)
         self.companies = SqlAlchemyCompanyRepository(session)
         self.company_members = SqlAlchemyCompanyMemberRepository(session)
-        self.statistics = SqlAlchemyStatisticsRepository(session)
+
     def commit(self):
         self.session.commit()
 

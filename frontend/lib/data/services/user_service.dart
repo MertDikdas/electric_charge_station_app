@@ -32,10 +32,7 @@ class UserService {
   }
 
   Future<List<AppUser>> getUsers() async {
-    return parseList(
-      await _apiClient.get('/users/admin/all'),
-      AppUser.fromJson,
-    );
+    return parseList(await _apiClient.get('/users/all'), AppUser.fromJson);
   }
 
   Future<AppUser> getUser(int userId) async {

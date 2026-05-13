@@ -898,8 +898,8 @@ class _VehicleScreenState extends State<VehicleScreen> {
     try {
       await _vehicleService.createVehicle(
         VehicleInput(
-          name: _nameController.text.trim(),
           userId: userId,
+          name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
           model: _modelController.text.trim(),
           plate: _plateController.text.trim().toUpperCase(),
