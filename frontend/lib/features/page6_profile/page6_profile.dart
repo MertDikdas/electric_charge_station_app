@@ -898,12 +898,10 @@ class _VehicleScreenState extends State<VehicleScreen> {
     try {
       await _vehicleService.createVehicle(
         VehicleInput(
+          name: _nameController.text.trim(),
           userId: userId,
-          model: [
-            _brandController.text.trim(),
-            _nameController.text.trim(),
-            _modelController.text.trim(),
-          ].where((value) => value.isNotEmpty).join(' '),
+          brand: _brandController.text.trim(),
+          model: _modelController.text.trim(),
           plate: _plateController.text.trim().toUpperCase(),
           maxChargingPower: double.parse(_maxPowerController.text.trim()),
           batteryCapacity: double.parse(_batteryCapacityController.text.trim()),

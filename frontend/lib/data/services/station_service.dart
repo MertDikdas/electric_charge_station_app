@@ -105,9 +105,7 @@ class StationService {
   }
 
   Future<List<Station>> getStationsByCompany(int companyId) async {
-    final response = await _apiClient.get(
-      '/admin/companies/$companyId/stations',
-    );
+    final response = await _apiClient.get('/stations/by-company-id/$companyId');
 
     if (response is List) {
       return response

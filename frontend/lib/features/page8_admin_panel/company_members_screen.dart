@@ -32,6 +32,45 @@ class _CompanyMembersScreenState extends State<CompanyMembersScreen> {
     await _membersFuture;
   }
 
+  String _memberDisplayName(CompanyMember member) {
+    final name = member.name?.trim();
+    final email = member.email?.trim();
+
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+
+    if (email != null && email.isNotEmpty) {
+      return email;
+    }
+
+    return 'User #${member.userId}';
+  }
+
+  String _formatRole(String role) {
+    switch (role.toUpperCase()) {
+      case 'STATION_MANAGER':
+        return 'Station Manager';
+      case 'STATION_OPERATOR':
+        return 'Station Operator';
+      case 'ADMIN':
+        return 'Admin';
+      default:
+        return role
+            .split('_')
+            .map(
+              (word) => word.isEmpty
+                  ? word
+                  : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+            )
+            .join(' ');
+    }
+  }
+
+  String _formatBalance(double balance) {
+    return balance.toStringAsFixed(2);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,30 +107,111 @@ class _CompanyMembersScreenState extends State<CompanyMembersScreen> {
             return ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: members.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final member = members[index];
 
                 return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   child: ListTile(
-                    leading: Icon(
-                      member.role.toUpperCase() == 'STATION_MANAGER'
-                          ? Icons.manage_accounts_outlined
-                          : Icons.badge_outlined,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
                     ),
+
+                    leading: CircleAvatar(
+                      child: Icon(
+                        member.role.toUpperCase() == 'STATION_MANAGER'
+                            ? Icons.manage_accounts_outlined
+                            : Icons.badge_outlined,
+                      ),
+                    ),
+
                     title: Text(
-                      member.name == null || member.name!.isEmpty
-                          ? 'User #${member.userId}'
-                          : member.name!,
+                      _memberDisplayName(member),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    subtitle: Text(
-                      [
-                        if (member.email != null && member.email!.isNotEmpty)
-                          member.email!,
-                        member.role,
-                        member.isActive ? 'Active' : 'Inactive',
-                      ].join(' • '),
+
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (member.email != null && member.email!.isNotEmpty)
+                            Text(member.email!),
+
+                          const SizedBox(height: 6),
+
+                          Text('User ID: ${member.userId}'),
+
+                          if (member.userRole != null &&
+                              member.userRole!.isNotEmpty)
+                            Text('User role: ${_formatRole(member.userRole!)}'),
+
+                          if (member.userBalance != null)
+                            Text(
+                              'Balance: ${_formatBalance(member.userBalance!)}',
+                            ),
+
+                          const SizedBox(height: 6),
+
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              Chip(
+                                label: Text(_formatRole(member.role)),
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              Chip(
+                                label: Text(
+                                  member.isActive ? 'Active' : 'Inactive',
+                                ),
+                                backgroundColor: member.isActive
+                                    ? Colors.green.withValues(alpha: 0.12)
+                                    : Colors.red.withValues(alpha: 0.12),
+                                labelStyle: TextStyle(
+                                  color: member.isActive
+                                      ? Colors.green
+                                      : Colors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              if (member.userIsActive != null)
+                                Chip(
+                                  label: Text(
+                                    member.userIsActive!
+                                        ? 'User Active'
+                                        : 'User Inactive',
+                                  ),
+                                  backgroundColor: member.userIsActive!
+                                      ? Colors.blue.withValues(alpha: 0.12)
+                                      : Colors.orange.withValues(alpha: 0.12),
+                                  labelStyle: TextStyle(
+                                    color: member.userIsActive!
+                                        ? Colors.blue
+                                        : Colors.orange,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
+
+                    trailing: const Icon(Icons.chevron_right),
                   ),
                 );
               },

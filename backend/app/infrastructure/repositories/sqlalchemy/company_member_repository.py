@@ -1,6 +1,7 @@
 from typing import Optional
 
 from app.domain.models.company_member import CompanyMemberEntity
+from app.domain.models.user import UserEntity
 from app.infrastructure.database.tables import CompanyMember as CompanyMemberModel
 from app.infrastructure.repositories.abstract.company_member_repository import AbstractCompanyMemberRepository
 from app.infrastructure.repositories.sqlalchemy.base import SqlAlchemyRepository
@@ -24,6 +25,15 @@ class SqlAlchemyCompanyMemberRepository(SqlAlchemyRepository[CompanyMemberEntity
             user_id=model.user_id,
             role=model.role,
             is_active=model.is_active,
+            user=UserEntity(
+                id=model.user.id,
+                name=model.user.name,
+                surname=model.user.surname,
+                email=model.user.email,
+                is_active=model.user.is_active,
+                balance=model.user.balance,
+                role=model.user.role,
+            ) if model.user is not None else None,
         )
 
     def get_by_company_and_user(self, company_id: int, user_id: int) -> Optional[CompanyMemberEntity]:

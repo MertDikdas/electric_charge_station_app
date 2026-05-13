@@ -44,7 +44,6 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
-  final _nameController = TextEditingController();
   final _modelController = TextEditingController();
   final _plateController = TextEditingController();
   final _connectorController = TextEditingController(text: 'TYPE_2');
@@ -79,7 +78,6 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
         _VehicleInfo(
           name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
-          name: _nameController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
           connectorType: _connectorController.text.trim(),
@@ -126,7 +124,6 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
         _VehicleInfo(
           name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
-          name: _nameController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
           connectorType: _connectorController.text.trim(),
@@ -165,6 +162,8 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           await _vehicleService.createVehicle(
             VehicleInput(
               userId: user.id,
+              name: vehicle.name,
+              brand: vehicle.brand,
               model: vehicle.displayName,
               plate: vehicle.licensePlate,
               maxChargingPower: double.parse(vehicle.maxChargingPower),
@@ -419,7 +418,6 @@ class _VehicleInfo {
   const _VehicleInfo({
     required this.name,
     required this.brand,
-    required this.name,
     required this.model,
     required this.licensePlate,
     required this.connectorType,
@@ -429,7 +427,6 @@ class _VehicleInfo {
   });
   final String name;
   final String brand;
-  final String name;
   final String model;
   final String licensePlate;
   final String connectorType;

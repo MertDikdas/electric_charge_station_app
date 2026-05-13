@@ -10,7 +10,7 @@ class CompanyMemberService {
 
   Future<List<CompanyMember>> getMembersByCompany(int companyId) async {
     final response = await _apiClient.get(
-      '/admin/companies/$companyId/members',
+      '/admin/company-members/by-company/$companyId',
     );
 
     if (response is List) {
