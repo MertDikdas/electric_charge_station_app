@@ -18,7 +18,8 @@ from app.domain.rules.reservation_rules import (
     calculate_end_time,
 )
 
-DURATION_MINUTES = 120
+MIN_DURATION_MINUTES = 15
+MAX_DURATION_MINUTES = 120
 
 
 class ReservationConflictError(ValueError):
@@ -38,12 +39,13 @@ class ReservationService:
         with self.uow:
             reservation.user_id = current_user_id
             reservation.status = reservation.status.upper()
-            reservation.duration_minutes = DURATION_MINUTES
             start_at = datetime.combine(reservation.date, reservation.start_time)
-            end_at = start_at + timedelta(minutes=DURATION_MINUTES)
+            if reservation.end_time is None:
+                raise ValueError("Reservation end_time is required")
+            end_at = datetime.combine(reservation.date, reservation.end_time)
             if end_at.date() != reservation.date:
                 raise ValueError("Reservation must end on the same day")
-            reservation.end_time = end_at.time()
+            reservation.duration_minutes = int((end_at - start_at).total_seconds() // 60)
             self._validate_reservation_request(reservation)
 
             new_reservation = self.uow.reservations.add(reservation)
@@ -96,7 +98,11 @@ class ReservationService:
 
         ensure_reservation_not_in_past(reservation)
         ensure_reservation_not_too_far_in_future(reservation)
-        validate_reservation_duration(reservation, expected_minutes=DURATION_MINUTES)
+        validate_reservation_duration(
+            reservation,
+            min_minutes=MIN_DURATION_MINUTES,
+            max_minutes=MAX_DURATION_MINUTES,
+        )
         
         user = self.uow.users.get(reservation.user_id)
         if not user:

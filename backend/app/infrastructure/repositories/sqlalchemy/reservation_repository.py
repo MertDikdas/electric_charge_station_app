@@ -102,6 +102,7 @@ class SqlAlchemyReservationRepository(
                 ReservationModel.start_time < end_time,
                 ReservationModel.end_time > start_time,
             )
+            .with_for_update()
             .all()
         )
         return [self.to_entity(model) for model in models]
@@ -122,6 +123,7 @@ class SqlAlchemyReservationRepository(
                 ReservationModel.start_time < end_time,
                 ReservationModel.end_time > start_time,
             )
+            .with_for_update()
             .all()
         )
         return [self.to_entity(model) for model in models]
