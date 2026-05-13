@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/api/token_storage.dart';
 import '../../data/models/coupon.dart';
 import '../../data/services/coupon_service.dart';
 
@@ -53,6 +54,33 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
   Future<void> _refreshCoupons() async {
     _reloadCoupons();
     await _couponsFuture;
+  }
+
+  Future<void> _confirmAndLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+    await TokenStorage().clear();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
   }
 
   double? _parseOptionalDouble(String value) {
@@ -475,6 +503,11 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
             tooltip: 'Refresh',
             onPressed: _reloadCoupons,
             icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            tooltip: 'Logout',
+            onPressed: _confirmAndLogout,
+            icon: const Icon(Icons.logout),
           ),
         ],
       ),

@@ -39,6 +39,7 @@ class ReservationService:
             reservation.user_id = current_user_id
             reservation.status = reservation.status.upper()
             reservation.duration_minutes = DURATION_MINUTES
+            reservation.station_id = self.uow.chargers.get(reservation.charger_id).station_id
             start_at = datetime.combine(reservation.date, reservation.start_time)
             end_at = start_at + timedelta(minutes=DURATION_MINUTES)
             if end_at.date() != reservation.date:
