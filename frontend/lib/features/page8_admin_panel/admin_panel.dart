@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'admin_statistics_screen.dart';
 import 'companies_screen.dart';
 
 class AdminPanelScreen extends StatelessWidget {
@@ -22,6 +23,21 @@ class AdminPanelScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const CompaniesScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.query_stats_outlined),
+              title: const Text('Statistics'),
+              subtitle: const Text('View platform statistics'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AdminStatisticsScreen(),
                   ),
                 );
               },
