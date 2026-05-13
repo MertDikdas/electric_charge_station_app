@@ -41,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _userService = UserService();
 
   late Future<AppUser?> _userFuture = _loadUser();
+  bool _isDeletingAccount = false;
 
   Future<AppUser?> _loadUser() async {
     final userId = await _tokenStorage.readUserId();
@@ -52,6 +53,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _tokenStorage.clear();
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return AlertDialog(
+          icon: Icon(Icons.warning_amber_rounded, color: colorScheme.error),
+          title: const Text('Delete Account?'),
+          content: const Text(
+            'This action will deactivate your account and log you out. '
+            'Your account can no longer be used unless reactivated by support.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
+              ),
+              child: const Text('Delete Account'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      await _deleteAccount();
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    setState(() {
+      _isDeletingAccount = true;
+    });
+
+    try {
+      await _userService.deactivateCurrentUser();
+      await _tokenStorage.clear();
+
+      if (!mounted) return;
+
+      AppSnackBar.showSuccess(context, 'Account deactivated.');
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    } catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showError(context, error.toString());
+      setState(() {
+        _isDeletingAccount = false;
+      });
+    }
   }
 
   @override
@@ -199,6 +257,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                 ),
+                const SizedBox(height: 32),
+                Text(
+                  'Danger Zone',
+                  style: textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _isDeletingAccount ? null : _confirmDeleteAccount,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  icon: _isDeletingAccount
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.delete_forever_outlined),
+                  label: Text(
+                    _isDeletingAccount ? 'Deleting...' : 'Delete Account',
+                  ),
+                ),
+                const SizedBox(height: 24),
               ],
             );
           },

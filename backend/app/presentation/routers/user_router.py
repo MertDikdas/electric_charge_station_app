@@ -53,7 +53,10 @@ def login_user(
     login_data: UserLogin,
     service: UserService = Depends(get_user_service),
 ):
-    auth_response = service.login_user(login_data.email, login_data.password)
+    try:
+        auth_response = service.login_user(login_data.email, login_data.password)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     if not auth_response:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return auth_response
@@ -95,6 +98,16 @@ def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     service.delete_user(current_user_id)
+
+@router.patch("/deactivate", status_code=204)
+def deactivate_current_user(
+    service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    try:
+        service.deactivate_user(current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 @router.get("/me", response_model=User)
 def get_current_user_info(

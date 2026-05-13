@@ -10,3 +10,6 @@ class AbstractUserSessionRepository(AbstractRepository[UserSessionEntity]):
 
     def revoke_token(self, token: str) -> bool:
         raise NotImplementedError
+
+    def revoke_all_for_user(self, user_id: int) -> int:
+        raise NotImplementedError

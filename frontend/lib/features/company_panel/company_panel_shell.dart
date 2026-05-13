@@ -1345,11 +1345,11 @@ class _StatusFilter extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<String>(
       showSelectedIcon: false,
-      segments: const [
-        ButtonSegment(value: 'ALL', label: Text('All')),
-        ButtonSegment(value: 'AVAILABLE', label: Text('Active')),
-        ButtonSegment(value: 'MAINTENANCE', label: Text('Maint.')),
-        ButtonSegment(value: 'CLOSED', label: Text('Closed')),
+      segments: [
+        ButtonSegment(value: 'ALL', label: _segmentLabel('All')),
+        ButtonSegment(value: 'AVAILABLE', label: _segmentLabel('Active')),
+        ButtonSegment(value: 'MAINTENANCE', label: _segmentLabel('Maint.')),
+        ButtonSegment(value: 'CLOSED', label: _segmentLabel('Closed')),
       ],
       selected: {value},
       onSelectionChanged: (values) => onChanged(values.first),
@@ -1370,16 +1370,20 @@ class _ReservationStatusFilter extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<String>(
       showSelectedIcon: false,
-      segments: const [
-        ButtonSegment(value: 'ALL', label: Text('All')),
-        ButtonSegment(value: 'PENDING', label: Text('Pending')),
-        ButtonSegment(value: 'COMPLETED', label: Text('Done')),
-        ButtonSegment(value: 'CANCELLED', label: Text('Cancelled')),
+      segments: [
+        ButtonSegment(value: 'ALL', label: _segmentLabel('All')),
+        ButtonSegment(value: 'PENDING', label: _segmentLabel('Pending')),
+        ButtonSegment(value: 'COMPLETED', label: _segmentLabel('Done')),
+        ButtonSegment(value: 'CANCELLED', label: _segmentLabel('Cancelled')),
       ],
       selected: {value},
       onSelectionChanged: (values) => onChanged(values.first),
     );
   }
+}
+
+Widget _segmentLabel(String text) {
+  return FittedBox(fit: BoxFit.scaleDown, child: Text(text, maxLines: 1));
 }
 
 Future<void> _confirm(

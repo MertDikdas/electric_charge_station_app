@@ -48,3 +48,12 @@ class SqlAlchemyUserSessionRepository(
         model.is_revoked = True
         self.session.flush()
         return True
+
+    def revoke_all_for_user(self, user_id: int) -> int:
+        updated_count = (
+            self.session.query(self.model)
+            .filter(self.model.user_id == user_id, self.model.is_revoked == False)
+            .update({"is_revoked": True}, synchronize_session=False)
+        )
+        self.session.flush()
+        return int(updated_count or 0)

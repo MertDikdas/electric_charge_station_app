@@ -77,6 +77,10 @@ class UserService {
   }
 
   Future<void> deleteUser(int userId) {
-    return _apiClient.delete('/users/$userId');
+    return deactivateCurrentUser();
+  }
+
+  Future<void> deactivateCurrentUser() {
+    return _apiClient.patch('/users/deactivate');
   }
 }
