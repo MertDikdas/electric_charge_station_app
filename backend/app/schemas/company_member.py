@@ -1,6 +1,7 @@
 from typing import Literal, Optional
 
 from pydantic import BaseModel
+from app.schemas.user import User
 
 
 CompanyMemberRole = Literal["STATION_MANAGER", "STATION_OPERATOR"]
@@ -30,6 +31,14 @@ class CompanyMember(BaseModel):
     user_id: int
     role: CompanyMemberRole
     is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class CompanyEmployee(BaseModel):
+    member: CompanyMember
+    user: User
 
     class Config:
         from_attributes = True

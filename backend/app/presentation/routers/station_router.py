@@ -17,7 +17,13 @@ from app.core.dependencies import (
 )
 from app.domain.models.station import StationEntity
 from app.schemas.charger import Charger
-from app.schemas.station import StationCreate, Station, StationStatusUpdate
+from app.schemas.station import (
+    MonthlyRevenue,
+    StationCreate,
+    Station,
+    StationStatusUpdate,
+    StationUsageCount,
+)
 from app.domain.rules.station_rules import validate_station_entity
 from typing import Dict, Any
 
@@ -100,6 +106,62 @@ def get_stations_by_company_id(
         return service.get_stations_by_company_id(company_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/my/company", response_model=List[Station])
+def get_my_company_stations(
+    service: StationService = Depends(get_station_service),
+    member: CompanyMember = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
+):
+    try:
+        return service.get_stations_by_company_id(member.company_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/my/company/monthly-revenue", response_model=MonthlyRevenue)
+def get_my_company_monthly_revenue(
+    year: int = Query(..., ge=2000),
+    month: int = Query(..., ge=1, le=12),
+    service: StationService = Depends(get_station_service),
+    member: CompanyMember = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
+):
+    try:
+        revenue = service.get_company_monthly_revenue(member.company_id, year, month)
+        return {"year": year, "month": month, "revenue": revenue}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/my/company/usage-counts", response_model=List[StationUsageCount])
+def get_my_company_station_usage_counts(
+    service: StationService = Depends(get_station_service),
+    member: CompanyMember = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
+):
+    try:
+        return service.get_company_station_usage_counts(member.company_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{station_id}/monthly-revenue", response_model=MonthlyRevenue)
+def get_station_monthly_revenue(
+    station_id: int,
+    year: int = Query(..., ge=2000),
+    month: int = Query(..., ge=1, le=12),
+    service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
+    membership_check: AuthenticatedUser = Depends(ensure_same_company),
+):
+    try:
+        revenue = service.get_station_monthly_revenue(station_id, year, month)
+        return {"year": year, "month": month, "revenue": revenue}
+    except ValueError as e:
+        status_code = 404 if str(e) == "Station not found" else 400
+        raise HTTPException(status_code=status_code, detail=str(e))
 
 @router.get("/{station_id}/chargers", response_model=List[Charger])
 def get_station_chargers(

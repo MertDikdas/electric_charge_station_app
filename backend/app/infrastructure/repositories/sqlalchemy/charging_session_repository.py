@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from sqlalchemy import func
+
 from app.domain.models.charging_session import (
     ChargingSessionEntity,
     ExpiredChargingSessionForAutoFinish,
@@ -7,6 +9,7 @@ from app.domain.models.charging_session import (
 from app.infrastructure.database.tables import (
     ChargingSession as ChargingSessionModel,
     Reservation as ReservationModel,
+    Station as StationModel,
 )
 from app.infrastructure.repositories.abstract.charging_session_repository import (
     AbstractChargingSessionRepository,
@@ -75,6 +78,50 @@ class SqlAlchemyChargingSessionRepository(
             )
         )
         return [self.to_entity(model) for model in query.all()]
+
+    def get_monthly_revenue_by_station(self, station_id: int, year: int, month: int) -> float:
+        revenue = (
+            self.session.query(func.coalesce(func.sum(ChargingSessionModel.cost), 0.0))
+            .join(ReservationModel, ChargingSessionModel.reservation)
+            .filter(
+                ReservationModel.station_id == station_id,
+                func.extract("year", ReservationModel.date) == year,
+                func.extract("month", ReservationModel.date) == month,
+                ChargingSessionModel.status == "COMPLETED",
+            )
+            .scalar()
+        )
+        return float(revenue or 0.0)
+
+    def get_monthly_revenue_by_company(self, company_id: int, year: int, month: int) -> float:
+        revenue = (
+            self.session.query(func.coalesce(func.sum(ChargingSessionModel.cost), 0.0))
+            .join(ReservationModel, ChargingSessionModel.reservation)
+            .join(StationModel, ReservationModel.station_id == StationModel.id)
+            .filter(
+                StationModel.company_id == company_id,
+                func.extract("year", ReservationModel.date) == year,
+                func.extract("month", ReservationModel.date) == month,
+                ChargingSessionModel.status == "COMPLETED",
+            )
+            .scalar()
+        )
+        return float(revenue or 0.0)
+
+    def get_usage_counts_by_company(self, company_id: int) -> list[tuple[int, str, int]]:
+        rows = (
+            self.session.query(
+                StationModel.id,
+                StationModel.name,
+                func.count(ChargingSessionModel.reservation_id),
+            )
+            .outerjoin(ReservationModel, ReservationModel.station_id == StationModel.id)
+            .outerjoin(ChargingSessionModel, ChargingSessionModel.reservation_id == ReservationModel.id)
+            .filter(StationModel.company_id == company_id)
+            .group_by(StationModel.id, StationModel.name)
+            .all()
+        )
+        return [(station_id, name, int(count or 0)) for station_id, name, count in rows]
 
     def list_expired_for_auto_finish(
         self,

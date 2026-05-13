@@ -74,6 +74,13 @@ class UserService:
         with self.uow:
             return self.uow.users.list()
 
+    def get_users_by_company(self, company_id: int) -> List[UserEntity]:
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            return self.uow.users.list_by_company_id(company_id)
+
     def get_user(self, user_id: int) -> Optional[UserEntity]:
         with self.uow:
             return self.uow.users.get(user_id)

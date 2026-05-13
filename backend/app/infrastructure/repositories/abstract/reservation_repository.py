@@ -21,6 +21,10 @@ class AbstractReservationRepository(AbstractRepository[ReservationEntity]):
         raise NotImplementedError
 
     @abstractmethod
+    def list_by_charger_id(self, charger_id: int) -> List[ReservationEntity]:
+        raise NotImplementedError
+
+    @abstractmethod
     def list_by_user_id(self, user_id: int) -> List[ReservationEntity]:
         raise NotImplementedError
 

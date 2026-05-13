@@ -38,3 +38,15 @@ class StationStatusUpdate(BaseModel):
             return value.upper()
         return value
 
+
+class MonthlyRevenue(BaseModel):
+    year: int
+    month: int
+    revenue: float
+
+
+class StationUsageCount(BaseModel):
+    station_id: int
+    station_name: str
+    usage_count: int
+
