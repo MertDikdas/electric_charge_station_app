@@ -23,6 +23,7 @@ from app.core.notification_scheduler import (
     start_notification_scheduler,
     stop_notification_scheduler,
 )
+from app.presentation.routers.statistics_router import router as statistics_router
 
 app = FastAPI(
     title="EV Charging Station Network API",
@@ -53,6 +54,7 @@ app.include_router(payment_router, prefix="/payments", tags=["Payments"])
 app.include_router(chatbot_router, prefix="/chatbots", tags=["Chatbots"])
 app.include_router(company_router, prefix="/admin/companies", tags=["Companies"])
 app.include_router(company_member_router, prefix="/admin/company-members", tags=["Company Members"])
+app.include_router(statistics_router, prefix="/statistics", tags=["Statistics"])
 app.include_router(company_member_company_router, prefix="/company-members", tags=["Company Members"])
 
 @app.on_event("startup")

@@ -432,6 +432,9 @@ class _VehicleInfo {
   final String currentType;
   final String maxChargingPower;
   final String batteryCapacity;
+
+  String get displayName =>
+      [brand, name, model].where((value) => value.trim().isNotEmpty).join(' ');
 }
 
 class _VehicleTile extends StatelessWidget {
@@ -442,40 +445,12 @@ class _VehicleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final brandAndModel = [
-      vehicle.brand,
-      vehicle.model,
-    ].where((value) => value.trim().isNotEmpty).join(' ');
-    final specs =
-        '${vehicle.licensePlate} - ${vehicle.connectorType} - '
-        '${vehicle.currentType} - ${vehicle.maxChargingPower} kW - '
-        '${vehicle.batteryCapacity} kWh';
-
     return Card(
       child: ListTile(
         leading: const Icon(Icons.directions_car_filled),
-        title: Text(vehicle.name),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                brandAndModel,
-                style: textTheme.bodyMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                specs,
-                style: textTheme.bodySmall,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+        title: Text(vehicle.displayName),
+        subtitle: Text(
+          '${vehicle.licensePlate} - ${vehicle.connectorType} - ${vehicle.maxChargingPower} kW',
         ),
         trailing: IconButton(
           tooltip: 'Remove vehicle',
