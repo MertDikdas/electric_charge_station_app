@@ -263,8 +263,12 @@ final _fullNamePattern = RegExp(
 
 String? _validateFullName(String? value) {
   final fullName = value?.trim() ?? '';
+  final parts = fullName.split(RegExp(r'\s+'));
   if (fullName.length < 3) {
     return 'Full name must be at least 3 characters';
+  }
+  if (parts.length < 2) {
+    return 'Enter both first name and surname';
   }
   if (!_fullNamePattern.hasMatch(fullName)) {
     return 'Use letters, spaces, hyphens, or apostrophes';

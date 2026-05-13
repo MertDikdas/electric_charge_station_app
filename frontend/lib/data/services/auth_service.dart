@@ -78,7 +78,9 @@ class AuthService {
 
   (String, String) _splitName(String fullName) {
     final parts = fullName.trim().split(RegExp(r'\s+'));
-    if (parts.length <= 1) return (fullName.trim(), '');
+    if (parts.length <= 1) {
+      throw const ApiException('Enter both first name and surname');
+    }
     return (parts.first, parts.skip(1).join(' '));
   }
 }
