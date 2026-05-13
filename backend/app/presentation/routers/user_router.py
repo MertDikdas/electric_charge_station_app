@@ -3,13 +3,24 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.application.services.user_service import UserService
-from app.core.dependencies import get_user_service, get_current_user, AuthenticatedUser, get_admin
+from app.core.dependencies import (
+    get_current_company_member,
+    get_user_service,
+    get_current_user,
+    AuthenticatedUser,
+    get_admin,
+    get_station_manager,
+)
+from app.application.services.company_member_service import CompanyMemberService
+from app.core.dependencies import get_company_member_service
 
 from app.domain.models.user import UserEntity
 from app.schemas.user import UserCreate, User, UserLogin, AuthResponse
+from app.schemas.company_member import CompanyEmployee
 from app.schemas.vehicle import Vehicle
 from app.schemas.reservation import Reservation
 from app.schemas.charging_session import ChargingSession
+from app.infrastructure.database.tables import CompanyMember as CompanyMemberModel
 
 from app.core.security import hash_password
 
@@ -50,6 +61,27 @@ def login_user(
 def get_users(service: UserService = Depends(get_user_service),
               current_user: AuthenticatedUser = Depends(get_admin)):
     return service.get_all_users()
+
+
+@router.get("/my/company", response_model=List[CompanyEmployee])
+def get_my_company_users(
+    user_service: UserService = Depends(get_user_service),
+    company_member_service: CompanyMemberService = Depends(get_company_member_service),
+    member: CompanyMemberModel = Depends(get_current_company_member),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
+):
+    try:
+        users = user_service.get_users_by_company(member.company_id)
+        members = company_member_service.get_members_by_company(member.company_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    users_by_id = {user.id: user for user in users}
+    return [
+        {"member": company_member, "user": users_by_id[company_member.user_id]}
+        for company_member in members
+        if company_member.user_id in users_by_id
+    ]
 
 @router.patch("/me", status_code=204)
 def delete_user(

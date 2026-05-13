@@ -28,9 +28,54 @@ class StationService:
                 raise ValueError("Company not found")
             return self.uow.stations.list_by_company_id(company_id)
 
+    def get_company_monthly_revenue(self, company_id: int, year: int, month: int) -> float:
+        self._validate_year_month(year, month)
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            return self.uow.charging_sessions.get_monthly_revenue_by_company(
+                company_id,
+                year,
+                month,
+            )
+
+    def get_station_monthly_revenue(self, station_id: int, year: int, month: int) -> float:
+        self._validate_year_month(year, month)
+        with self.uow:
+            station = self.uow.stations.get(station_id)
+            if not station:
+                raise ValueError("Station not found")
+            return self.uow.charging_sessions.get_monthly_revenue_by_station(
+                station_id,
+                year,
+                month,
+            )
+
+    def get_company_station_usage_counts(self, company_id: int) -> list[dict[str, int | str]]:
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            return [
+                {
+                    "station_id": station_id,
+                    "station_name": station_name,
+                    "usage_count": usage_count,
+                }
+                for station_id, station_name, usage_count
+                in self.uow.charging_sessions.get_usage_counts_by_company(company_id)
+            ]
+
     def get_station(self, station_id: int) -> Optional[StationEntity]:
         with self.uow:
             return self.uow.stations.get(station_id)
+
+    def _validate_year_month(self, year: int, month: int) -> None:
+        if year < 2000:
+            raise ValueError("Year is invalid")
+        if month < 1 or month > 12:
+            raise ValueError("Month must be between 1 and 12")
 
     def get_nearby_stations(self, latitude: float, longitude: float, km_radius: float) -> List[StationEntity]:
         with self.uow:

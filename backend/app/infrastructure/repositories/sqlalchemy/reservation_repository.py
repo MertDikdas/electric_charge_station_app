@@ -67,6 +67,14 @@ class SqlAlchemyReservationRepository(
         )
         return [self.to_entity(model) for model in models]
 
+    def list_by_charger_id(self, charger_id: int) -> List[ReservationEntity]:
+        models = (
+            self.session.query(ReservationModel)
+            .filter(ReservationModel.charger_id == charger_id)
+            .all()
+        )
+        return [self.to_entity(model) for model in models]
+
     def list_by_user_id(self, user_id: int) -> List[ReservationEntity]:
         models = (
             self.session.query(ReservationModel)

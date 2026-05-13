@@ -8,7 +8,9 @@ from app.application.services.reservation_service import (
 )
 from app.core.dependencies import (
     AuthenticatedUser,
+    ensure_same_company_for_charger,
     get_admin,
+    get_company_member,
     get_current_user,
     get_reservation_service,
 )
@@ -51,6 +53,19 @@ def get_user_reservations(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     return service.get_user_reservations(current_user.id)
+
+
+@router.get("/{charger_id}", response_model=List[Reservation])
+def get_reservations_by_charger(
+    charger_id: int,
+    service: ReservationService = Depends(get_reservation_service),
+    current_user: AuthenticatedUser = Depends(get_company_member),
+    membership_check: AuthenticatedUser = Depends(ensure_same_company_for_charger),
+):
+    try:
+        return service.get_reservations_by_charger(charger_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 @router.get("/my/{reservation_id}", response_model=Reservation)
 def get_reservation(

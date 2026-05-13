@@ -29,6 +29,46 @@ class CompanyMemberService:
             new_member = self.uow.company_members.add(company_member)
             self.uow.commit()
             return new_member
+
+    def add_or_update_member_for_company(
+        self,
+        company_id: int,
+        user_id: int,
+        role: str,
+        is_active: bool = True,
+    ) -> CompanyMemberEntity:
+        normalized_role = validate_company_member_role(role)
+        validate_company_member_status(is_active)
+
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            if is_active and not company.is_active:
+                raise ValueError("Cannot add active member to inactive company")
+
+            user = self.uow.users.get(user_id)
+            if not user:
+                raise ValueError("User not found")
+
+            member = self.uow.company_members.get_by_company_and_user(company_id, user_id)
+            if member:
+                member.role = normalized_role
+                member.is_active = is_active
+                updated_member = self.uow.company_members.update(member)
+                self.uow.commit()
+                return updated_member
+
+            new_member = self.uow.company_members.add(
+                CompanyMemberEntity(
+                    company_id=company_id,
+                    user_id=user_id,
+                    role=normalized_role,
+                    is_active=is_active,
+                )
+            )
+            self.uow.commit()
+            return new_member
         
     def update_member_status(self, member_id: int, is_active: bool) -> CompanyMemberEntity:
         validate_company_member_status(is_active)

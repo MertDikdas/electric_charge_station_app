@@ -97,6 +97,7 @@ def update_charger_status(
     charger_id: int,
     status_update: ChargerStatusUpdate,
     service: ChargerService = Depends(get_charger_service),
+    _current_user: AuthenticatedUser = Depends(get_company_member),
     membership_check: CompanyMember = Depends(ensure_same_company_for_charger),
 ):
     try:

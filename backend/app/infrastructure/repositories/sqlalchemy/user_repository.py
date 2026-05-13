@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import List, Optional
 
 from app.domain.models.user import UserEntity
+from app.infrastructure.database.tables import CompanyMember as CompanyMemberModel
 from app.infrastructure.database.tables import User as UserModel
 from app.infrastructure.repositories.abstract.user_repository import AbstractUserRepository
 from app.infrastructure.repositories.sqlalchemy.base import SqlAlchemyRepository
@@ -38,3 +39,12 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository[UserEntity, UserModel], Abst
         if model is None:
             return None
         return self.to_entity(model)
+
+    def list_by_company_id(self, company_id: int) -> List[UserEntity]:
+        models = (
+            self.session.query(UserModel)
+            .join(CompanyMemberModel, CompanyMemberModel.user_id == UserModel.id)
+            .filter(CompanyMemberModel.company_id == company_id)
+            .all()
+        )
+        return [self.to_entity(model) for model in models]

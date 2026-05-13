@@ -82,6 +82,13 @@ class ReservationService:
                 charger_id, reservation_date
             )
 
+    def get_reservations_by_charger(self, charger_id: int) -> List[ReservationEntity]:
+        with self.uow:
+            charger = self.uow.chargers.get(charger_id)
+            if not charger:
+                raise LookupError("Charger not found")
+            return self.uow.reservations.list_by_charger_id(charger_id)
+
     def _validate_reservation_request(self, reservation: ReservationEntity) -> None:
         validate_reservation_time(reservation)
         validate_reservation_slot_interval(reservation)

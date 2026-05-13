@@ -30,6 +30,18 @@ class AbstractChargingSessionRepository(AbstractRepository[ChargingSessionEntity
         raise NotImplementedError
 
     @abstractmethod
+    def get_monthly_revenue_by_station(self, station_id: int, year: int, month: int) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_monthly_revenue_by_company(self, company_id: int, year: int, month: int) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_usage_counts_by_company(self, company_id: int) -> list[tuple[int, str, int]]:
+        raise NotImplementedError
+
+    @abstractmethod
     def list_expired_for_auto_finish(
         self,
         current_datetime: datetime,
