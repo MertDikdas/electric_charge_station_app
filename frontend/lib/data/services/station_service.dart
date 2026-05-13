@@ -9,6 +9,13 @@ class StationService {
 
   final ApiClient _apiClient;
 
+  Future<List<Station>> getStationsByCompany(int companyId) async {
+    return parseList(
+      await _apiClient.get('/stations/by-company-id/$companyId'),
+      Station.fromJson,
+    );
+  }
+
   Future<Station> createStation(Station station) async {
     return Station.fromJson(
       parseObject(await _apiClient.post('/stations/', body: station.toJson())),
