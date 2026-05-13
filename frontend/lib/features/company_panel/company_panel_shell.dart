@@ -732,9 +732,7 @@ class _ReservationsMonitoringPageState
                   for (final charger in widget.controller.chargers)
                     DropdownMenuItem<int?>(
                       value: charger.id,
-                      child: Text(
-                        'Charger #${charger.id} - ${charger.connectorType}',
-                      ),
+                      child: Text(_chargerDisplayName(charger)),
                     ),
                 ],
                 onChanged: (value) => setState(() => chargerId = value),
@@ -758,7 +756,9 @@ class _ReservationsMonitoringPageState
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'Charger #${entry.key}',
+                      _chargerDisplayName(
+                        _chargerById(widget.controller.chargers, entry.key),
+                      ),
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
@@ -1289,10 +1289,12 @@ class _ReservationTile extends StatelessWidget {
       child: ListTile(
         leading: const Icon(Icons.calendar_month_outlined),
         title: Text(
-          'User #${reservation.userId} - Charger #${reservation.chargerId}',
+          _stationDisplayName(reservation, charger),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          '${reservation.date}  ${reservation.startTime} - ${reservation.endTime}\n${charger?.connectorType ?? 'Unknown charger'}',
+          '${reservation.date}  ${reservation.startTime} - ${reservation.endTime}\n${_chargerDisplayName(charger)}',
         ),
         isThreeLine: true,
         trailing: StatusBadge(status: reservation.status),
@@ -1423,6 +1425,26 @@ Charger? _chargerById(List<Charger> chargers, int id) {
     if (charger.id == id) return charger;
   }
   return null;
+}
+
+String _chargerDisplayName(Charger? charger) {
+  if (charger == null) return 'Charger';
+  return [
+    charger.stationName,
+    charger.connectorType,
+    charger.currentType,
+    '${charger.maxPower.toStringAsFixed(0)} kW',
+  ].where((value) => value.trim().isNotEmpty).join(' | ');
+}
+
+String _stationDisplayName(Reservation reservation, Charger? charger) {
+  if (reservation.stationName.trim().isNotEmpty) {
+    return reservation.stationName.trim();
+  }
+  if ((charger?.stationName.trim().isNotEmpty ?? false)) {
+    return charger!.stationName.trim();
+  }
+  return 'Station';
 }
 
 const _stationStatuses = [

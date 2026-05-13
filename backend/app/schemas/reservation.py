@@ -4,6 +4,7 @@ from typing import Optional
 
 class ReservationCreate(BaseModel):
     vehicle_id: int
+    station_id: Optional[int] = None
     charger_id: int
     date: date
     start_time: time
@@ -14,6 +15,10 @@ class ReservationCreate(BaseModel):
 class Reservation(ReservationCreate):
     id: int
     user_id: int
+    station_id: int
+    station_name: Optional[str] = None
+    charger_connector_type: Optional[str] = None
+    charger_current_type: Optional[str] = None
 
 
 class ReservationStatusUpdate(BaseModel):

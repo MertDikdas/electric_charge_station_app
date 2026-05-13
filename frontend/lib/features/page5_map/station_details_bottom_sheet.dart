@@ -100,7 +100,9 @@ class _StationDetailsBottomSheetState extends State<StationDetailsBottomSheet> {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (!mounted || _selectedChargerId != null) return;
                           final defaultCharger =
-                              chargers.where(widget.canReserveCharger).firstOrNull ??
+                              chargers
+                                  .where(widget.canReserveCharger)
+                                  .firstOrNull ??
                               chargers.first;
                           setState(() {
                             _selectedChargerId = defaultCharger.id;
@@ -141,7 +143,7 @@ class _StationDetailsBottomSheetState extends State<StationDetailsBottomSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Station #${widget.station.id}',
+                              widget.station.name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleLarge?.copyWith(
@@ -451,47 +453,41 @@ class _ChargerList extends StatelessWidget {
     }
 
     return Column(
-      children: chargers
-          .map(
-            (charger) {
-              final isSelected = charger.id == selectedChargerId;
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  Icons.ev_station,
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
+      children: chargers.map((charger) {
+        final isSelected = charger.id == selectedChargerId;
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(
+            Icons.ev_station,
+            color: isSelected ? Theme.of(context).colorScheme.primary : null,
+          ),
+          title: Text('${charger.connectorType} - ${charger.currentType}'),
+          subtitle: Text(
+            [
+              charger.status,
+              '${charger.maxPower.toStringAsFixed(0)} kW',
+              formatPrice(charger.pricePerKwh),
+            ].join(' | '),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isSelected)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Icon(Icons.check_circle, size: 20),
                 ),
-                title: Text('${charger.connectorType} - ${charger.currentType}'),
-                subtitle: Text(
-                  [
-                    charger.status,
-                    '${charger.maxPower.toStringAsFixed(0)} kW',
-                    formatPrice(charger.pricePerKwh),
-                  ].join(' | '),
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isSelected)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: Icon(Icons.check_circle, size: 20),
-                      ),
-                    FilledButton.tonal(
-                      onPressed: canReserveCharger(charger)
-                          ? () => onReserveCharger(charger)
-                          : null,
-                      child: const Text('Reserve'),
-                    ),
-                  ],
-                ),
-                onTap: () => onSelectCharger(charger),
-              );
-            },
-          )
-          .toList(),
+              FilledButton.tonal(
+                onPressed: canReserveCharger(charger)
+                    ? () => onReserveCharger(charger)
+                    : null,
+                child: const Text('Reserve'),
+              ),
+            ],
+          ),
+          onTap: () => onSelectCharger(charger),
+        );
+      }).toList(),
     );
   }
 }

@@ -487,10 +487,8 @@ class _ReservationCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              charger == null
-                                  ? 'Station loading'
-                                  : 'Station #${charger.stationId}',
-                              maxLines: 1,
+                              _stationTitle(charger),
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w900),
@@ -498,9 +496,9 @@ class _ReservationCard extends StatelessWidget {
                             const SizedBox(height: 3),
                             Text(
                               charger == null
-                                  ? 'Charger #${reservation.chargerId}'
+                                  ? _chargerTitle()
                                   : [
-                                          'Charger #${reservation.chargerId}',
+                                          _chargerTitle(charger: charger),
                                           charger.connectorType,
                                           charger.currentType,
                                         ]
@@ -588,6 +586,30 @@ class _ReservationCard extends StatelessWidget {
       date.month.toString().padLeft(2, '0'),
       date.year.toString(),
     ].join('.');
+  }
+
+  String _stationTitle(Charger? charger) {
+    if (reservation.stationName.trim().isNotEmpty) {
+      return reservation.stationName.trim();
+    }
+    if ((charger?.stationName.trim().isNotEmpty ?? false)) {
+      return charger!.stationName.trim();
+    }
+    return 'Station loading';
+  }
+
+  String _chargerTitle({Charger? charger}) {
+    final connector = reservation.chargerConnectorType.trim().isNotEmpty
+        ? reservation.chargerConnectorType
+        : charger?.connectorType ?? '';
+    final current = reservation.chargerCurrentType.trim().isNotEmpty
+        ? reservation.chargerCurrentType
+        : charger?.currentType ?? '';
+    final text = [
+      connector,
+      current,
+    ].where((value) => value.trim().isNotEmpty).join(' ');
+    return text.isEmpty ? 'Charger' : text;
   }
 }
 

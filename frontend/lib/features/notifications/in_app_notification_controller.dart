@@ -186,7 +186,7 @@ class InAppNotificationController extends ChangeNotifier {
       userId: reservation.userId,
       title: 'Reservation reminder',
       message:
-          'Your reservation at charger #${reservation.chargerId} starts in 30 minutes.',
+          'Your reservation at ${reservation.stationName.isEmpty ? 'your selected station' : reservation.stationName} starts in 30 minutes.',
       notificationType: 'INFO',
       isRead: false,
       createdAt: DateTime.now().toIso8601String(),

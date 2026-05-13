@@ -42,6 +42,9 @@ class SqlAlchemyReservationRepository(
             start_time=model.start_time,
             end_time=model.end_time,
             status=model.status,
+            station_name=model.station.name if model.station else None,
+            charger_connector_type=model.charger.connector_type if model.charger else None,
+            charger_current_type=model.charger.current_type if model.charger else None,
         )
 
     def list_by_user(self, user_id: int) -> List[ReservationEntity]:

@@ -43,7 +43,16 @@ def get_station_revenue(
     if month is not None:
         query = query.filter(func.extract("month", Reservation.date) == month)
 
-    return {"station_id": station_id, "year": year, "month": month, "revenue": float(query.scalar() or 0.0)}
+    station = db.query(Station).filter(Station.id == station_id).first()
+    if station is None:
+        raise HTTPException(status_code=404, detail="Station not found")
+    return {
+        "station_id": station_id,
+        "station_name": station.name,
+        "year": year,
+        "month": month,
+        "revenue": float(query.scalar() or 0.0),
+    }
 
 
 @router.get("/company-revenue")

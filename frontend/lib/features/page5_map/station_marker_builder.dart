@@ -42,7 +42,7 @@ class StationMarkerBuilder {
                     offlineIcon: offlineIcon,
                   ),
             infoWindow: InfoWindow(
-              title: 'Station #${station.id}',
+              title: station.name,
               snippet: _availabilityLabel(
                 station: station,
                 selectedVehicle: selectedVehicle,
@@ -63,9 +63,7 @@ class StationMarkerBuilder {
     required BitmapDescriptor offlineIcon,
   }) {
     if (_isStationUnavailableButVisible(station.status)) {
-      debugPrint(
-        'Station ${station.id} marker orange: station ${station.status}',
-      );
+      debugPrint('${station.name} marker orange: station ${station.status}');
       return offlineIcon;
     }
 
@@ -88,7 +86,7 @@ class StationMarkerBuilder {
 
     if (allCompatibleChargersUnavailable) {
       debugPrint(
-        'Station ${station.id} marker orange: all compatible chargers unavailable',
+        '${station.name} marker orange: all compatible chargers unavailable',
       );
       return offlineIcon;
     }

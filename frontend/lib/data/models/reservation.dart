@@ -9,17 +9,25 @@ class Reservation {
     required this.endTime,
     required this.durationMinutes,
     required this.status,
+    required this.stationId,
+    this.stationName = '',
+    this.chargerConnectorType = '',
+    this.chargerCurrentType = '',
   });
 
   final int id;
   final int userId;
   final int vehicleId;
   final int chargerId;
+  final int stationId;
   final String date;
   final String startTime;
   final String endTime;
   final int durationMinutes;
   final String status;
+  final String stationName;
+  final String chargerConnectorType;
+  final String chargerCurrentType;
 
   factory Reservation.fromJson(Map<String, dynamic> json) {
     return Reservation(
@@ -27,6 +35,7 @@ class Reservation {
       userId: _asInt(json['user_id'] ?? json['userId']),
       vehicleId: _asInt(json['vehicle_id'] ?? json['vehicleId']),
       chargerId: _asInt(json['charger_id'] ?? json['chargerId']),
+      stationId: _asInt(json['station_id'] ?? json['stationId']),
       date: (json['date'] ?? '').toString(),
       startTime: (json['start_time'] ?? json['startTime'] ?? '').toString(),
       endTime: (json['end_time'] ?? json['endTime'] ?? '').toString(),
@@ -34,6 +43,14 @@ class Reservation {
         json['duration_minutes'] ?? json['durationMinutes'] ?? 120,
       ),
       status: (json['status'] ?? '').toString(),
+      stationName: (json['station_name'] ?? json['stationName'] ?? '')
+          .toString(),
+      chargerConnectorType:
+          (json['charger_connector_type'] ?? json['chargerConnectorType'] ?? '')
+              .toString(),
+      chargerCurrentType:
+          (json['charger_current_type'] ?? json['chargerCurrentType'] ?? '')
+              .toString(),
     );
   }
 

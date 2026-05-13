@@ -8,6 +8,7 @@ class Charger {
     this.pricePerKwh = 0,
     required this.status,
     required this.isReservedNow,
+    this.stationName = '',
   });
 
   final int id;
@@ -18,6 +19,7 @@ class Charger {
   final double pricePerKwh;
   final String status;
   final bool isReservedNow;
+  final String stationName;
 
   factory Charger.fromJson(Map<String, dynamic> json) {
     return Charger(
@@ -31,6 +33,8 @@ class Charger {
       pricePerKwh: _asDouble(json['price_per_kwh'] ?? json['pricePerKwh']),
       status: (json['status'] ?? '').toString(),
       isReservedNow: json['is_reserved_now'] ?? false,
+      stationName: (json['station_name'] ?? json['stationName'] ?? '')
+          .toString(),
     );
   }
 

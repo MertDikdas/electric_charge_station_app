@@ -137,6 +137,7 @@ class ReservationService:
         station = self.uow.stations.get(charger.station_id)
         if not station:
             raise LookupError("Station not found")
+        reservation.station_id = station.id
         if station.status != "AVAILABLE":
             raise ValueError("Station is not available")
 

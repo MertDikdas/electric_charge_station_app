@@ -182,7 +182,7 @@ class StationService:
         title = "Reserved station unavailable"
         for reservation in reservations:
             message = (
-                f"Your reserved station #{station.id} is temporarily unavailable. "
+                f"Your reserved station {station.name} is temporarily unavailable. "
                 f"Reservation #{reservation.id} may be affected."
             )
             if self.uow.notifications.exists_by_user_and_title_and_message(

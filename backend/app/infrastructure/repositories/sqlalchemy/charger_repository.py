@@ -34,6 +34,7 @@ class SqlAlchemyChargerRepository(
             max_power=model.max_power,
             price_per_kwh=model.price_per_kwh,
             status=model.status,
+            station_name=model.station.name if model.station else None,
         )
 
     def list_by_station(self, station_id: int) -> List[ChargerEntity]:
