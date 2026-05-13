@@ -53,6 +53,13 @@ class CompanyMemberService:
             if not company:
                 raise ValueError("Company not found")
             return self.uow.company_members.get_all_active_by_company(company_id)
+
+    def get_members_by_company(self, company_id: int) -> list[CompanyMemberEntity]:
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            return self.uow.company_members.get_all_by_company(company_id)
     
     def get_active_members(self) -> list[CompanyMemberEntity]:
         with self.uow:

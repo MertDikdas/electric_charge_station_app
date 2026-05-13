@@ -61,6 +61,15 @@ class SqlAlchemyStationRepository(
         )
         return [self.to_entity(model) for model in models]
 
+    def list_by_company_id(self, company_id: int) -> List[StationEntity]:
+        models = (
+            self.session.query(StationModel)
+            .options(joinedload(StationModel.chargers))
+            .filter(StationModel.company_id == company_id)
+            .all()
+        )
+        return [self.to_entity(model) for model in models]
+
     def list_nearby(self, latitude: float, longitude: float, km_radius: float) -> List[StationEntity]:
         lat_delta = km_radius / 111.0
 
