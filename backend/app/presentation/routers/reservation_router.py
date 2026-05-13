@@ -26,10 +26,13 @@ def create_reservation(
     service: ReservationService = Depends(get_reservation_service),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
+
     reservation_entity = ReservationEntity(
         **reservation.model_dump(),
-        user_id=current_user.id
+        user_id=current_user.id,
+        station_id=0
     )
+    
     try:
         return service.create_reservation(reservation_entity, current_user.id)
     except LookupError as exc:
