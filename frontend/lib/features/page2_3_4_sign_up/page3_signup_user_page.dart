@@ -157,17 +157,12 @@ class _SignupUserPageState extends State<SignupUserPage> {
                         hintText: 'Full Name',
                         prefixIcon: const Icon(Icons.person_outline),
                       ),
-                      validator: (value) {
-                        if ((value?.trim() ?? '').length < 3) {
-                          return 'Full name must be at least 3 characters';
-                        }
-                        return null;
-                      },
+                      validator: _validateFullName,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
+                      keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
                         context,
@@ -259,6 +254,22 @@ class _SignupUserPageState extends State<SignupUserPage> {
       ),
     );
   }
+}
+
+final _fullNamePattern = RegExp(
+  "^[A-Za-z\\u00c7\\u011e\\u0130\\u00d6\\u015e\\u00dc"
+  "\\u00e7\\u011f\\u0131\\u00f6\\u015f\\u00fc\\s'\\u2019.-]+\$",
+);
+
+String? _validateFullName(String? value) {
+  final fullName = value?.trim() ?? '';
+  if (fullName.length < 3) {
+    return 'Full name must be at least 3 characters';
+  }
+  if (!_fullNamePattern.hasMatch(fullName)) {
+    return 'Use letters, spaces, hyphens, or apostrophes';
+  }
+  return null;
 }
 
 InputDecoration _inputDecoration(

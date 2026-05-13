@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 UserRole = Literal["USER", "ADMIN"]
 
@@ -10,6 +10,11 @@ class UserBase(BaseModel):
     email: str
     balance: float = 0.0
 
+    @field_validator("name", "surname", "email")
+    @classmethod
+    def strip_text_fields(cls, value: str) -> str:
+        return value.strip()
+
 
 class UserCreate(BaseModel):
     name: str
@@ -17,6 +22,14 @@ class UserCreate(BaseModel):
     email: str
     balance: float = 0.0
     password: str = Field(..., min_length=6, max_length=72)
+
+    @field_validator("name", "surname", "email")
+    @classmethod
+    def strip_text_fields(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Field cannot be empty")
+        return value
 
 class User(UserBase):
     id: int
@@ -28,6 +41,11 @@ class User(UserBase):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def strip_email(cls, value: str) -> str:
+        return value.strip()
 
 class AuthResponse(BaseModel):
     access_token: str

@@ -42,7 +42,6 @@ class VehicleInfoPage extends StatefulWidget {
 
 class _VehicleInfoPageState extends State<VehicleInfoPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _brandController = TextEditingController();
   final _nameController = TextEditingController();
   final _modelController = TextEditingController();
@@ -59,7 +58,6 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _brandController.dispose();
     _nameController.dispose();
     _modelController.dispose();
@@ -77,7 +75,6 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     setState(() {
       _vehicles.add(
         _VehicleInfo(
-          name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
           name: _nameController.text.trim(),
           model: _modelController.text.trim(),
@@ -88,7 +85,6 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           batteryCapacity: _batteryCapacityController.text.trim(),
         ),
       );
-      _nameController.clear();
       _brandController.clear();
       _nameController.clear();
       _modelController.clear();
@@ -124,7 +120,6 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
       _vehicles.add(
         _VehicleInfo(
-          name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
           name: _nameController.text.trim(),
           model: _modelController.text.trim(),
@@ -165,7 +160,9 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           await _vehicleService.createVehicle(
             VehicleInput(
               userId: user.id,
-              model: vehicle.displayName,
+              name: vehicle.name,
+              brand: vehicle.brand,
+              model: vehicle.model,
               plate: vehicle.licensePlate,
               maxChargingPower: double.parse(vehicle.maxChargingPower),
               batteryCapacity: double.parse(vehicle.batteryCapacity),
@@ -247,7 +244,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                   textInputAction: TextInputAction.next,
                   decoration: _inputDecoration(
                     context,
-                    labelText: 'Car Brand',
+                    labelText: 'Vehicle Brand',
                     prefixIcon: const Icon(Icons.business_outlined),
                   ),
                   validator: _required,
@@ -417,7 +414,6 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
 class _VehicleInfo {
   const _VehicleInfo({
-    required this.name,
     required this.brand,
     required this.name,
     required this.model,
@@ -427,7 +423,7 @@ class _VehicleInfo {
     required this.maxChargingPower,
     required this.batteryCapacity,
   });
-  final String name;
+
   final String brand;
   final String name;
   final String model;
@@ -436,9 +432,6 @@ class _VehicleInfo {
   final String currentType;
   final String maxChargingPower;
   final String batteryCapacity;
-
-  String get displayName =>
-      [brand, name, model].where((value) => value.trim().isNotEmpty).join(' ');
 }
 
 class _VehicleTile extends StatelessWidget {
@@ -449,12 +442,40 @@ class _VehicleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final brandAndModel = [
+      vehicle.brand,
+      vehicle.model,
+    ].where((value) => value.trim().isNotEmpty).join(' ');
+    final specs =
+        '${vehicle.licensePlate} - ${vehicle.connectorType} - '
+        '${vehicle.currentType} - ${vehicle.maxChargingPower} kW - '
+        '${vehicle.batteryCapacity} kWh';
+
     return Card(
       child: ListTile(
         leading: const Icon(Icons.directions_car_filled),
-        title: Text(vehicle.displayName),
-        subtitle: Text(
-          '${vehicle.licensePlate} - ${vehicle.connectorType} - ${vehicle.maxChargingPower} kW',
+        title: Text(vehicle.name),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                brandAndModel,
+                style: textTheme.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                specs,
+                style: textTheme.bodySmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
         trailing: IconButton(
           tooltip: 'Remove vehicle',

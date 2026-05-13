@@ -16,6 +16,8 @@ ALLOWED_CONNECTOR_TYPES = {
 }
 
 def normalize_vehicle_data(vehicle: VehicleEntity) -> None:
+    vehicle.name = vehicle.name.strip()
+    vehicle.brand = vehicle.brand.strip()
     vehicle.model = vehicle.model.strip()
     vehicle.plate = vehicle.plate.strip().upper()
     vehicle.connector_type = vehicle.connector_type.strip().upper()
