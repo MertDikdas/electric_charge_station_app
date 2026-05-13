@@ -12,6 +12,10 @@ class AbstractCompanyMemberRepository(AbstractRepository[CompanyMemberEntity]):
     @abstractmethod
     def get_all_active_by_company(self, company_id: int) -> list[CompanyMemberEntity]:
         raise NotImplementedError
+
+    @abstractmethod
+    def get_all_by_company(self, company_id: int) -> list[CompanyMemberEntity]:
+        raise NotImplementedError
     
     @abstractmethod
     def get_all_active(self) -> list[CompanyMemberEntity]:

@@ -50,7 +50,18 @@ def get_company_members(
     current_user: AuthenticatedUser = Depends(get_admin),
 ):
     try:
-        return service.get_active_members_by_company(company_id)
+        return service.get_members_by_company(company_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+@router.get("/by-company/{company_id}", response_model=list[CompanyMember])
+def get_company_members_by_company(
+    company_id: int,
+    service: CompanyMemberService = Depends(get_company_member_service),
+    current_user: AuthenticatedUser = Depends(get_admin),
+):
+    try:
+        return service.get_members_by_company(company_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
