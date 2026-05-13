@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/models/company.dart';
 import '../../data/services/company_service.dart';
+import 'company_detail_screen.dart';
 
 class CompaniesScreen extends StatefulWidget {
   const CompaniesScreen({super.key});
@@ -90,7 +91,13 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                       ].join(' • '),
                     ),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => CompanyDetailScreen(company: company),
+                        ),
+                      );
+                    },
                   ),
                 );
               },

@@ -103,4 +103,25 @@ class StationService {
       Charger.fromJson,
     );
   }
+
+  Future<List<Station>> getStationsByCompany(int companyId) async {
+    final response = await _apiClient.get(
+      '/admin/companies/$companyId/stations',
+    );
+
+    if (response is List) {
+      return response
+          .map((item) => Station.fromJson(parseObject(item)))
+          .toList();
+    }
+
+    final object = parseObject(response);
+    final stations = object['stations'];
+
+    if (stations is! List) {
+      return [];
+    }
+
+    return stations.map((item) => Station.fromJson(parseObject(item))).toList();
+  }
 }

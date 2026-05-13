@@ -9,7 +9,7 @@ class CompanyService {
   final ApiClient _apiClient;
 
   Future<List<Company>> getCompanies() async {
-    final response = await _apiClient.get('/admin/all/');
+    final response = await _apiClient.get('/admin/companies/all');
 
     if (response is List) {
       return response
