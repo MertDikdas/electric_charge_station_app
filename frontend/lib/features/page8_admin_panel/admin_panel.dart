@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'admin_coupons_screen.dart';
 import 'admin_statistics_screen.dart';
 import 'companies_screen.dart';
 
@@ -38,6 +39,21 @@ class AdminPanelScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const AdminStatisticsScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.confirmation_number_outlined),
+              title: const Text('Coupons'),
+              subtitle: const Text('Assign coupons by user id'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AdminCouponsScreen(),
                   ),
                 );
               },
