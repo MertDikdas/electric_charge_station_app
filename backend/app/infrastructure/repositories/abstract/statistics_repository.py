@@ -5,6 +5,7 @@ from app.schemas.statistics import (
     AdminOverviewStatistics,
     CompanyRevenue,
     ManagerOverviewStatistics,
+    StationOverviewStatistics,
     StationRevenue,
     StationUsage,
     StatusCount,
@@ -46,6 +47,15 @@ class AbstractStatisticsRepository(ABC):
         year: int,
         month: int,
     ) -> float:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_station_overview(
+        self,
+        station_id: int,
+        year: int,
+        month: int,
+    ) -> StationOverviewStatistics:
         raise NotImplementedError
 
     @abstractmethod

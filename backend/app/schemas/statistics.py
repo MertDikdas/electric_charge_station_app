@@ -51,3 +51,25 @@ class ManagerOverviewStatistics(BaseModel):
     completed_payments: int
     monthly_revenue: float
     total_energy_consumed: float
+
+
+class StationOverviewStatistics(BaseModel):
+    station_id: int
+    station_address: str
+    company_id: int
+    total_chargers: int
+    available_chargers: int
+    occupied_chargers: int
+    closed_chargers: int
+    total_reservations: int
+    active_reservations: int
+    cancelled_reservations: int
+    completed_reservations: int
+    active_sessions: int
+    completed_sessions: int
+    monthly_revenue: float
+    total_revenue: float
+    monthly_usage_count: int
+    total_usage_count: int
+    monthly_energy_consumed: float
+    total_energy_consumed: float

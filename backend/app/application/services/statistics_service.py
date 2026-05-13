@@ -40,6 +40,30 @@ class StatisticsService:
                 ),
             }
 
+    def get_station_overview(self, station_id: int, year: int, month: int):
+        with self.uow:
+            return self.uow.statistics.get_station_overview(station_id, year, month)
+
+    def get_manager_station_overview(
+        self,
+        station_id: int,
+        company_id: int,
+        year: int,
+        month: int,
+    ):
+        with self.uow:
+            station_overview = self.uow.statistics.get_station_overview(
+                station_id,
+                year,
+                month,
+            )
+            if station_overview.company_id != company_id:
+                raise PermissionError(
+                    "You are not allowed to access this station statistics"
+                )
+
+            return station_overview
+
     def get_revenue_by_company(self, year: int, month: int, limit: int = 10):
         with self.uow:
             return self.uow.statistics.get_revenue_by_company(year, month, limit)
