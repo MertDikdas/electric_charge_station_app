@@ -90,6 +90,17 @@ def get_nearby_compatible_stations(
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
 
+@router.get("/by-company-id/{company_id}", response_model=List[Station])
+def get_stations_by_company_id(
+    company_id: int,
+    service: StationService = Depends(get_station_service),
+    current_user: AuthenticatedUser = Depends(get_admin),
+):
+    try:
+        return service.get_stations_by_company_id(company_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
 @router.get("/{station_id}/chargers", response_model=List[Charger])
 def get_station_chargers(
     station_id: int,

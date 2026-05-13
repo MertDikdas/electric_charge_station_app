@@ -21,6 +21,13 @@ class StationService:
         with self.uow:
             return self.uow.stations.list()
 
+    def get_stations_by_company_id(self, company_id: int) -> List[StationEntity]:
+        with self.uow:
+            company = self.uow.companies.get(company_id)
+            if not company:
+                raise ValueError("Company not found")
+            return self.uow.stations.list_by_company_id(company_id)
+
     def get_station(self, station_id: int) -> Optional[StationEntity]:
         with self.uow:
             return self.uow.stations.get(station_id)

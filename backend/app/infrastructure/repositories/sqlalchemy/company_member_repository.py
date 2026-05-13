@@ -42,6 +42,12 @@ class SqlAlchemyCompanyMemberRepository(SqlAlchemyRepository[CompanyMemberEntity
         ).all()
         return [self.to_entity(model) for model in models]
 
+    def get_all_by_company(self, company_id: int) -> list[CompanyMemberEntity]:
+        models = self.session.query(CompanyMemberModel).filter(
+            CompanyMemberModel.company_id == company_id
+        ).all()
+        return [self.to_entity(model) for model in models]
+
     def get_all_active(self) -> list[CompanyMemberEntity]:
         models = self.session.query(CompanyMemberModel).filter(CompanyMemberModel.is_active.is_(True)).all()
         return [self.to_entity(model) for model in models]

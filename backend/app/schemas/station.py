@@ -24,6 +24,7 @@ class StationCreate(BaseModel):
 
 class Station(StationCreate):
     id: int
+    company_id: int
     chargers: List[Charger] = Field(default_factory=list)
 
 
