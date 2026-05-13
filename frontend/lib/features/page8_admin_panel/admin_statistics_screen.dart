@@ -12,6 +12,7 @@ class AdminStatisticsScreen extends StatefulWidget {
 
 class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
   final _statisticsService = StatisticsService();
+  final _stationIdController = TextEditingController();
 
   late int _year;
   late int _month;
@@ -24,6 +25,12 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
     _year = now.year;
     _month = now.month;
     _statisticsFuture = _loadStatistics();
+  }
+
+  @override
+  void dispose() {
+    _stationIdController.dispose();
+    super.dispose();
   }
 
   Future<AdminStatistics> _loadStatistics() {
@@ -193,6 +200,189 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
     );
   }
 
+  Widget _buildStationOverviewLauncher() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _stationIdController,
+                decoration: const InputDecoration(
+                  labelText: 'Station ID',
+                  prefixIcon: Icon(Icons.ev_station_outlined),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton(
+              onPressed: () {
+                final stationId = int.tryParse(
+                  _stationIdController.text.trim(),
+                );
+                if (stationId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Enter a station ID.')),
+                  );
+                  return;
+                }
+
+                _showStationOverview(stationId);
+              },
+              child: const Text('Open'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showStationOverview(int stationId) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('Station #$stationId Overview'),
+          content: SizedBox(
+            width: 420,
+            child: FutureBuilder<StationOverviewStatistics>(
+              future: _statisticsService.getAdminStationOverview(
+                stationId: stationId,
+                year: _year,
+                month: _month,
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Text(snapshot.error.toString());
+                }
+
+                final overview = snapshot.data;
+                if (overview == null) {
+                  return const Text('No station overview found.');
+                }
+
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (overview.stationAddress.isNotEmpty)
+                        Text(
+                          overview.stationAddress,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      const SizedBox(height: 12),
+                      _buildOverviewRow('Company ID', overview.companyId),
+                      _buildOverviewRow(
+                        'Chargers',
+                        '${overview.availableChargers}/${overview.totalChargers} available',
+                      ),
+                      _buildOverviewRow(
+                        'Occupied Chargers',
+                        overview.occupiedChargers,
+                      ),
+                      _buildOverviewRow(
+                        'Closed Chargers',
+                        overview.closedChargers,
+                      ),
+                      const Divider(),
+                      _buildOverviewRow(
+                        'Reservations',
+                        overview.totalReservations,
+                      ),
+                      _buildOverviewRow(
+                        'Active Reservations',
+                        overview.activeReservations,
+                      ),
+                      _buildOverviewRow(
+                        'Cancelled Reservations',
+                        overview.cancelledReservations,
+                      ),
+                      _buildOverviewRow(
+                        'Completed Reservations',
+                        overview.completedReservations,
+                      ),
+                      const Divider(),
+                      _buildOverviewRow(
+                        'Active Sessions',
+                        overview.activeSessions,
+                      ),
+                      _buildOverviewRow(
+                        'Completed Sessions',
+                        overview.completedSessions,
+                      ),
+                      const Divider(),
+                      _buildOverviewRow(
+                        'Monthly Revenue',
+                        _formatNumber(overview.monthlyRevenue),
+                      ),
+                      _buildOverviewRow(
+                        'Total Revenue',
+                        _formatNumber(overview.totalRevenue),
+                      ),
+                      _buildOverviewRow(
+                        'Monthly Usage',
+                        overview.monthlyUsageCount,
+                      ),
+                      _buildOverviewRow(
+                        'Total Usage',
+                        overview.totalUsageCount,
+                      ),
+                      _buildOverviewRow(
+                        'Monthly Energy kWh',
+                        _formatNumber(overview.monthlyEnergyConsumed),
+                      ),
+                      _buildOverviewRow(
+                        'Total Energy kWh',
+                        _formatNumber(overview.totalEnergyConsumed),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOverviewRow(String label, Object value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: Text(label)),
+          const SizedBox(width: 16),
+          Flexible(
+            child: Text(
+              value.toString(),
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCompanyRevenueList(List<CompanyRevenue> items) {
     return _buildListSection(
       emptyText: 'No company revenue found.',
@@ -228,6 +418,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
                 : item.stationAddress,
           ),
           trailing: Text(_formatNumber(item.revenue)),
+          onTap: () => _showStationOverview(item.stationId),
         );
       },
     );
@@ -248,6 +439,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
                 : item.stationAddress,
           ),
           trailing: Text(_formatNumber(item.usageCount)),
+          onTap: () => _showStationOverview(item.stationId),
         );
       },
     );
@@ -340,6 +532,8 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
                 _buildPeriodSelector(),
                 const SizedBox(height: 8),
                 _buildOverview(statistics.overview),
+                _buildSectionTitle('Station Overview'),
+                _buildStationOverviewLauncher(),
                 _buildSectionTitle('Revenue By Company'),
                 _buildCompanyRevenueList(statistics.companyRevenue),
                 _buildSectionTitle('Revenue By Station'),

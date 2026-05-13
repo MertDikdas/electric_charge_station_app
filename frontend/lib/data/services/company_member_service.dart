@@ -30,4 +30,24 @@ class CompanyMemberService {
         .map((item) => CompanyMember.fromJson(parseObject(item)))
         .toList();
   }
+
+  Future<CompanyMember> addMember({
+    required int companyId,
+    required int userId,
+    required String role,
+  }) async {
+    return CompanyMember.fromJson(
+      parseObject(
+        await _apiClient.post(
+          '/admin/company-members/',
+          body: {
+            'company_id': companyId,
+            'user_id': userId,
+            'role': role,
+            'is_active': true,
+          },
+        ),
+      ),
+    );
+  }
 }

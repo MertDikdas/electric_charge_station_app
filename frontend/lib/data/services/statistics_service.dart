@@ -52,4 +52,19 @@ class StatisticsService {
       reservationStatuses: parseList(responses[5], StatusCount.fromJson),
     );
   }
+
+  Future<StationOverviewStatistics> getAdminStationOverview({
+    required int stationId,
+    required int year,
+    required int month,
+  }) async {
+    return StationOverviewStatistics.fromJson(
+      parseObject(
+        await _apiClient.get(
+          '/statistics/admin/stations/$stationId/overview',
+          queryParameters: {'year': year.toString(), 'month': month.toString()},
+        ),
+      ),
+    );
+  }
 }

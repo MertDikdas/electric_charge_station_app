@@ -122,6 +122,99 @@ class StationUsage {
   }
 }
 
+class StationOverviewStatistics {
+  const StationOverviewStatistics({
+    required this.stationId,
+    required this.stationAddress,
+    required this.companyId,
+    required this.totalChargers,
+    required this.availableChargers,
+    required this.occupiedChargers,
+    required this.closedChargers,
+    required this.totalReservations,
+    required this.activeReservations,
+    required this.cancelledReservations,
+    required this.completedReservations,
+    required this.activeSessions,
+    required this.completedSessions,
+    required this.monthlyRevenue,
+    required this.totalRevenue,
+    required this.monthlyUsageCount,
+    required this.totalUsageCount,
+    required this.monthlyEnergyConsumed,
+    required this.totalEnergyConsumed,
+  });
+
+  final int stationId;
+  final String stationAddress;
+  final int companyId;
+  final int totalChargers;
+  final int availableChargers;
+  final int occupiedChargers;
+  final int closedChargers;
+  final int totalReservations;
+  final int activeReservations;
+  final int cancelledReservations;
+  final int completedReservations;
+  final int activeSessions;
+  final int completedSessions;
+  final double monthlyRevenue;
+  final double totalRevenue;
+  final int monthlyUsageCount;
+  final int totalUsageCount;
+  final double monthlyEnergyConsumed;
+  final double totalEnergyConsumed;
+
+  factory StationOverviewStatistics.fromJson(Map<String, dynamic> json) {
+    return StationOverviewStatistics(
+      stationId: _asInt(json['station_id'] ?? json['stationId']),
+      stationAddress: (json['station_address'] ?? json['stationAddress'] ?? '')
+          .toString(),
+      companyId: _asInt(json['company_id'] ?? json['companyId']),
+      totalChargers: _asInt(json['total_chargers'] ?? json['totalChargers']),
+      availableChargers: _asInt(
+        json['available_chargers'] ?? json['availableChargers'],
+      ),
+      occupiedChargers: _asInt(
+        json['occupied_chargers'] ?? json['occupiedChargers'],
+      ),
+      closedChargers: _asInt(json['closed_chargers'] ?? json['closedChargers']),
+      totalReservations: _asInt(
+        json['total_reservations'] ?? json['totalReservations'],
+      ),
+      activeReservations: _asInt(
+        json['active_reservations'] ?? json['activeReservations'],
+      ),
+      cancelledReservations: _asInt(
+        json['cancelled_reservations'] ?? json['cancelledReservations'],
+      ),
+      completedReservations: _asInt(
+        json['completed_reservations'] ?? json['completedReservations'],
+      ),
+      activeSessions: _asInt(json['active_sessions'] ?? json['activeSessions']),
+      completedSessions: _asInt(
+        json['completed_sessions'] ?? json['completedSessions'],
+      ),
+      monthlyRevenue: _asDouble(
+        json['monthly_revenue'] ?? json['monthlyRevenue'],
+      ),
+      totalRevenue: _asDouble(json['total_revenue'] ?? json['totalRevenue']),
+      monthlyUsageCount: _asInt(
+        json['monthly_usage_count'] ?? json['monthlyUsageCount'],
+      ),
+      totalUsageCount: _asInt(
+        json['total_usage_count'] ?? json['totalUsageCount'],
+      ),
+      monthlyEnergyConsumed: _asDouble(
+        json['monthly_energy_consumed'] ?? json['monthlyEnergyConsumed'],
+      ),
+      totalEnergyConsumed: _asDouble(
+        json['total_energy_consumed'] ?? json['totalEnergyConsumed'],
+      ),
+    );
+  }
+}
+
 class StatusCount {
   const StatusCount({required this.status, required this.count});
 
