@@ -7,6 +7,21 @@ import '../../data/models/vehicle.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/vehicle_service.dart';
 
+const _connectorTypeOptions = [
+  'TYPE_1',
+  'TYPE_2',
+  'CCS1',
+  'CCS2',
+  'CHADEMO',
+  'NACS',
+  'GB_T_AC',
+  'GB_T_DC',
+  'TESLA_ROADSTER',
+  'TESLA_TYPE_2',
+];
+
+const _currentTypeOptions = ['AC', 'DC'];
+
 class VehicleInfoPage extends StatefulWidget {
   const VehicleInfoPage({
     super.key,
@@ -27,10 +42,11 @@ class VehicleInfoPage extends StatefulWidget {
 
 class _VehicleInfoPageState extends State<VehicleInfoPage> {
   final _formKey = GlobalKey<FormState>();
+  final _brandController = TextEditingController();
   final _nameController = TextEditingController();
   final _modelController = TextEditingController();
   final _plateController = TextEditingController();
-  final _connectorController = TextEditingController(text: 'Type 2');
+  final _connectorController = TextEditingController(text: 'TYPE_2');
   final _currentTypeController = TextEditingController(text: 'AC');
   final _maxPowerController = TextEditingController();
   final _batteryCapacityController = TextEditingController();
@@ -42,6 +58,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
   @override
   void dispose() {
+    _brandController.dispose();
     _nameController.dispose();
     _modelController.dispose();
     _plateController.dispose();
@@ -58,6 +75,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     setState(() {
       _vehicles.add(
         _VehicleInfo(
+          brand: _brandController.text.trim(),
           name: _nameController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
@@ -67,9 +85,12 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           batteryCapacity: _batteryCapacityController.text.trim(),
         ),
       );
+      _brandController.clear();
       _nameController.clear();
       _modelController.clear();
       _plateController.clear();
+      _connectorController.text = _connectorTypeOptions.first;
+      _currentTypeController.text = _currentTypeOptions.first;
       _maxPowerController.clear();
       _batteryCapacityController.clear();
       _formKey.currentState!.reset();
@@ -85,7 +106,8 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
   }
 
   bool get _hasVehicleDraft {
-    return _nameController.text.trim().isNotEmpty ||
+    return _brandController.text.trim().isNotEmpty ||
+        _nameController.text.trim().isNotEmpty ||
         _modelController.text.trim().isNotEmpty ||
         _plateController.text.trim().isNotEmpty ||
         _maxPowerController.text.trim().isNotEmpty ||
@@ -98,6 +120,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
       _vehicles.add(
         _VehicleInfo(
+          brand: _brandController.text.trim(),
           name: _nameController.text.trim(),
           model: _modelController.text.trim(),
           licensePlate: _plateController.text.trim().toUpperCase(),
@@ -137,7 +160,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           await _vehicleService.createVehicle(
             VehicleInput(
               userId: user.id,
-              model: '${vehicle.name} ${vehicle.model}'.trim(),
+              model: vehicle.displayName,
               plate: vehicle.licensePlate,
               maxChargingPower: double.parse(vehicle.maxChargingPower),
               batteryCapacity: double.parse(vehicle.batteryCapacity),
@@ -215,6 +238,17 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
+                  controller: _brandController,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    context,
+                    labelText: 'Car Brand',
+                    prefixIcon: const Icon(Icons.business_outlined),
+                  ),
+                  validator: _required,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
                   controller: _modelController,
                   textInputAction: TextInputAction.next,
                   decoration: _inputDecoration(
@@ -242,26 +276,45 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _connectorController,
-                  textInputAction: TextInputAction.next,
+                DropdownButtonFormField<String>(
+                  initialValue: _connectorController.text,
+                  isExpanded: true,
                   decoration: _inputDecoration(
                     context,
                     labelText: 'Connector Type',
                     prefixIcon: const Icon(Icons.power),
                   ),
+                  items: _connectorTypeOptions
+                      .map(
+                        (type) =>
+                            DropdownMenuItem(value: type, child: Text(type)),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    _connectorController.text = value;
+                  },
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _currentTypeController,
-                  textCapitalization: TextCapitalization.characters,
-                  textInputAction: TextInputAction.next,
+                DropdownButtonFormField<String>(
+                  initialValue: _currentTypeController.text,
+                  isExpanded: true,
                   decoration: _inputDecoration(
                     context,
                     labelText: 'Current Type',
                     prefixIcon: const Icon(Icons.electrical_services_outlined),
                   ),
+                  items: _currentTypeOptions
+                      .map(
+                        (type) =>
+                            DropdownMenuItem(value: type, child: Text(type)),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    _currentTypeController.text = value;
+                  },
                   validator: _required,
                 ),
                 const SizedBox(height: 12),
@@ -359,6 +412,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
 class _VehicleInfo {
   const _VehicleInfo({
+    required this.brand,
     required this.name,
     required this.model,
     required this.licensePlate,
@@ -368,6 +422,7 @@ class _VehicleInfo {
     required this.batteryCapacity,
   });
 
+  final String brand;
   final String name;
   final String model;
   final String licensePlate;
@@ -375,6 +430,9 @@ class _VehicleInfo {
   final String currentType;
   final String maxChargingPower;
   final String batteryCapacity;
+
+  String get displayName =>
+      [brand, name, model].where((value) => value.trim().isNotEmpty).join(' ');
 }
 
 class _VehicleTile extends StatelessWidget {
@@ -388,7 +446,7 @@ class _VehicleTile extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.directions_car_filled),
-        title: Text('${vehicle.name} ${vehicle.model}'.trim()),
+        title: Text(vehicle.displayName),
         subtitle: Text(
           '${vehicle.licensePlate} - ${vehicle.connectorType} - ${vehicle.maxChargingPower} kW',
         ),

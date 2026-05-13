@@ -14,6 +14,21 @@ import '../../data/services/coupon_service.dart';
 import '../../data/models/coupon.dart';
 import 'chatbot_sheet.dart';
 
+const _connectorTypeOptions = [
+  'TYPE_1',
+  'TYPE_2',
+  'CCS1',
+  'CCS2',
+  'CHADEMO',
+  'NACS',
+  'GB_T_AC',
+  'GB_T_DC',
+  'TESLA_ROADSTER',
+  'TESLA_TYPE_2',
+];
+
+const _currentTypeOptions = ['AC', 'DC'];
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -833,10 +848,11 @@ class _AddBalanceScreenState extends State<AddBalanceScreen> {
 
 class _VehicleScreenState extends State<VehicleScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _brandController = TextEditingController();
   final _nameController = TextEditingController();
   final _modelController = TextEditingController();
   final _plateController = TextEditingController();
-  final _connectorController = TextEditingController(text: 'Type 2');
+  final _connectorController = TextEditingController(text: 'TYPE_2');
   final _currentTypeController = TextEditingController(text: 'AC');
   final _maxPowerController = TextEditingController();
   final _batteryCapacityController = TextEditingController();
@@ -849,6 +865,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
 
   @override
   void dispose() {
+    _brandController.dispose();
     _nameController.dispose();
     _modelController.dispose();
     _plateController.dispose();
@@ -882,9 +899,11 @@ class _VehicleScreenState extends State<VehicleScreen> {
       await _vehicleService.createVehicle(
         VehicleInput(
           userId: userId,
-          model:
-              '${_nameController.text.trim()} ${_modelController.text.trim()}'
-                  .trim(),
+          model: [
+            _brandController.text.trim(),
+            _nameController.text.trim(),
+            _modelController.text.trim(),
+          ].where((value) => value.isNotEmpty).join(' '),
           plate: _plateController.text.trim().toUpperCase(),
           maxChargingPower: double.parse(_maxPowerController.text.trim()),
           batteryCapacity: double.parse(_batteryCapacityController.text.trim()),
@@ -893,9 +912,12 @@ class _VehicleScreenState extends State<VehicleScreen> {
         ),
       );
 
+      _brandController.clear();
       _nameController.clear();
       _modelController.clear();
       _plateController.clear();
+      _connectorController.text = _connectorTypeOptions.first;
+      _currentTypeController.text = _currentTypeOptions.first;
       _maxPowerController.clear();
       _batteryCapacityController.clear();
       if (!mounted) return;
@@ -976,6 +998,16 @@ class _VehicleScreenState extends State<VehicleScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    controller: _brandController,
+                    decoration: _vehicleInputDecoration(
+                      context,
+                      labelText: 'Vehicle Brand',
+                      prefixIcon: const Icon(Icons.business_outlined),
+                    ),
+                    validator: _required,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
                     controller: _modelController,
                     decoration: _vehicleInputDecoration(
                       context,
@@ -996,24 +1028,45 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     validator: _required,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _connectorController,
+                  DropdownButtonFormField<String>(
+                    initialValue: _connectorController.text,
+                    isExpanded: true,
                     decoration: _vehicleInputDecoration(
                       context,
                       labelText: 'Connector Type',
                       prefixIcon: Icon(Icons.power),
                     ),
+                    items: _connectorTypeOptions
+                        .map(
+                          (type) =>
+                              DropdownMenuItem(value: type, child: Text(type)),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _connectorController.text = value;
+                    },
                     validator: _required,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _currentTypeController,
-                    textCapitalization: TextCapitalization.characters,
+                  DropdownButtonFormField<String>(
+                    initialValue: _currentTypeController.text,
+                    isExpanded: true,
                     decoration: _vehicleInputDecoration(
                       context,
                       labelText: 'Current Type',
                       prefixIcon: Icon(Icons.electrical_services_outlined),
                     ),
+                    items: _currentTypeOptions
+                        .map(
+                          (type) =>
+                              DropdownMenuItem(value: type, child: Text(type)),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _currentTypeController.text = value;
+                    },
                     validator: _required,
                   ),
                   const SizedBox(height: 12),
