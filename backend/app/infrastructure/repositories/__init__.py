@@ -12,6 +12,7 @@ from app.infrastructure.repositories.abstract import (
     AbstractVehicleRepository,
     AbstractCompanyRepository,
     AbstractCompanyMemberRepository,
+    AbstractStatisticsRepository,
 )
 from app.infrastructure.repositories.sqlalchemy import (
     SqlAlchemyChargerRepository,
@@ -27,6 +28,7 @@ from app.infrastructure.repositories.sqlalchemy import (
     SqlAlchemyVehicleRepository,
     SqlAlchemyCompanyRepository,
     SqlAlchemyCompanyMemberRepository,
+    SqlAlchemyStatisticsRepository,
 )
 
 __all__ = [
@@ -56,4 +58,5 @@ __all__ = [
     "SqlAlchemyVehicleRepository",
     "SqlAlchemyCompanyRepository",
     "SqlAlchemyCompanyMemberRepository",
+    "SqlAlchemyStatisticsRepository",
 ]
