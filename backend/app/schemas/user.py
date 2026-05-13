@@ -1,6 +1,9 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+from app.schemas.company import Company
+from app.schemas.company_member import CompanyMember
+
 
 UserRole = Literal["USER", "STATION_MANAGER", "STATION_OPERATOR", "ADMIN"]
 
@@ -33,6 +36,8 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: User
+    company: Optional[Company] = None
+    company_member: Optional[CompanyMember] = None
 
     class Config:
         from_attributes = True

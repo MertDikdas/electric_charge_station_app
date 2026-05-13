@@ -16,3 +16,7 @@ class AbstractCompanyMemberRepository(AbstractRepository[CompanyMemberEntity]):
     @abstractmethod
     def get_all_active(self) -> list[CompanyMemberEntity]:
         raise NotImplementedError
+    
+    @abstractmethod
+    def get_by_user_id(self, user_id: int) -> CompanyMemberEntity:
+        raise NotImplementedError

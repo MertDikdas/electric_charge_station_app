@@ -45,3 +45,15 @@ class SqlAlchemyCompanyMemberRepository(SqlAlchemyRepository[CompanyMemberEntity
     def get_all_active(self) -> list[CompanyMemberEntity]:
         models = self.session.query(CompanyMemberModel).filter(CompanyMemberModel.is_active.is_(True)).all()
         return [self.to_entity(model) for model in models]
+    
+    def get_by_user_id(self, user_id: int) -> Optional[CompanyMemberEntity]:
+        model = (
+            self.session.query(CompanyMemberModel)
+            .filter(CompanyMemberModel.user_id == user_id)
+            .first()
+        )
+
+        if model is None:
+            return None
+
+        return self._to_entity(model)
