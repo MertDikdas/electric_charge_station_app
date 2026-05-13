@@ -16,6 +16,7 @@ from app.schemas.statistics import (
     AdminOverviewStatistics,
     CompanyRevenue,
     ManagerOverviewStatistics,
+    StationOverviewStatistics,
     StationRevenue,
     StationUsage,
     StatusCount,
@@ -85,6 +86,23 @@ def get_admin_station_usage(
     return service.get_station_usage_counts(year, month, None, limit)
 
 
+@router.get(
+    "/admin/stations/{station_id}/overview",
+    response_model=StationOverviewStatistics,
+)
+def get_admin_station_overview(
+    station_id: int,
+    year: int = Query(default_factory=_default_year),
+    month: int = Query(default_factory=_default_month, ge=1, le=12),
+    service: StatisticsService = Depends(get_statistics_service),
+    current_user: AuthenticatedUser = Depends(get_admin),
+):
+    try:
+        return service.get_station_overview(station_id, year, month)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.get("/admin/chargers/status", response_model=List[StatusCount])
 def get_admin_charger_status_counts(
     service: StatisticsService = Depends(get_statistics_service),
@@ -148,6 +166,31 @@ def get_manager_station_usage(
     member: CompanyMember = Depends(get_current_company_member),
 ):
     return service.get_station_usage_counts(year, month, member.company_id, limit)
+
+
+@router.get(
+    "/manager/stations/{station_id}/overview",
+    response_model=StationOverviewStatistics,
+)
+def get_manager_station_overview(
+    station_id: int,
+    year: int = Query(default_factory=_default_year),
+    month: int = Query(default_factory=_default_month, ge=1, le=12),
+    service: StatisticsService = Depends(get_statistics_service),
+    current_user: AuthenticatedUser = Depends(get_station_manager),
+    member: CompanyMember = Depends(get_current_company_member),
+):
+    try:
+        return service.get_manager_station_overview(
+            station_id,
+            member.company_id,
+            year,
+            month,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.get("/manager/chargers/status", response_model=List[StatusCount])

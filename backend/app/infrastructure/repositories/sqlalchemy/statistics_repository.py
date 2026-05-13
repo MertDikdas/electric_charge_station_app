@@ -19,6 +19,7 @@ from app.schemas.statistics import (
     AdminOverviewStatistics,
     CompanyRevenue,
     ManagerOverviewStatistics,
+    StationOverviewStatistics,
     StationRevenue,
     StationUsage,
     StatusCount,
@@ -271,6 +272,218 @@ class SqlAlchemyStatisticsRepository(AbstractStatisticsRepository):
             or 0
         )
         return float(total)
+
+    def get_station_overview(
+        self,
+        station_id: int,
+        year: int,
+        month: int,
+    ) -> StationOverviewStatistics:
+        station = self.session.query(Station).filter(Station.id == station_id).first()
+        if station is None:
+            raise LookupError("Station not found")
+
+        start_date, end_date = self._month_range(year, month)
+        monthly_revenue = self.get_station_monthly_revenue(station_id, year, month)
+
+        total_chargers = (
+            self.session.query(func.count(Charger.id))
+            .filter(Charger.station_id == station_id)
+            .scalar()
+            or 0
+        )
+
+        available_chargers = (
+            self.session.query(func.count(Charger.id))
+            .filter(
+                Charger.station_id == station_id,
+                Charger.status == "AVAILABLE",
+            )
+            .scalar()
+            or 0
+        )
+
+        occupied_chargers = (
+            self.session.query(func.count(Charger.id))
+            .filter(
+                Charger.station_id == station_id,
+                Charger.status == "OCCUPIED",
+            )
+            .scalar()
+            or 0
+        )
+
+        closed_chargers = (
+            self.session.query(func.count(Charger.id))
+            .filter(
+                Charger.station_id == station_id,
+                Charger.status.in_(("CLOSED", "OUT_OF_SERVICE")),
+            )
+            .scalar()
+            or 0
+        )
+
+        total_reservations = (
+            self.session.query(func.count(Reservation.id))
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(Station.id == station_id)
+            .scalar()
+            or 0
+        )
+
+        active_reservations = (
+            self.session.query(func.count(Reservation.id))
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                Reservation.status.in_(("PENDING", "CONFIRMED", "ACTIVE")),
+            )
+            .scalar()
+            or 0
+        )
+
+        cancelled_reservations = (
+            self.session.query(func.count(Reservation.id))
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                Reservation.status == "CANCELLED",
+            )
+            .scalar()
+            or 0
+        )
+
+        completed_reservations = (
+            self.session.query(func.count(Reservation.id))
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                Reservation.status == "COMPLETED",
+            )
+            .scalar()
+            or 0
+        )
+
+        active_sessions = (
+            self.session.query(func.count(ChargingSession.reservation_id))
+            .join(Reservation, ChargingSession.reservation_id == Reservation.id)
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                ChargingSession.status.in_(("STARTED", "IN_PROGRESS")),
+            )
+            .scalar()
+            or 0
+        )
+
+        completed_sessions = (
+            self.session.query(func.count(ChargingSession.reservation_id))
+            .join(Reservation, ChargingSession.reservation_id == Reservation.id)
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                ChargingSession.status == "COMPLETED",
+            )
+            .scalar()
+            or 0
+        )
+
+        total_revenue = (
+            self.session.query(func.coalesce(func.sum(Payment.amount), 0))
+            .join(Reservation, Payment.reservation_id == Reservation.id)
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                Payment.status == "COMPLETED",
+            )
+            .scalar()
+            or 0
+        )
+
+        monthly_usage_count = (
+            self.session.query(func.count(ChargingSession.reservation_id))
+            .join(Reservation, ChargingSession.reservation_id == Reservation.id)
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                Reservation.date >= start_date.date(),
+                Reservation.date < end_date.date(),
+                ChargingSession.status.in_(("STARTED", "IN_PROGRESS", "COMPLETED")),
+            )
+            .scalar()
+            or 0
+        )
+
+        total_usage_count = (
+            self.session.query(func.count(ChargingSession.reservation_id))
+            .join(Reservation, ChargingSession.reservation_id == Reservation.id)
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                ChargingSession.status.in_(("STARTED", "IN_PROGRESS", "COMPLETED")),
+            )
+            .scalar()
+            or 0
+        )
+
+        monthly_energy_consumed = (
+            self.session.query(func.coalesce(func.sum(ChargingSession.consuming_power), 0))
+            .join(Reservation, ChargingSession.reservation_id == Reservation.id)
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                Reservation.date >= start_date.date(),
+                Reservation.date < end_date.date(),
+                ChargingSession.status == "COMPLETED",
+            )
+            .scalar()
+            or 0
+        )
+
+        total_energy_consumed = (
+            self.session.query(func.coalesce(func.sum(ChargingSession.consuming_power), 0))
+            .join(Reservation, ChargingSession.reservation_id == Reservation.id)
+            .join(Charger, Reservation.charger_id == Charger.id)
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.id == station_id,
+                ChargingSession.status == "COMPLETED",
+            )
+            .scalar()
+            or 0
+        )
+
+        return StationOverviewStatistics(
+            station_id=station.id,
+            station_address=station.address,
+            company_id=station.company_id,
+            total_chargers=int(total_chargers),
+            available_chargers=int(available_chargers),
+            occupied_chargers=int(occupied_chargers),
+            closed_chargers=int(closed_chargers),
+            total_reservations=int(total_reservations),
+            active_reservations=int(active_reservations),
+            cancelled_reservations=int(cancelled_reservations),
+            completed_reservations=int(completed_reservations),
+            active_sessions=int(active_sessions),
+            completed_sessions=int(completed_sessions),
+            monthly_revenue=float(monthly_revenue),
+            total_revenue=float(total_revenue),
+            monthly_usage_count=int(monthly_usage_count),
+            total_usage_count=int(total_usage_count),
+            monthly_energy_consumed=float(monthly_energy_consumed),
+            total_energy_consumed=float(total_energy_consumed),
+        )
 
     def get_revenue_by_company(
         self,
