@@ -51,7 +51,7 @@ def get_users(service: UserService = Depends(get_user_service),
               current_user: AuthenticatedUser = Depends(get_admin)):
     return service.get_all_users()
 
-@router.delete("/me", status_code=204)
+@router.patch("/me", status_code=204)
 def delete_user(
     service: UserService = Depends(get_user_service),
     current_user: AuthenticatedUser = Depends(get_current_user)
@@ -72,7 +72,7 @@ def get_current_user_info(
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@router.delete("/admin/{user_id}", status_code=204)
+@router.patch("/admin/{user_id}", status_code=204)
 def delete_user(
     user_id: int,
     service: UserService = Depends(get_user_service),

@@ -5,7 +5,7 @@ from app.schemas.company import Company
 from app.schemas.company_member import CompanyMember
 
 
-UserRole = Literal["USER", "STATION_MANAGER", "STATION_OPERATOR", "ADMIN"]
+UserRole = Literal["USER", "ADMIN"]
 
 class UserBase(BaseModel):
     name: str

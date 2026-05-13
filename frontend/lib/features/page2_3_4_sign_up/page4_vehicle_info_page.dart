@@ -42,6 +42,7 @@ class VehicleInfoPage extends StatefulWidget {
 
 class _VehicleInfoPageState extends State<VehicleInfoPage> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _brandController = TextEditingController();
   final _nameController = TextEditingController();
   final _modelController = TextEditingController();
@@ -58,6 +59,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _brandController.dispose();
     _nameController.dispose();
     _modelController.dispose();
@@ -75,6 +77,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
     setState(() {
       _vehicles.add(
         _VehicleInfo(
+          name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
           name: _nameController.text.trim(),
           model: _modelController.text.trim(),
@@ -85,6 +88,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
           batteryCapacity: _batteryCapacityController.text.trim(),
         ),
       );
+      _nameController.clear();
       _brandController.clear();
       _nameController.clear();
       _modelController.clear();
@@ -120,6 +124,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
       _vehicles.add(
         _VehicleInfo(
+          name: _nameController.text.trim(),
           brand: _brandController.text.trim(),
           name: _nameController.text.trim(),
           model: _modelController.text.trim(),
@@ -412,6 +417,7 @@ class _VehicleInfoPageState extends State<VehicleInfoPage> {
 
 class _VehicleInfo {
   const _VehicleInfo({
+    required this.name,
     required this.brand,
     required this.name,
     required this.model,
@@ -421,7 +427,7 @@ class _VehicleInfo {
     required this.maxChargingPower,
     required this.batteryCapacity,
   });
-
+  final String name;
   final String brand;
   final String name;
   final String model;

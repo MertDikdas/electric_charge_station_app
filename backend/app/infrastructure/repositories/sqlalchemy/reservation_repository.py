@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, time
+from datetime import date, datetime, timedelta, time, timezone
 from typing import List
 
 from sqlalchemy import and_, or_, func
@@ -23,6 +23,7 @@ class SqlAlchemyReservationRepository(
             id=entity.id,
             user_id=entity.user_id,
             vehicle_id=entity.vehicle_id,
+            station_id=entity.station_id,
             charger_id=entity.charger_id,
             date=entity.date,
             start_time=entity.start_time,
@@ -35,6 +36,7 @@ class SqlAlchemyReservationRepository(
             id=model.id,
             user_id=model.user_id,
             vehicle_id=model.vehicle_id,
+            station_id=model.station_id,
             charger_id=model.charger_id,
             date=model.date,
             start_time=model.start_time,
@@ -250,3 +252,21 @@ class SqlAlchemyReservationRepository(
             .all()
         )
         return [self.to_entity(model) for model in models]
+    
+    def delete_upcoming_by_user_id(self, user_id: int) -> None:
+        now = datetime.now()
+        today = now.date()
+        current_time = now.time()
+
+        self.session.query(ReservationModel).filter(
+            ReservationModel.user_id == user_id,
+            (
+                (ReservationModel.date > today)
+                | (
+                    (ReservationModel.date == today)
+                    & (ReservationModel.start_time > current_time)
+                )
+            ),
+        ).delete(
+            synchronize_session=False,
+        )

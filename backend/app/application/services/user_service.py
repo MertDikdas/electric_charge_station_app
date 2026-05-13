@@ -127,9 +127,14 @@ class UserService:
     def delete_user(self, user_id: int) -> None:
         with self.uow:
             user = self.uow.users.get(user_id)
-            if user:
-                self.uow.users.delete(user_id)
-                self.uow.commit()
+            if not user:
+                raise ValueError("User not found")
+            user.is_active = False
+            self.uow.users.update(user)
+            self.uow.vehicles.deactivate_by_user_id(user_id)
+            self.uow.company_members.deactivate_by_user_id(user_id)
+            self.uow.reservations.delete_upcoming_by_user_id(user_id)
+            self.uow.commit()
 
 
     def get_user_by_email(self, email: str) -> Optional[UserEntity]:

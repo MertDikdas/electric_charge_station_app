@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 
 class VehicleBase(BaseModel):
+    name: str
+    brand: str
     model: str
     plate: str
     max_charging_power: float

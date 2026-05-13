@@ -83,3 +83,7 @@ class AbstractReservationRepository(AbstractRepository[ReservationEntity]):
         now: datetime,
     ) -> List[ReservationEntity]:
         raise NotImplementedError
+
+    @abstractmethod
+    def delete_upcoming_by_user_id(self, user_id: int) -> None:
+        raise NotImplementedError
