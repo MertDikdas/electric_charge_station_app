@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.tables import (
@@ -72,7 +72,11 @@ class SqlAlchemyStatisticsRepository(AbstractStatisticsRepository):
         total_chargers = self.session.query(func.count(Charger.id)).scalar() or 0
         available_chargers = (
             self.session.query(func.count(Charger.id))
-            .filter(Charger.status == "AVAILABLE")
+            .join(Station, Charger.station_id == Station.id)
+            .filter(
+                Station.status == "AVAILABLE",
+                Charger.status == "AVAILABLE",
+            )
             .scalar()
             or 0
         )
@@ -570,10 +574,6 @@ class SqlAlchemyStatisticsRepository(AbstractStatisticsRepository):
                 Station.id.label("station_id"),
                 Station.address.label("station_address"),
                 func.count(ChargingSession.reservation_id).label("usage_count"),
-                func.coalesce(
-                    func.sum(ChargingSession.consuming_power),
-                    0,
-                ).label("energy_delivered"),
             )
             .join(Charger, Charger.station_id == Station.id)
             .join(Reservation, Reservation.charger_id == Charger.id)
@@ -601,7 +601,6 @@ class SqlAlchemyStatisticsRepository(AbstractStatisticsRepository):
                 station_id=row.station_id,
                 station_address=row.station_address,
                 usage_count=int(row.usage_count or 0),
-                energy_delivered=float(row.energy_delivered or 0),
             )
             for row in rows
         ]
@@ -610,24 +609,30 @@ class SqlAlchemyStatisticsRepository(AbstractStatisticsRepository):
         self,
         company_id: int | None = None,
     ) -> list[StatusCount]:
+
+        effective_status = case(
+            (
+                Station.status != "AVAILABLE",
+                "CLOSED",
+            ),
+            else_=Charger.status,
+        ).label("status")
+
         query = (
             self.session.query(
-                Charger.status.label("status"),
+                effective_status,
                 func.count(Charger.id).label("count"),
             )
+            .join(Station, Charger.station_id == Station.id)
         )
 
         if company_id is not None:
-            query = (
-                query
-                .join(Station, Charger.station_id == Station.id)
-                .filter(Station.company_id == company_id)
-            )
+            query = query.filter(Station.company_id == company_id)
 
         rows = (
             query
-            .group_by(Charger.status)
-            .order_by(Charger.status)
+            .group_by(effective_status)
+            .order_by(effective_status)
             .all()
         )
 
