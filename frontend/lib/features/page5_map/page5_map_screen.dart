@@ -35,8 +35,11 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   static const Color _mapActionButtonColor = Color(0xFF0B1F4D);
+  static const Duration _sessionProgressRefreshInterval = Duration(
+    seconds: 10,
+  );
 
   static const CameraPosition _fallbackCameraPosition = CameraPosition(
     target: LatLng(38.4237, 27.1428),
@@ -52,6 +55,7 @@ class _MapScreenState extends State<MapScreen> {
   final _vehicleService = VehicleService();
 
   StreamSubscription<Position>? _positionSubscription;
+  Timer? _sessionProgressTimer;
   String? _mapStyle;
   GoogleMapController? _mapController;
   LatLng? _pendingCameraTarget;
@@ -77,6 +81,7 @@ class _MapScreenState extends State<MapScreen> {
   String? _errorMessage;
   ChargingSession? _activeChargingSession;
   bool _isSessionLoading = false;
+  bool _isProgressRefreshInFlight = false;
   List<ChargingSession> _sessionHistory = const [];
   ChargingSessionProgress? _activeProgress;
 
@@ -85,6 +90,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadMapStyle();
     _initializeMapPage();
     _loadVehicles();
@@ -94,9 +100,18 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopSessionProgressPolling();
     _positionSubscription?.cancel();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshActiveProgress(refreshHistoryWhenMissing: true));
+    }
   }
 
   Future<void> _loadSessionHistory() async {
@@ -140,42 +155,78 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _loadActiveChargingSession() async {
     debugPrint('ACTIVE SESSION LOAD STARTED');
 
-    try {
-      final session = await _chargingSessionService.getActiveSession();
-
-      debugPrint('ACTIVE SESSION RESULT: $session');
-
-      if (!mounted) return;
-
-      setState(() {
-        _activeChargingSession = session;
-      });
-
-      await _loadActiveProgress();
-    } catch (error) {
-      debugPrint('ACTIVE SESSION ERROR: $error');
-
-      if (!mounted) return;
-
-      setState(() {
-        _activeChargingSession = null;
-        _activeProgress = null;
-      });
-    }
+    await _refreshActiveProgress();
   }
 
   Future<void> _loadActiveProgress() async {
     debugPrint('ACTIVE PROGRESS LOAD STARTED');
 
-    final progress = await _chargingSessionService.fetchActiveProgress();
+    await _refreshActiveProgress();
+  }
 
-    debugPrint('ACTIVE PROGRESS RESULT: $progress');
+  Future<void> _refreshActiveProgress({
+    bool refreshHistoryWhenMissing = false,
+  }) async {
+    if (_isProgressRefreshInFlight) return;
 
-    if (!mounted) return;
+    _isProgressRefreshInFlight = true;
 
-    setState(() {
-      _activeProgress = progress;
-    });
+    try {
+      final progress = await _chargingSessionService.fetchActiveProgress();
+
+      debugPrint('ACTIVE PROGRESS RESULT: $progress');
+
+      if (!mounted) return;
+
+      setState(() {
+        _activeProgress = progress;
+        _activeChargingSession = progress == null
+            ? null
+            : _sessionFromProgress(progress);
+      });
+
+      if (progress == null) {
+        _stopSessionProgressPolling();
+        if (refreshHistoryWhenMissing) {
+          await _loadSessionHistory();
+        }
+        return;
+      }
+
+      _startSessionProgressPolling();
+    } catch (error) {
+      debugPrint('ACTIVE PROGRESS ERROR: $error');
+    } finally {
+      _isProgressRefreshInFlight = false;
+    }
+  }
+
+  ChargingSession _sessionFromProgress(ChargingSessionProgress progress) {
+    return ChargingSession(
+      id: progress.sessionId,
+      reservationId: progress.reservationId,
+      startTime: '',
+      endTime: '',
+      consumedEnergy: progress.estimatedEnergyKwh,
+      totalCost: progress.estimatedCost,
+      status: progress.status,
+    );
+  }
+
+  void _startSessionProgressPolling() {
+    if (_sessionProgressTimer?.isActive ?? false) return;
+
+    _sessionProgressTimer = Timer.periodic(
+      _sessionProgressRefreshInterval,
+      (_) => unawaited(
+        _refreshActiveProgress(refreshHistoryWhenMissing: true),
+      ),
+    );
+  }
+
+  void _stopSessionProgressPolling() {
+    _sessionProgressTimer?.cancel();
+    _sessionProgressTimer = null;
   }
 
   Future<void> _loadMapStyle() async {
@@ -950,6 +1001,7 @@ class _MapScreenState extends State<MapScreen> {
           _activeChargingSession = session;
         });
 
+        _startSessionProgressPolling();
         await _loadActiveProgress();
         _showSnackBar('Charging session started.');
         await _loadSessionHistory();
@@ -959,6 +1011,7 @@ class _MapScreenState extends State<MapScreen> {
         );
 
         if (!mounted) return;
+        _stopSessionProgressPolling();
         setState(() {
           _activeChargingSession = null;
           _activeProgress = null;
