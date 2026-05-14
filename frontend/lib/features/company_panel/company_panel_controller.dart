@@ -123,7 +123,13 @@ class CompanyPanelController extends ChangeNotifier {
   }
 
   Future<void> removeMember(CompanyEmployee employee) async {
-    await _companyService.removeCompanyMember(employee.member.id);
+    final companyId = currentUser.companyId;
+    if (companyId == null) throw StateError('Company membership required');
+    await _companyService.removeCompanyMember(
+      companyId: companyId,
+      userId: employee.member.userId,
+      role: employee.member.role,
+    );
     await load(silent: true);
   }
 

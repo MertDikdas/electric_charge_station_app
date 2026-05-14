@@ -134,7 +134,6 @@ class StationService:
             return result
         
     def _calculate_station_availability(self, compatible_chargers) -> str:
-        print(compatible_chargers)
         if not compatible_chargers:
             return "UNAVAILABLE"
         

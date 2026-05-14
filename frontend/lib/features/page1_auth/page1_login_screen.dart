@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/app_snackbar.dart';
 import '../../core/main_navigation_shell.dart';
 import '../../data/services/auth_service.dart';
-import '../admin_panel/admin_panel_shell.dart';
 import '../company_panel/company_panel_shell.dart';
+import '../admin_panel/admin_panel.dart';
 import '../page2_3_4_sign_up/page3_signup_user_page.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     final Widget destination = switch (user.effectiveRole) {
-      'ADMIN' => const AdminPanelShell(),
+      'ADMIN' => const AdminPanelScreen(),
       'COMPANY_MANAGER' ||
       'COMPANY_OPERATOR' ||
       'STATION_MANAGER' ||

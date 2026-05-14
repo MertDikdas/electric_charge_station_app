@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../features/page2_3_4_sign_up/page3_signup_user_page.dart';
 import '../features/page1_auth/page1_login_screen.dart';
-import '../features/admin_panel/admin_panel_shell.dart';
+import '../features/admin_panel/admin_panel.dart';
 import 'main_navigation_shell.dart';
 import 'app_theme.dart';
 
@@ -22,7 +22,7 @@ class ElectricChargeStationApp extends StatelessWidget {
         '/': (_) => const LoginScreen(),
         '/signup-user': (_) => const SignupUserPage(),
         '/home': (_) => const MainNavigationShell(),
-        '/admin': (_) => const AdminPanelShell(),
+        '/admin': (_) => const AdminPanelScreen(),
       },
     );
   }
