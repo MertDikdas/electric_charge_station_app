@@ -1,17 +1,27 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.application.services.statistics_service import StatisticsService
 from app.core.dependencies import (
     AuthenticatedUser,
+    ensure_same_company,
     get_admin,
+    get_company_member,
     get_current_company_member,
     get_statistics_service,
     get_station_manager,
 )
-from app.infrastructure.database.tables import CompanyMember
+from app.infrastructure.database.database import get_db
+from app.infrastructure.database.tables import (
+    ChargingSession,
+    CompanyMember,
+    Reservation,
+    Station,
+)
 from app.schemas.statistics import (
     AdminOverviewStatistics,
     CompanyRevenue,
@@ -209,31 +219,6 @@ def get_manager_reservation_status_counts(
     member: CompanyMember = Depends(get_current_company_member),
 ):
     return service.get_reservation_status_counts(member.company_id)
-
-
-from datetime import date
-
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func
-from sqlalchemy.orm import Session
-
-from app.core.dependencies import (
-    AuthenticatedUser,
-    ensure_same_company,
-    get_company_member,
-    get_current_company_member,
-)
-from app.infrastructure.database.database import get_db
-from app.infrastructure.database.tables import (
-    Charger,
-    ChargingSession,
-    CompanyMember,
-    Reservation,
-    Station,
-)
-
-router = APIRouter()
-
 
 @router.get("/station-revenue/{station_id}")
 def get_station_revenue(

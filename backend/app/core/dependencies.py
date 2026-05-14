@@ -15,6 +15,7 @@ from app.application.services.notification_service import NotificationService
 from app.application.services.payment_service import PaymentService
 from app.application.services.reservation_service import ReservationService
 from app.application.services.station_service import StationService
+from app.application.services.statistics_service import StatisticsService
 from app.application.services.user_service import UserService
 from app.application.services.vehicle_service import VehicleService
 from app.application.services.chatbot_service import ChatbotService
@@ -190,8 +191,10 @@ def get_uow(db: Session = Depends(get_db)) -> AbstractUnitOfWork:
 def get_user_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> UserService:
     return UserService(uow)
 
-def get_statistics_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> StationService:
-    return StationService(uow)
+def get_statistics_service(
+    uow: AbstractUnitOfWork = Depends(get_uow),
+) -> StatisticsService:
+    return StatisticsService(uow)
 
 def get_vehicle_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> VehicleService:
     return VehicleService(uow)
@@ -236,4 +239,3 @@ def get_company_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanySe
 
 def get_company_member_service(uow: AbstractUnitOfWork = Depends(get_uow)) -> CompanyMemberService:
     return CompanyMemberService(uow)
-
