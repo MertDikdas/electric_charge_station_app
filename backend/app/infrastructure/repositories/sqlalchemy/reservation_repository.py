@@ -225,15 +225,6 @@ class SqlAlchemyReservationRepository(
             )
             .first()
         )
-
-        print(
-            "CHECK RESERVATION:",
-            "charger_id=", charger_id,
-            "today=", today,
-            "time=", current_time,
-            "found=", active_reservation is not None,
-        )
-
         return active_reservation is not None
 
     def list_active_for_chargers(
