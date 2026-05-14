@@ -22,6 +22,7 @@ class StationUsage(BaseModel):
     station_id: int
     station_address: str
     usage_count: int
+    energy_delivered: float = 0
 
 
 class AdminOverviewStatistics(BaseModel):

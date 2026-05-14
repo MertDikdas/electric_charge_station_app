@@ -13,6 +13,6 @@ class PaymentEntity(BaseEntity):
     status: str
     payment_date: Optional[datetime] = None
     coupon_id: Optional[int] = None
-
+    final_amount: Optional[float] = None
 
 Payment = PaymentEntity

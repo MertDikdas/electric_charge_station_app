@@ -132,7 +132,7 @@ class PaymentService:
 
             payment.status = "COMPLETED"
             payment.payment_date = datetime.now()
-
+            
             updated_payment = self.uow.payments.update(payment)
             self.uow.commit()
             return updated_payment

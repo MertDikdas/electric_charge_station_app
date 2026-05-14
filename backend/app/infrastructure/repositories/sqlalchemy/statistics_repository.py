@@ -570,6 +570,10 @@ class SqlAlchemyStatisticsRepository(AbstractStatisticsRepository):
                 Station.id.label("station_id"),
                 Station.address.label("station_address"),
                 func.count(ChargingSession.reservation_id).label("usage_count"),
+                func.coalesce(
+                    func.sum(ChargingSession.consuming_power),
+                    0,
+                ).label("energy_delivered"),
             )
             .join(Charger, Charger.station_id == Station.id)
             .join(Reservation, Reservation.charger_id == Charger.id)
@@ -597,6 +601,7 @@ class SqlAlchemyStatisticsRepository(AbstractStatisticsRepository):
                 station_id=row.station_id,
                 station_address=row.station_address,
                 usage_count=int(row.usage_count or 0),
+                energy_delivered=float(row.energy_delivered or 0),
             )
             for row in rows
         ]

@@ -34,6 +34,7 @@ class SqlAlchemyPaymentRepository(
             status=model.status,
             payment_date=model.payment_date,
             coupon_id=model.coupon_id,
+            final_amount= model.amount
         )
 
     def get_by_user_id(self, user_id: int) -> List[PaymentEntity]:
