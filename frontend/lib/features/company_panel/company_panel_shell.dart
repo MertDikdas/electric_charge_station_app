@@ -723,6 +723,7 @@ class _ReservationsMonitoringPageState
             children: [
               DropdownButtonFormField<int?>(
                 initialValue: chargerId,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Charger'),
                 items: [
                   const DropdownMenuItem<int?>(
@@ -732,7 +733,11 @@ class _ReservationsMonitoringPageState
                   for (final charger in widget.controller.chargers)
                     DropdownMenuItem<int?>(
                       value: charger.id,
-                      child: Text(_chargerDisplayName(charger)),
+                      child: Text(
+                        _chargerDisplayName(charger),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                 ],
                 onChanged: (value) => setState(() => chargerId = value),
@@ -1343,16 +1348,18 @@ class _StatusFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<String>(
-      showSelectedIcon: false,
-      segments: [
-        ButtonSegment(value: 'ALL', label: _segmentLabel('All')),
-        ButtonSegment(value: 'AVAILABLE', label: _segmentLabel('Active')),
-        ButtonSegment(value: 'MAINTENANCE', label: _segmentLabel('Maint.')),
-        ButtonSegment(value: 'CLOSED', label: _segmentLabel('Closed')),
-      ],
-      selected: {value},
-      onSelectionChanged: (values) => onChanged(values.first),
+    return _ScrollableSegmentedButton(
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: [
+          ButtonSegment(value: 'ALL', label: _segmentLabel('All')),
+          ButtonSegment(value: 'AVAILABLE', label: _segmentLabel('Active')),
+          ButtonSegment(value: 'MAINTENANCE', label: _segmentLabel('Maint.')),
+          ButtonSegment(value: 'CLOSED', label: _segmentLabel('Closed')),
+        ],
+        selected: {value},
+        onSelectionChanged: (values) => onChanged(values.first),
+      ),
     );
   }
 }
@@ -1368,22 +1375,51 @@ class _ReservationStatusFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<String>(
-      showSelectedIcon: false,
-      segments: [
-        ButtonSegment(value: 'ALL', label: _segmentLabel('All')),
-        ButtonSegment(value: 'PENDING', label: _segmentLabel('Pending')),
-        ButtonSegment(value: 'COMPLETED', label: _segmentLabel('Done')),
-        ButtonSegment(value: 'CANCELLED', label: _segmentLabel('Cancelled')),
-      ],
-      selected: {value},
-      onSelectionChanged: (values) => onChanged(values.first),
+    return _ScrollableSegmentedButton(
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: [
+          ButtonSegment(value: 'ALL', label: _segmentLabel('All')),
+          ButtonSegment(value: 'PENDING', label: _segmentLabel('Pending')),
+          ButtonSegment(value: 'COMPLETED', label: _segmentLabel('Done')),
+          ButtonSegment(value: 'CANCELLED', label: _segmentLabel('Cancelled')),
+        ],
+        selected: {value},
+        onSelectionChanged: (values) => onChanged(values.first),
+      ),
+    );
+  }
+}
+
+class _ScrollableSegmentedButton extends StatelessWidget {
+  const _ScrollableSegmentedButton({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: child,
+      ),
     );
   }
 }
 
 Widget _segmentLabel(String text) {
-  return FittedBox(fit: BoxFit.scaleDown, child: Text(text, maxLines: 1));
+  return SizedBox(
+    width: 76,
+    child: Center(
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+      ),
+    ),
+  );
 }
 
 Future<void> _confirm(
