@@ -108,12 +108,13 @@ class SqlAlchemyChargingSessionRepository(
         )
         return float(revenue or 0.0)
 
-    def get_usage_counts_by_company(self, company_id: int) -> list[tuple[int, str, int]]:
+    def get_usage_counts_by_company(self, company_id: int) -> list[tuple[int, str, int, float]]:
         rows = (
             self.session.query(
                 StationModel.id,
                 StationModel.name,
                 func.count(ChargingSessionModel.reservation_id),
+                func.coalesce(func.sum(ChargingSessionModel.consuming_power), 0.0),
             )
             .outerjoin(ReservationModel, ReservationModel.station_id == StationModel.id)
             .outerjoin(ChargingSessionModel, ChargingSessionModel.reservation_id == ReservationModel.id)
@@ -121,7 +122,10 @@ class SqlAlchemyChargingSessionRepository(
             .group_by(StationModel.id, StationModel.name)
             .all()
         )
-        return [(station_id, name, int(count or 0)) for station_id, name, count in rows]
+        return [
+            (station_id, name, int(count or 0), float(energy_delivered or 0.0))
+            for station_id, name, count, energy_delivered in rows
+        ]
 
     def list_expired_for_auto_finish(
         self,

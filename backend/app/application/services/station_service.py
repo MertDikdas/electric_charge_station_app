@@ -52,7 +52,7 @@ class StationService:
                 month,
             )
 
-    def get_company_station_usage_counts(self, company_id: int) -> list[dict[str, int | str]]:
+    def get_company_station_usage_counts(self, company_id: int) -> list[dict[str, float | int | str]]:
         with self.uow:
             company = self.uow.companies.get(company_id)
             if not company:
@@ -62,8 +62,9 @@ class StationService:
                     "station_id": station_id,
                     "station_name": station_name,
                     "usage_count": usage_count,
+                    "energy_delivered": energy_delivered,
                 }
-                for station_id, station_name, usage_count
+                for station_id, station_name, usage_count, energy_delivered
                 in self.uow.charging_sessions.get_usage_counts_by_company(company_id)
             ]
 

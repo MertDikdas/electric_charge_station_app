@@ -38,7 +38,7 @@ class AbstractChargingSessionRepository(AbstractRepository[ChargingSessionEntity
         raise NotImplementedError
 
     @abstractmethod
-    def get_usage_counts_by_company(self, company_id: int) -> list[tuple[int, str, int]]:
+    def get_usage_counts_by_company(self, company_id: int) -> list[tuple[int, str, int, float]]:
         raise NotImplementedError
 
     @abstractmethod
