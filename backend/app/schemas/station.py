@@ -49,4 +49,5 @@ class StationUsageCount(BaseModel):
     station_id: int
     station_name: str
     usage_count: int
+    energy_delivered: float
 
