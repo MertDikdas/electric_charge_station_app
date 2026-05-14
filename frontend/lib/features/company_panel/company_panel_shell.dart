@@ -174,7 +174,7 @@ class CompanyDashboard extends StatelessWidget {
               ),
               DashboardTile(
                 title: 'Revenue',
-                value: '\$${controller.revenue.revenue.toStringAsFixed(0)}',
+                value: '₺${controller.revenue.revenue.toStringAsFixed(0)}',
                 icon: Icons.payments_outlined,
                 onTap: () => onNavigate(5),
               ),
@@ -578,7 +578,7 @@ class StationDetailPage extends StatelessWidget {
                   ),
                   StatisticCard(
                     label: 'Monthly Revenue',
-                    value: '\$${revenue.toStringAsFixed(0)}',
+                    value: '₺${revenue.toStringAsFixed(0)}',
                     icon: Icons.payments,
                   ),
                 ],
@@ -802,7 +802,7 @@ class RevenueAnalyticsPage extends StatelessWidget {
             children: [
               StatisticCard(
                 label: 'Company Monthly Revenue',
-                value: '\$${controller.revenue.revenue.toStringAsFixed(2)}',
+                value: '₺${controller.revenue.revenue.toStringAsFixed(2)}',
                 icon: Icons.payments_outlined,
               ),
               StatisticCard(
@@ -1135,7 +1135,7 @@ class _StatsGrid extends StatelessWidget {
         ),
         StatisticCard(
           label: 'Monthly Revenue',
-          value: '\$${controller.revenue.revenue.toStringAsFixed(0)}',
+          value: '₺${controller.revenue.revenue.toStringAsFixed(0)}',
           icon: Icons.payments_outlined,
         ),
         StatisticCard(
@@ -1182,7 +1182,7 @@ class _StationCard extends StatelessWidget {
         leading: const Icon(Icons.ev_station_outlined),
         title: Text(station.name),
         subtitle: Text(
-          '${station.address}\n$chargers chargers - $reservations reservations - \$${revenue.toStringAsFixed(0)}',
+          '${station.address}\n$chargers chargers - $reservations reservations - ₺${revenue.toStringAsFixed(0)}',
         ),
         isThreeLine: true,
         trailing: Wrap(
@@ -1237,7 +1237,7 @@ class _ChargerCard extends StatelessWidget {
         leading: const Icon(Icons.electrical_services_outlined),
         title: Text('${charger.connectorType} - ${charger.maxPower} kW'),
         subtitle: Text(
-          '${charger.currentType} - $reservationCount reservations - \$${charger.pricePerKwh}/kWh',
+          '${charger.currentType} - $reservationCount reservations - ₺${charger.pricePerKwh}/kWh',
         ),
         trailing: Wrap(
           spacing: 4,
