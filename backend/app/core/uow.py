@@ -10,6 +10,7 @@ from app.infrastructure.repositories import (
     AbstractPaymentRepository,
     AbstractReservationRepository,
     AbstractStationRepository,
+    AbstractStatisticsRepository,
     AbstractUserRepository,
     AbstractUserSessionRepository,
     AbstractVehicleRepository,
@@ -22,6 +23,7 @@ from app.infrastructure.repositories import (
     SqlAlchemyPaymentRepository,
     SqlAlchemyReservationRepository,
     SqlAlchemyStationRepository,
+    SqlAlchemyStatisticsRepository,
     SqlAlchemyUserRepository,
     SqlAlchemyUserSessionRepository,
     SqlAlchemyVehicleRepository,
@@ -35,6 +37,7 @@ class AbstractUnitOfWork(ABC):
     user_sessions: AbstractUserSessionRepository
     vehicles: AbstractVehicleRepository
     stations: AbstractStationRepository
+    statistics: AbstractStatisticsRepository
     chargers: AbstractChargerRepository
     reservations: AbstractReservationRepository
     charging_sessions: AbstractChargingSessionRepository
@@ -69,6 +72,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self.user_sessions = SqlAlchemyUserSessionRepository(session)
         self.vehicles = SqlAlchemyVehicleRepository(session)
         self.stations = SqlAlchemyStationRepository(session)
+        self.statistics = SqlAlchemyStatisticsRepository(session)
         self.chargers = SqlAlchemyChargerRepository(session)
         self.reservations = SqlAlchemyReservationRepository(session)
         self.charging_sessions = SqlAlchemyChargingSessionRepository(session)
